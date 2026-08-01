@@ -19,7 +19,7 @@ Purpose: this is Dot.Projects's own knowledge home — owned and maintained by t
 
 Dot.Projects is the project and programme delivery platform in the InfoDot ecosystem: plan, track, and deliver multi-phase initiatives with milestones, tasks, and team collaboration, with AI-assisted plan generation to turn a project brief into a structured milestone/task breakdown instantly.
 
-**Status:** working scaffold. This is a real Laravel 12 application with a functioning data model, a Livewire-driven project creation and kanban board flow, and a live (mock-fallback) AI planning service — but it does not yet publish Knowledge Packs, emit ecosystem events, or consume recommendations from Dot.Brain. Sections below distinguish **shipped** behavior from **planned** integration.
+**Status:** working scaffold. This is a real Laravel 12 application with a functioning data model, a Livewire-driven project creation and kanban board flow, and a live (mock-fallback) AI planning service. It now dispatches two of its four target domain events on real `Milestone`/`Project` status transitions (see §5), but it does not yet publish Knowledge Packs, consume recommendations from Dot.Brain, or have any listener/publisher consuming the events it dispatches. Sections below distinguish **shipped** behavior from **planned** integration.
 
 ## 2. Architecture
 
@@ -34,7 +34,7 @@ Dot.Projects is the project and programme delivery platform in the InfoDot ecosy
 | AI | Anthropic API direct HTTP call (`ANTHROPIC_MODEL=claude-sonnet-4-6`), with a deterministic mock fallback when no API key is configured |
 | Queue / Cache | Redis, Laravel Horizon, database cache/queue drivers in `.env.example` |
 
-The app is intentionally thin right now: two Livewire components (`CreateProject`, `ProjectBoard`), one controller (`ProjectController::show`), one service (`AiProjectPlannerService`). There is no event/listener/observer layer yet — model changes are not currently dispatched anywhere.
+The app is intentionally thin right now: two Livewire components (`CreateProject`, `ProjectBoard`), one controller (`ProjectController::show`), one service (`AiProjectPlannerService`). There is no listener/observer layer yet, and no `EventServiceProvider` — the two events introduced this pass (`App\Events\MilestoneReached`, `App\Events\ProjectClosed`) are dispatched directly from model methods called by `ProjectBoard`, with nothing subscribed to them yet.
 
 ## 3. Domain Entities
 
@@ -54,7 +54,16 @@ The app is intentionally thin right now: two Livewire components (`CreateProject
 
 ## 5. Events Emitted
 
-**None today.** No `Event::dispatch`, observer, or listener exists in the codebase outside Jetstream/Fortify's own internals. Dot.Brain's ingested view of this platform (`platforms/dot-projects.md`) specifies a target event contract — `delivery.milestone.reached`/`slipped`, `delivery.project.closed`, `delivery.dependency.blocked` — which is accurate as **design intent**, not current behavior. Wiring these to actual milestone/status transitions (`Milestone::status`, `Project::status`) is the next concrete step toward ecosystem participation; see Roadmap.
+Two of the four target event types are now wired to real status transitions; the other two remain design intent only:
+
+| Event | Status |
+|---|---|
+| `delivery.milestone.reached` | **Wired.** `App\Events\MilestoneReached` dispatches from `Milestone::syncStatusFromTasks()` when a milestone's derived status newly becomes `completed` (all its tasks are `done`). Triggered from `ProjectBoard::moveTask()` on every task move. |
+| `delivery.project.closed` | **Wired.** `App\Events\ProjectClosed` dispatches from `Project::closeIfAllMilestonesCompleted()` when a project has at least one milestone and every milestone is `completed`. Called right after a milestone completion in the same request. A project already `completed` or `on_hold` is never auto-closed — `on_hold` stays a deliberate, manual status change. |
+| `delivery.milestone.slipped` | Not implemented. Unlike the other two, "slipped" isn't a discrete status-enum transition (`milestones.status` has no "slipped" value) — it's a due-date-based condition that would need idempotency/dedup infrastructure (a schedule could otherwise re-dispatch it every day a milestone stays overdue) similar to what `CheckMilestonesDueSoonCommandTest`'s "already notified" check does for notifications. Left for a dedicated pass. |
+| `delivery.dependency.blocked` | Not implemented — there is no dependency-tracking model yet (see Roadmap: Gantt/cross-project dependency tracking). |
+
+No listener consumes these events yet — nothing in this repo publishes a Knowledge Pack or calls out to Dot.Brain. Dispatching them now builds up a real event log/precedent a future publisher can consume or backfill from, rather than leaving the event contract as unimplemented design intent (see Dot.Brain's ingested view, `platforms/dot-projects.md`).
 
 ## 6. Connecting to Dot.Brain
 
@@ -73,7 +82,7 @@ Full manifest, entity/event mapping, the HR consumption contract, the dopamine-s
 
 ## 7. Roadmap
 
-- [ ] Wire `Milestone`/`Project` status transitions to domain events (`delivery.milestone.reached`, `delivery.milestone.slipped`, `delivery.project.closed`)
+- [x] Wire `Milestone`/`Project` status transitions to domain events — `delivery.milestone.reached` and `delivery.project.closed` are wired (see §5); `delivery.milestone.slipped` remains open, needing dedup infrastructure since it's date-based rather than a status-enum transition
 - [ ] Publish the first `observation` Knowledge Pack once phase/milestone data has enough volume to aggregate meaningfully
 - [ ] Implement the `platform.dkp.json` manifest and signing-key provisioning
 - [ ] Build the Dot.Tasks spawn/escalate handoff (template spawn at project closure; escalation into a new project on recurring failure)
@@ -88,6 +97,7 @@ Full manifest, entity/event mapping, the HR consumption contract, the dopamine-s
 |---|---|---|---|
 | 0.1.0 | 2026-08-01 | Projects Platform Lead | Initial wiki: documented the actual Laravel/Livewire scaffold (entities, AI planner, SSO), reconciled against Dot.Brain's ingested `platforms/dot-projects.md` target design, marked Knowledge Pack publishing and the Dot.Tasks handoff as roadmap rather than shipped |
 | 0.1.1 | 2026-08-01 | Projects Platform Lead | Platform-loop pass: real logo wired into favicons/nav/auth pages (replacing stock Jetstream SVG mark), removed a duplicate leftover `public/dot_projects.png`; added `ProjectPolicy`/`MilestonePolicy`/`ProjectTaskPolicy`/`ProjectCommentPolicy`/`AiPlanLogPolicy` — `ProjectController::show` and `ProjectBoard` previously authorized access with an inline `abort_unless` rather than a policy, and `ProjectBoard::moveTask`/new `assignTask` had no server-side team check at all beyond matching `project_id`; added Laravel's standard `database` notification channel (bell in the topbar + a `/notifications` index page) wired to three real events — milestone due within 2 days (new scheduled `projects:check-milestones-due` command), task assignment (new assignee dropdown on the kanban board, previously task assignment had no UI path at all), and new project comments (new `ProjectComments` Livewire component — `ProjectComment` model existed with zero UI before this); added dashboard search-by-name and status filtering; added a light/dark theme toggle (`localStorage`-persisted, matches the pattern used across the ecosystem — this dashboard's own markup stays fixed-dark by design, the toggle mainly affects Jetstream's `dark:`-aware Profile/Team pages); added Feature tests for the new authorization, notification, assignment, comment, and scheduled-command behavior; fixed `composer.json`'s `name` from the default `laravel/laravel` to `dot/projects`. Core domain models, the AI planner's own logic, and Jetstream/Fortify auth scaffolding were not touched. |
+| 0.1.2 | 2026-08-01 | Projects Platform Lead | Incremental pass, scoped to roadmap item 1: wired `delivery.milestone.reached` and `delivery.project.closed` to real status transitions instead of leaving them as design intent. New `App\Events\MilestoneReached` and `App\Events\ProjectClosed`; new `Milestone::syncStatusFromTasks()` (derives `pending`/`in_progress`/`completed` from the milestone's tasks and dispatches `MilestoneReached` on a new completion) and `Project::closeIfAllMilestonesCompleted()` (marks the project `completed` and dispatches `ProjectClosed` once every milestone is `completed`, skipping projects already `completed` or `on_hold`); both called from `ProjectBoard::moveTask()` on every task move. `delivery.milestone.slipped` deliberately left unwired — it isn't a status-enum transition and needs dedup infrastructure of its own; documented as such in §5 rather than faked. Added `tests/Feature/MilestoneAndProjectStatusEventsTest.php` (four cases: milestone completion dispatch, non-completing transition does not dispatch, project auto-close on last milestone, on-hold project is not auto-closed). No listener/publisher was added — nothing yet consumes these events. |
 
 ## Open Questions
 

@@ -66,6 +66,15 @@ class ProjectBoard extends Component
         abort_unless($task->project_id === $this->project->id, 403);
 
         $task->update(['status' => $newStatus]);
+
+        if ($task->milestone_id) {
+            $milestone = $task->milestone;
+
+            if ($milestone && $milestone->syncStatusFromTasks()) {
+                $this->project->closeIfAllMilestonesCompleted();
+            }
+        }
+
         unset($this->tasksByStatus);
     }
 
