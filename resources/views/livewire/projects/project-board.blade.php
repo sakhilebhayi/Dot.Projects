@@ -29,9 +29,14 @@
                                 } }}">
                                 {{ ucfirst($task->priority) }}
                             </span>
-                            @if($task->assignee)
-                                <span class="text-xs text-gray-400 dark:text-gray-500 truncate max-w-24">{{ $task->assignee->name }}</span>
-                            @endif
+                            <select wire:change="assignTask({{ $task->id }}, $event.target.value || null)"
+                                    x-on:click.stop x-on:mousedown.stop
+                                    class="text-xs bg-transparent text-gray-500 dark:text-gray-400 border-0 max-w-24 focus:ring-0 cursor-pointer">
+                                <option value="" {{ ! $task->assignee_id ? 'selected' : '' }}>Unassigned</option>
+                                @foreach($this->assignableUsers as $teamMember)
+                                    <option value="{{ $teamMember->id }}" {{ $task->assignee_id === $teamMember->id ? 'selected' : '' }}>{{ $teamMember->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         @if($task->milestone)
                             <p class="mt-1 text-xs text-gray-400 dark:text-gray-500 truncate">📍 {{ $task->milestone->title }}</p>

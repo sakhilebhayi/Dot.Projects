@@ -33,16 +33,44 @@
             </div>
         </div>
 
+        {{-- Search & filter --}}
+        <form method="GET" action="{{ route('dashboard') }}" style="display:flex;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+            <div style="position:relative;flex:1;min-width:220px;">
+                <span class="material-symbols-rounded" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);font-size:17px;color:#52525b;">search</span>
+                <input type="text" name="search" value="{{ $search }}" placeholder="Search projects by name…"
+                       style="width:100%;background:#141416;border:1px solid rgba(67,70,86,0.4);border-radius:0.6rem;padding:0.6rem 0.85rem 0.6rem 2.25rem;font-size:0.8rem;color:#f4f4f5;outline:none;">
+            </div>
+            <select name="status" onchange="this.form.submit()" style="background:#141416;border:1px solid rgba(67,70,86,0.4);border-radius:0.6rem;padding:0.6rem 0.85rem;font-size:0.8rem;color:#f4f4f5;">
+                <option value="" {{ $statusFilter === '' ? 'selected' : '' }}>All statuses</option>
+                <option value="planning" {{ $statusFilter === 'planning' ? 'selected' : '' }}>Planning</option>
+                <option value="active" {{ $statusFilter === 'active' ? 'selected' : '' }}>Active</option>
+                <option value="on_hold" {{ $statusFilter === 'on_hold' ? 'selected' : '' }}>On Hold</option>
+                <option value="completed" {{ $statusFilter === 'completed' ? 'selected' : '' }}>Completed</option>
+            </select>
+            <button type="submit" style="border-radius:0.6rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);padding:0.6rem 1.1rem;font-size:0.8rem;font-weight:600;color:#d4d4d8;cursor:pointer;">Filter</button>
+            @if($search !== '' || $statusFilter !== '')
+                <a href="{{ route('dashboard') }}" style="display:flex;align-items:center;font-size:0.75rem;color:#71717a;text-decoration:none;padding:0 0.5rem;">Clear</a>
+            @endif
+        </form>
+
         {{-- Projects Grid / Empty State --}}
         @if($projects->isEmpty())
             <div style="text-align:center;padding:5rem 2rem;background:#141416;border:1px solid rgba(67,70,86,0.3);border-radius:1rem;">
                 <span class="material-symbols-rounded" style="font-size:52px;color:#3d4566;display:block;margin-bottom:1rem;">folder_open</span>
-                <p style="font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:#f4f4f5;margin:0 0 0.4rem;">No projects yet</p>
-                <p style="font-size:0.8rem;color:#71717a;margin:0 0 1.75rem;">Create your first project to get your team started.</p>
-                <a href="{{ route('projects.create') }}" style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:0.7rem 1.5rem;font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:#f7f5ff;text-decoration:none;box-shadow:0 8px 20px rgba(124,58,237,0.3);">
-                    <span class="material-symbols-rounded" style="font-size:16px;">add_circle</span>
-                    Create your first project
-                </a>
+                @if($search !== '' || $statusFilter !== '')
+                    <p style="font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:#f4f4f5;margin:0 0 0.4rem;">No matching projects</p>
+                    <p style="font-size:0.8rem;color:#71717a;margin:0 0 1.75rem;">Try a different search term or clear the filter.</p>
+                    <a href="{{ route('dashboard') }}" style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:9999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);padding:0.7rem 1.5rem;font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:#d4d4d8;text-decoration:none;">
+                        Clear filters
+                    </a>
+                @else
+                    <p style="font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:#f4f4f5;margin:0 0 0.4rem;">No projects yet</p>
+                    <p style="font-size:0.8rem;color:#71717a;margin:0 0 1.75rem;">Create your first project to get your team started.</p>
+                    <a href="{{ route('projects.create') }}" style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:0.7rem 1.5rem;font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:#f7f5ff;text-decoration:none;box-shadow:0 8px 20px rgba(124,58,237,0.3);">
+                        <span class="material-symbols-rounded" style="font-size:16px;">add_circle</span>
+                        Create your first project
+                    </a>
+                @endif
             </div>
         @else
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem;">

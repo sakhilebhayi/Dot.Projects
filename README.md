@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/logo.svg" alt="Dot.Projects" width="320" />
+<img src="public/images/logo.png" alt="Dot.Projects" width="140" />
 
 <br /><br />
 
@@ -20,25 +20,33 @@
 
 ## What is Dot.Projects?
 
-Dot.Projects is the project management platform in the InfoDot ecosystem. AI-powered milestone generation turns a project brief into a structured plan instantly; a drag-and-drop kanban board and Gantt timeline keep teams moving toward delivery with full visibility.
+Dot.Projects is the project management platform in the InfoDot ecosystem. AI-powered milestone generation turns a project brief into a structured plan instantly; a drag-and-drop kanban board keeps teams moving toward delivery with full visibility.
 
 ## Core Features
 
-- AI milestone generation — input a brief, get a full project plan
-- Drag-and-drop kanban board with custom columns
+**Shipped:**
+- AI milestone generation — input a brief, get a full project plan (with a deterministic mock fallback when no API key is configured, and a full prompt/response audit log per generation)
+- Drag-and-drop kanban board with assignee, priority, and milestone tagging
+- Task assignment to team members, with an in-app notification
+- Project and task comments, with an in-app notification to the project owner
+- In-app notification bell (database channel) — milestone due-soon reminders, new comments, task assignments
+- Dashboard search and status filtering across a team's projects
+- Light/dark theme toggle
+- Ecosystem SSO from the InfoDot hub
+
+**Not yet built** (see `wiki.md` for the full gap analysis against the target design):
 - Gantt timeline view with dependency tracking
-- Task assignment, due dates, and priority levels
-- Project health dashboard — velocity, burndown, and blockers
-- Team collaboration — comments, mentions, and file attachments
 - Time logging per task linked to billing
-- Ecosystem SSO from InfoDot hub
+- Knowledge Pack publishing / event emission to Dot.Brain
+- Dot.Tasks spawn/escalate handoff
 
 ## Domain Models
 
-- **Project** — scoped initiative with status
-- **Milestone** — key delivery checkpoint
-- **Task** — work item with assignee and status
-- **TaskComment** — discussion thread per task
+- **Project** — scoped initiative with status, belongs to a `Team`
+- **Milestone** — key delivery checkpoint on a project
+- **ProjectTask** — kanban work item with assignee, priority, and status
+- **ProjectComment** — polymorphic discussion thread on a `Project` or `ProjectTask`
+- **AiPlanLog** — full prompt/response audit trail per AI plan generation
 
 ## Tech Stack
 
@@ -48,12 +56,11 @@ Dot.Projects is the project management platform in the InfoDot ecosystem. AI-pow
 | Language | PHP 8.4 |
 | Frontend | Livewire 3 · Alpine.js 3 · Tailwind CSS |
 | Database | PostgreSQL 16 (shared across ecosystem) |
-| Realtime | Laravel Reverb |
-| Auth | Laravel Sanctum (InfoDot SSO) |
-| AI | Anthropic Claude (`claude-sonnet-4-6`) |
-| Storage | AWS S3 / Local (Flysystem) |
-| Search | Laravel Scout · Meilisearch |
-| Queue | Redis · Laravel Horizon |
+| Realtime | Laravel Reverb (configured, not yet wired to board updates) |
+| Auth | Laravel Sanctum (InfoDot SSO) + Jetstream teams |
+| AI | Anthropic Claude (`claude-sonnet-4-6`), mock fallback if unconfigured |
+| Notifications | Laravel's built-in `database` notification channel |
+| Queue | Redis · Laravel Horizon (configured in `.env.example`) |
 
 ## Quick Start
 

@@ -9,10 +9,7 @@ class ProjectController extends Controller
 {
     public function show(Request $request, Project $project): \Illuminate\View\View
     {
-        abort_unless(
-            $request->user()->currentTeam->id === $project->team_id,
-            403
-        );
+        $this->authorize('view', $project);
 
         $project->load(['owner', 'milestones.tasks', 'members']);
 

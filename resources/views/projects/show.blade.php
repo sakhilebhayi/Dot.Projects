@@ -97,9 +97,14 @@
         @endif
 
         {{-- Tasks board --}}
-        <div>
+        <div style="margin-bottom:2rem;">
             <h2 style="font-family:'Manrope',sans-serif;font-size:0.72rem;font-weight:700;color:#8d90a2;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.85rem;">Tasks Board</h2>
             <livewire:projects.project-board :project="$project" />
+        </div>
+
+        {{-- Comments --}}
+        <div style="max-width:640px;">
+            <livewire:projects.project-comments :project="$project" />
         </div>
 
     </div>
