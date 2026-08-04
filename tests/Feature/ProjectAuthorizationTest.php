@@ -8,6 +8,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
+/**
+ * As of the HasTeamScope global scope on Project (mirroring Dot.Finance's
+ * HasUserScope / Dot.Notify's HasTeamScope), cross-team access to
+ * `projects.show` now 404s rather than 403ing: implicit route-model
+ * binding queries through the scope too, so another team's project is
+ * invisible before ProjectPolicy::view() ever runs. This is intentionally
+ * a stronger posture than the old assertForbidden() behavior — fail-closed
+ * at the query layer, not dependent on the controller remembering to call
+ * $this->authorize(). See ProjectTeamScopeTest for direct proof the scope
+ * itself is load-bearing, independent of any Policy check.
+ */
 class ProjectAuthorizationTest extends TestCase
 {
     use RefreshDatabase;
@@ -42,7 +53,7 @@ class ProjectAuthorizationTest extends TestCase
 
         $this->actingAs($outsider)
             ->get(route('projects.show', $project))
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_a_user_cannot_move_a_task_on_another_teams_project_board(): void

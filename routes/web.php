@@ -19,8 +19,10 @@ Route::middleware([
         $search = trim((string) $request->query('search', ''));
         $statusFilter = $request->query('status', '');
 
-        $projects = auth()->user()->currentTeam
-            ->projects()
+        // No explicit currentTeam->projects() relation needed as a scoping
+        // mechanism: Project's HasTeamScope trait applies the current-team
+        // filter automatically to every query against this model.
+        $projects = \App\Models\Project::query()
             ->select(['id', 'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'created_at', 'updated_at'])
             ->withCount(['tasks', 'tasks as done_tasks_count' => fn ($q) => $q->where('status', 'done')])
             ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))

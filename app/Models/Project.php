@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\ProjectClosed;
+use App\Models\Concerns\HasTeamScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Project extends Model
 {
+    use HasTeamScope;
+
     protected $fillable = [
         'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date',
     ];
