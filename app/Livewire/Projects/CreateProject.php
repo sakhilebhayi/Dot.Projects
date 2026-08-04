@@ -5,7 +5,9 @@ namespace App\Livewire\Projects;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\Team;
 use App\Services\AiProjectPlannerService;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
@@ -29,12 +31,29 @@ class CreateProject extends Component
     public bool $generating = false;
     public ?string $aiError = null;
 
+    /**
+     * currentTeam is null whenever the user's current_team_id has been reset
+     * (e.g. removed from their current team, or that team was deleted) and
+     * they have no personal team to fall back to. Both action methods below
+     * are wire:click-reachable on an already-rendered page, so we can't
+     * redirect mid-action — abort(403) matches the ecosystem convention.
+     */
+    private function resolveCurrentTeam(): ?Team
+    {
+        return Auth::user()?->currentTeam;
+    }
+
     public function save(): void
     {
         $this->validate();
 
+        $team = $this->resolveCurrentTeam();
+        if (! $team) {
+            abort(403, 'No active team selected.');
+        }
+
         $project = Project::create([
-            'team_id'    => auth()->user()->currentTeam->id,
+            'team_id'    => $team->id,
             'owner_id'   => auth()->id(),
             'name'       => $this->name,
             'description'=> $this->description ?: null,
@@ -50,11 +69,16 @@ class CreateProject extends Component
     {
         $this->validate();
 
+        $team = $this->resolveCurrentTeam();
+        if (! $team) {
+            abort(403, 'No active team selected.');
+        }
+
         $this->generating = true;
         $this->aiError    = null;
 
         $project = Project::create([
-            'team_id'    => auth()->user()->currentTeam->id,
+            'team_id'    => $team->id,
             'owner_id'   => auth()->id(),
             'name'       => $this->name,
             'description'=> $this->description ?: null,
