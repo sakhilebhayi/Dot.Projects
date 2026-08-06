@@ -4,6 +4,9 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <h1 class="font-display font-semibold text-2xl text-[var(--paper)] mb-1">Sign in</h1>
+        <p class="text-sm text-[var(--mist)] mb-6">Welcome back to Dot.Projects.</p>
+
         <x-validation-errors class="mb-4" />
 
         @session('status')

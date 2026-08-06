@@ -4,6 +4,9 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <h1 class="font-display font-semibold text-2xl text-[var(--paper)] mb-1">Create your account</h1>
+        <p class="text-sm text-[var(--mist)] mb-6">Go from brief to milestone plan in seconds.</p>
+
         <x-validation-errors class="mb-4" />
 
         <form method="POST" action="{{ route('register') }}">

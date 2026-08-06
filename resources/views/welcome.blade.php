@@ -123,7 +123,11 @@
 
         <!-- Hero -->
         <section class="relative min-h-[100dvh] flex items-end overflow-hidden">
-            <div class="absolute inset-0" style="background: radial-gradient(ellipse 80% 60% at 15% 0%, rgba(74,79,128,0.18) 0%, transparent 60%), var(--ink);"></div>
+            <!-- Photo: a real To Do / Doing / Done kanban board, hands moving sticky-note cards, by Gabriel Carvalho, unsplash.com/photos/WqYgZLbDjhQ -->
+            <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1746729798021-129315426424?q=80&w=2400&auto=format&fit=crop');"></div>
+            <div class="absolute inset-0" style="background: linear-gradient(180deg, rgba(19,20,29,0.6) 0%, rgba(19,20,29,0.8) 45%, #13141d 92%);"></div>
+            <div class="absolute inset-0" style="background: linear-gradient(90deg, #13141d 0%, rgba(19,20,29,0.62) 40%, transparent 72%);"></div>
+            <div class="absolute inset-0" style="background: radial-gradient(ellipse 80% 60% at 15% 0%, rgba(74,79,128,0.18) 0%, transparent 60%);"></div>
 
             <!-- Signature element: line-art starred project folder — echoes the logo's own folder/document/star icon -->
             <svg class="hidden lg:block absolute right-[5%] bottom-[8%] h-[62%] w-auto opacity-[0.16] pointer-events-none" viewBox="0 0 260 260" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -253,7 +257,10 @@
 
         <!-- CTA -->
         <section class="relative py-28 sm:py-36 px-5 sm:px-8 overflow-hidden">
-            <div class="absolute inset-0" style="background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(240,195,58,0.08) 0%, transparent 65%), var(--ink);"></div>
+            <!-- Photo: a team planning together at a sticky-note-covered glass wall, by Vitaly Gariev, unsplash.com/photos/UtIr_UaiDmg -->
+            <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1758691736836-0413b066787a?q=80&w=2400&auto=format&fit=crop');"></div>
+            <div class="absolute inset-0" style="background: linear-gradient(180deg, #13141d 0%, rgba(19,20,29,0.85) 50%, #13141d 100%);"></div>
+            <div class="absolute inset-0" style="background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(240,195,58,0.08) 0%, transparent 65%);"></div>
 
             <div class="relative z-10 max-w-2xl mx-auto text-center reveal" data-reveal>
                 <h2 class="font-display font-semibold text-3xl sm:text-4xl text-[var(--paper)] leading-tight mb-5">

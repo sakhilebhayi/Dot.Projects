@@ -1,13 +1,11 @@
 <x-guest-layout>
-    <div class="pt-4 bg-gray-100 dark:bg-gray-900">
-        <div class="min-h-screen flex flex-col items-center pt-6 sm:pt-0">
-            <div>
-                <x-authentication-card-logo />
-            </div>
+    <div class="min-h-screen flex flex-col items-center px-5 py-12 bg-[var(--ink)]">
+        <div class="mb-8">
+            <x-authentication-card-logo />
+        </div>
 
-            <div class="w-full sm:max-w-2xl mt-6 p-6 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-lg prose dark:prose-invert">
-                {!! $terms !!}
-            </div>
+        <div class="w-full sm:max-w-2xl p-6 sm:p-8 bg-[var(--ink-soft)] border border-[var(--line)] rounded-2xl shadow-xl prose dark:prose-invert">
+            {!! $terms !!}
         </div>
     </div>
 </x-guest-layout>

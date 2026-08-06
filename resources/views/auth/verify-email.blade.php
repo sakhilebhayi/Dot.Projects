@@ -4,6 +4,7 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <h1 class="font-display font-semibold text-2xl text-[var(--paper)] mb-1">Verify your email</h1>
         <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
             {{ __('Before continuing, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
         </div>
