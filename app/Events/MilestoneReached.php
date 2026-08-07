@@ -20,7 +20,5 @@ class MilestoneReached
     use Dispatchable;
     use SerializesModels;
 
-    public function __construct(public Milestone $milestone)
-    {
-    }
+    public function __construct(public Milestone $milestone) {}
 }

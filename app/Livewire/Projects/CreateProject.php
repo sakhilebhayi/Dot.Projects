@@ -8,6 +8,7 @@ use App\Models\ProjectTask;
 use App\Models\Team;
 use App\Services\AiProjectPlannerService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
@@ -29,6 +30,7 @@ class CreateProject extends Component
     public string $dueDate = '';
 
     public bool $generating = false;
+
     public ?string $aiError = null;
 
     /**
@@ -53,13 +55,13 @@ class CreateProject extends Component
         }
 
         $project = Project::create([
-            'team_id'    => $team->id,
-            'owner_id'   => auth()->id(),
-            'name'       => $this->name,
-            'description'=> $this->description ?: null,
-            'status'     => $this->status,
+            'team_id' => $team->id,
+            'owner_id' => auth()->id(),
+            'name' => $this->name,
+            'description' => $this->description ?: null,
+            'status' => $this->status,
             'start_date' => $this->startDate ?: null,
-            'due_date'   => $this->dueDate ?: null,
+            'due_date' => $this->dueDate ?: null,
         ]);
 
         $this->redirect(route('projects.show', $project));
@@ -75,44 +77,45 @@ class CreateProject extends Component
         }
 
         $this->generating = true;
-        $this->aiError    = null;
+        $this->aiError = null;
 
         $project = Project::create([
-            'team_id'    => $team->id,
-            'owner_id'   => auth()->id(),
-            'name'       => $this->name,
-            'description'=> $this->description ?: null,
-            'status'     => $this->status,
+            'team_id' => $team->id,
+            'owner_id' => auth()->id(),
+            'name' => $this->name,
+            'description' => $this->description ?: null,
+            'status' => $this->status,
             'start_date' => $this->startDate ?: null,
-            'due_date'   => $this->dueDate ?: null,
+            'due_date' => $this->dueDate ?: null,
         ]);
 
         $service = app(AiProjectPlannerService::class);
-        $plan    = $service->generatePlan($project, auth()->id());
+        $plan = $service->generatePlan($project, auth()->id());
 
         if ($plan === null) {
-            $this->aiError    = 'AI planning failed. The project was created without a plan.';
+            $this->aiError = 'AI planning failed. The project was created without a plan.';
             $this->generating = false;
             $this->redirect(route('projects.show', $project));
+
             return;
         }
 
         foreach ($plan['milestones'] ?? [] as $i => $ms) {
             $milestone = Milestone::create([
-                'project_id'  => $project->id,
-                'title'       => $ms['title'],
+                'project_id' => $project->id,
+                'title' => $ms['title'],
                 'description' => $ms['description'] ?? null,
-                'sort_order'  => $i,
+                'sort_order' => $i,
             ]);
 
             foreach ($ms['tasks'] ?? [] as $j => $t) {
                 ProjectTask::create([
-                    'project_id'   => $project->id,
+                    'project_id' => $project->id,
                     'milestone_id' => $milestone->id,
-                    'title'        => $t['title'],
-                    'priority'     => $t['priority'] ?? 'medium',
-                    'status'       => 'backlog',
-                    'sort_order'   => $j,
+                    'title' => $t['title'],
+                    'priority' => $t['priority'] ?? 'medium',
+                    'status' => 'backlog',
+                    'sort_order' => $j,
                 ]);
             }
         }
@@ -121,7 +124,7 @@ class CreateProject extends Component
         $this->redirect(route('projects.show', $project));
     }
 
-    public function render(): \Illuminate\View\View
+    public function render(): View
     {
         return view('livewire.projects.create-project');
     }

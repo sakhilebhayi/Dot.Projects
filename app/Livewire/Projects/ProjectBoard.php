@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
+use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -18,11 +19,11 @@ class ProjectBoard extends Component
     public ?int $movingTaskId = null;
 
     public const COLUMNS = [
-        'backlog'     => 'Backlog',
-        'todo'        => 'To Do',
+        'backlog' => 'Backlog',
+        'todo' => 'To Do',
         'in_progress' => 'In Progress',
-        'review'      => 'Review',
-        'done'        => 'Done',
+        'review' => 'Review',
+        'done' => 'Done',
     ];
 
     public function mount(Project $project): void
@@ -103,7 +104,7 @@ class ProjectBoard extends Component
         unset($this->tasksByStatus);
     }
 
-    public function render(): \Illuminate\View\View
+    public function render(): View
     {
         return view('livewire.projects.project-board');
     }

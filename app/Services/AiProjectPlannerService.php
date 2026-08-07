@@ -10,12 +10,13 @@ use Illuminate\Support\Facades\Log;
 class AiProjectPlannerService
 {
     private string $apiKey;
+
     private string $model;
 
     public function __construct()
     {
         $this->apiKey = config('services.anthropic.api_key', '');
-        $this->model  = config('services.anthropic.model', 'claude-sonnet-4-6');
+        $this->model = config('services.anthropic.model', 'claude-sonnet-4-6');
     }
 
     public function isConfigured(): bool
@@ -41,13 +42,14 @@ class AiProjectPlannerService
         $response = Http::withToken($this->apiKey)
             ->timeout(30)
             ->post('https://api.anthropic.com/v1/messages', [
-                'model'      => $this->model,
+                'model' => $this->model,
                 'max_tokens' => 1500,
-                'messages'   => [['role' => 'user', 'content' => $prompt]],
+                'messages' => [['role' => 'user', 'content' => $prompt]],
             ]);
 
         if (! $response->successful()) {
             Log::error('AiProjectPlanner API error', ['status' => $response->status()]);
+
             return null;
         }
 
@@ -55,10 +57,10 @@ class AiProjectPlannerService
         $plan = $this->parsePlan($text);
 
         AiPlanLog::create([
-            'project_id'  => $project->id,
-            'user_id'     => $userId,
-            'prompt'      => $prompt,
-            'response'    => $text,
+            'project_id' => $project->id,
+            'user_id' => $userId,
+            'prompt' => $prompt,
+            'response' => $text,
             'tokens_used' => $response->json('usage.output_tokens'),
         ]);
 
@@ -115,27 +117,27 @@ PROMPT;
         return [
             'milestones' => [
                 [
-                    'title'       => 'Discovery & Planning',
+                    'title' => 'Discovery & Planning',
                     'description' => 'Define scope, requirements, and architecture.',
-                    'tasks'       => [
+                    'tasks' => [
                         ['title' => 'Gather requirements', 'priority' => 'high'],
                         ['title' => 'Define technical architecture', 'priority' => 'high'],
                         ['title' => 'Create project timeline', 'priority' => 'medium'],
                     ],
                 ],
                 [
-                    'title'       => 'Core Development',
-                    'description' => 'Build the main features of ' . $project->name . '.',
-                    'tasks'       => [
+                    'title' => 'Core Development',
+                    'description' => 'Build the main features of '.$project->name.'.',
+                    'tasks' => [
                         ['title' => 'Set up development environment', 'priority' => 'high'],
                         ['title' => 'Implement core functionality', 'priority' => 'high'],
                         ['title' => 'Write unit tests', 'priority' => 'medium'],
                     ],
                 ],
                 [
-                    'title'       => 'Testing & Launch',
+                    'title' => 'Testing & Launch',
                     'description' => 'QA, bug fixes, and production deployment.',
-                    'tasks'       => [
+                    'tasks' => [
                         ['title' => 'Conduct QA testing', 'priority' => 'high'],
                         ['title' => 'Fix identified bugs', 'priority' => 'urgent'],
                         ['title' => 'Deploy to production', 'priority' => 'high'],

@@ -21,7 +21,5 @@ class ProjectClosed
     use Dispatchable;
     use SerializesModels;
 
-    public function __construct(public Project $project)
-    {
-    }
+    public function __construct(public Project $project) {}
 }

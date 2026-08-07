@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Schema;
  * notification bell so delivery events (milestone due soon, new comment,
  * task assigned) have somewhere to land. See App\Notifications\*.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('notifications', function (Blueprint $table) {

@@ -3,6 +3,8 @@
 use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
+use App\Models\Project;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Laravel\Jetstream\Jetstream;
@@ -27,14 +29,14 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+    Route::get('/dashboard', function (Request $request) {
         $search = trim((string) $request->query('search', ''));
         $statusFilter = $request->query('status', '');
 
         // No explicit currentTeam->projects() relation needed as a scoping
         // mechanism: Project's HasTeamScope trait applies the current-team
         // filter automatically to every query against this model.
-        $projects = \App\Models\Project::query()
+        $projects = Project::query()
             ->select(['id', 'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'created_at', 'updated_at'])
             ->withCount(['tasks', 'tasks as done_tasks_count' => fn ($q) => $q->where('status', 'done')])
             ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))

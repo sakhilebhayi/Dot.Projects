@@ -20,16 +20,16 @@ class CheckMilestonesDueSoonCommandTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Due Soon Project',
-            'status'   => 'active',
+            'name' => 'Due Soon Project',
+            'status' => 'active',
         ]);
         $milestone = Milestone::create([
             'project_id' => $project->id,
-            'title'      => 'Beta launch',
-            'due_date'   => now()->addDay(),
-            'status'     => 'in_progress',
+            'title' => 'Beta launch',
+            'due_date' => now()->addDay(),
+            'status' => 'in_progress',
         ]);
 
         $this->artisan('projects:check-milestones-due')->assertExitCode(0);
@@ -43,16 +43,16 @@ class CheckMilestonesDueSoonCommandTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Future Project',
-            'status'   => 'active',
+            'name' => 'Future Project',
+            'status' => 'active',
         ]);
         Milestone::create([
             'project_id' => $project->id,
-            'title'      => 'Far off milestone',
-            'due_date'   => now()->addMonths(2),
-            'status'     => 'pending',
+            'title' => 'Far off milestone',
+            'due_date' => now()->addMonths(2),
+            'status' => 'pending',
         ]);
 
         $this->artisan('projects:check-milestones-due')->assertExitCode(0);
@@ -66,16 +66,16 @@ class CheckMilestonesDueSoonCommandTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Completed Milestone Project',
-            'status'   => 'active',
+            'name' => 'Completed Milestone Project',
+            'status' => 'active',
         ]);
         Milestone::create([
             'project_id' => $project->id,
-            'title'      => 'Already done',
-            'due_date'   => now()->addDay(),
-            'status'     => 'completed',
+            'title' => 'Already done',
+            'due_date' => now()->addDay(),
+            'status' => 'completed',
         ]);
 
         $this->artisan('projects:check-milestones-due')->assertExitCode(0);

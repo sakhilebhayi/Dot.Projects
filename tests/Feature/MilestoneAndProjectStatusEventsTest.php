@@ -29,16 +29,16 @@ class MilestoneAndProjectStatusEventsTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Milestone Project',
-            'status'   => 'active',
+            'name' => 'Milestone Project',
+            'status' => 'active',
         ]);
         $milestone = $project->milestones()->create(['title' => 'Beta', 'status' => 'pending']);
         $task = $project->tasks()->create([
             'milestone_id' => $milestone->id,
-            'title'        => 'Ship the beta',
-            'status'       => 'review',
+            'title' => 'Ship the beta',
+            'status' => 'review',
         ]);
 
         Livewire::actingAs($owner)
@@ -55,16 +55,16 @@ class MilestoneAndProjectStatusEventsTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'In Progress Project',
-            'status'   => 'active',
+            'name' => 'In Progress Project',
+            'status' => 'active',
         ]);
         $milestone = $project->milestones()->create(['title' => 'Alpha', 'status' => 'pending']);
         $task = $project->tasks()->create([
             'milestone_id' => $milestone->id,
-            'title'        => 'Start the alpha',
-            'status'       => 'backlog',
+            'title' => 'Start the alpha',
+            'status' => 'backlog',
         ]);
 
         Livewire::actingAs($owner)
@@ -81,17 +81,17 @@ class MilestoneAndProjectStatusEventsTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Closing Project',
-            'status'   => 'active',
+            'name' => 'Closing Project',
+            'status' => 'active',
         ]);
         $doneMilestone = $project->milestones()->create(['title' => 'Done already', 'status' => 'completed']);
         $lastMilestone = $project->milestones()->create(['title' => 'Final push', 'status' => 'pending']);
         $task = $project->tasks()->create([
             'milestone_id' => $lastMilestone->id,
-            'title'        => 'Wrap it up',
-            'status'       => 'review',
+            'title' => 'Wrap it up',
+            'status' => 'review',
         ]);
 
         Livewire::actingAs($owner)
@@ -109,16 +109,16 @@ class MilestoneAndProjectStatusEventsTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Paused Project',
-            'status'   => 'on_hold',
+            'name' => 'Paused Project',
+            'status' => 'on_hold',
         ]);
         $milestone = $project->milestones()->create(['title' => 'Only milestone', 'status' => 'pending']);
         $task = $project->tasks()->create([
             'milestone_id' => $milestone->id,
-            'title'        => 'Last task',
-            'status'       => 'review',
+            'title' => 'Last task',
+            'status' => 'review',
         ]);
 
         Livewire::actingAs($owner)

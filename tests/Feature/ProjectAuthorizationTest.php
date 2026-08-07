@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Projects\ProjectBoard;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,10 +28,10 @@ class ProjectAuthorizationTest extends TestCase
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Own Project',
-            'status'   => 'planning',
+            'name' => 'Own Project',
+            'status' => 'planning',
         ]);
 
         $this->actingAs($owner)
@@ -43,10 +44,10 @@ class ProjectAuthorizationTest extends TestCase
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Someone Elses Project',
-            'status'   => 'planning',
+            'name' => 'Someone Elses Project',
+            'status' => 'planning',
         ]);
 
         $outsider = User::factory()->withPersonalTeam()->create();
@@ -60,20 +61,20 @@ class ProjectAuthorizationTest extends TestCase
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Protected Project',
-            'status'   => 'planning',
+            'name' => 'Protected Project',
+            'status' => 'planning',
         ]);
         $task = $project->tasks()->create([
-            'title'  => 'Do the thing',
+            'title' => 'Do the thing',
             'status' => 'backlog',
         ]);
 
         $outsider = User::factory()->withPersonalTeam()->create();
 
         Livewire::actingAs($outsider)
-            ->test(\App\Livewire\Projects\ProjectBoard::class, ['project' => $project])
+            ->test(ProjectBoard::class, ['project' => $project])
             ->assertForbidden();
     }
 }

@@ -19,10 +19,10 @@ class ProjectBoardTest extends TestCase
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Board Project',
-            'status'   => 'active',
+            'name' => 'Board Project',
+            'status' => 'active',
         ]);
         $task = $project->tasks()->create(['title' => 'Wire the board', 'status' => 'backlog']);
 
@@ -42,10 +42,10 @@ class ProjectBoardTest extends TestCase
         $owner->currentTeam->users()->attach($member, ['role' => 'editor']);
 
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Assignment Project',
-            'status'   => 'active',
+            'name' => 'Assignment Project',
+            'status' => 'active',
         ]);
         $task = $project->tasks()->create(['title' => 'Build the widget', 'status' => 'todo']);
 
@@ -63,10 +63,10 @@ class ProjectBoardTest extends TestCase
         $outsider = User::factory()->create();
 
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Locked Project',
-            'status'   => 'active',
+            'name' => 'Locked Project',
+            'status' => 'active',
         ]);
         $task = $project->tasks()->create(['title' => 'Sensitive task', 'status' => 'todo']);
 

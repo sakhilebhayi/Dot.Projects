@@ -6,8 +6,8 @@ use App\Events\ProjectClosed;
 use App\Models\Concerns\HasTeamScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Project extends Model
@@ -20,7 +20,7 @@ class Project extends Model
 
     protected $casts = [
         'start_date' => 'date',
-        'due_date'   => 'date',
+        'due_date' => 'date',
     ];
 
     public function team(): BelongsTo
@@ -67,6 +67,7 @@ class Project extends Model
             return 0;
         }
         $done = $this->tasks()->where('status', 'done')->count();
+
         return (int) round(($done / $total) * 100);
     }
 

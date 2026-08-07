@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ProjectController extends Controller
 {
-    public function show(Request $request, Project $project): \Illuminate\View\View
+    public function show(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 

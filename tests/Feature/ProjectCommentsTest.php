@@ -24,10 +24,10 @@ class ProjectCommentsTest extends TestCase
         $owner->currentTeam->users()->attach($member, ['role' => 'editor']);
 
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Comment Project',
-            'status'   => 'active',
+            'name' => 'Comment Project',
+            'status' => 'active',
         ]);
 
         Livewire::actingAs($member)
@@ -38,9 +38,9 @@ class ProjectCommentsTest extends TestCase
 
         $this->assertDatabaseHas('project_comments', [
             'commentable_type' => Project::class,
-            'commentable_id'   => $project->id,
-            'user_id'          => $member->id,
-            'body'             => 'Looks good, shipping tomorrow.',
+            'commentable_id' => $project->id,
+            'user_id' => $member->id,
+            'body' => 'Looks good, shipping tomorrow.',
         ]);
 
         Notification::assertSentTo($owner, NewCommentNotification::class);
@@ -52,10 +52,10 @@ class ProjectCommentsTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Self Comment Project',
-            'status'   => 'active',
+            'name' => 'Self Comment Project',
+            'status' => 'active',
         ]);
 
         Livewire::actingAs($owner)

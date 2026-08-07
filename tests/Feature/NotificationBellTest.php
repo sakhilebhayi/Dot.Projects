@@ -29,16 +29,16 @@ class NotificationBellTest extends TestCase
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Launch Readiness',
-            'status'   => 'active',
+            'name' => 'Launch Readiness',
+            'status' => 'active',
         ]);
         $milestone = Milestone::create([
             'project_id' => $project->id,
-            'title'      => 'Go-live',
-            'due_date'   => now()->addDay(),
-            'status'     => 'in_progress',
+            'title' => 'Go-live',
+            'due_date' => now()->addDay(),
+            'status' => 'in_progress',
         ]);
 
         $owner->notify(new MilestoneDueSoonNotification($milestone));
@@ -59,16 +59,16 @@ class NotificationBellTest extends TestCase
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Launch Readiness Two',
-            'status'   => 'active',
+            'name' => 'Launch Readiness Two',
+            'status' => 'active',
         ]);
         $milestone = Milestone::create([
             'project_id' => $project->id,
-            'title'      => 'Go-live',
-            'due_date'   => now()->addDay(),
-            'status'     => 'in_progress',
+            'title' => 'Go-live',
+            'due_date' => now()->addDay(),
+            'status' => 'in_progress',
         ]);
 
         $owner->notify(new MilestoneDueSoonNotification($milestone));
@@ -84,16 +84,16 @@ class NotificationBellTest extends TestCase
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $project = Project::create([
-            'team_id'  => $owner->currentTeam->id,
+            'team_id' => $owner->currentTeam->id,
             'owner_id' => $owner->id,
-            'name'     => 'Notify Index Project',
-            'status'   => 'active',
+            'name' => 'Notify Index Project',
+            'status' => 'active',
         ]);
         $milestone = Milestone::create([
             'project_id' => $project->id,
-            'title'      => 'Ship it',
-            'due_date'   => now()->addDay(),
-            'status'     => 'in_progress',
+            'title' => 'Ship it',
+            'due_date' => now()->addDay(),
+            'status' => 'in_progress',
         ]);
 
         $owner->notify(new MilestoneDueSoonNotification($milestone));

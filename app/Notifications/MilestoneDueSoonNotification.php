@@ -13,9 +13,7 @@ use Illuminate\Notifications\Notification;
  */
 class MilestoneDueSoonNotification extends Notification
 {
-    public function __construct(public Milestone $milestone)
-    {
-    }
+    public function __construct(public Milestone $milestone) {}
 
     /**
      * @return array<int, string>
@@ -33,12 +31,12 @@ class MilestoneDueSoonNotification extends Notification
         $project = $this->milestone->project;
 
         return [
-            'type'         => 'milestone_due_soon',
-            'title'        => 'Milestone due soon',
-            'message'      => "\"{$this->milestone->title}\" on \"{$project->name}\" is due " . $this->milestone->due_date->format('M d, Y') . '.',
-            'project_id'   => $project->id,
+            'type' => 'milestone_due_soon',
+            'title' => 'Milestone due soon',
+            'message' => "\"{$this->milestone->title}\" on \"{$project->name}\" is due ".$this->milestone->due_date->format('M d, Y').'.',
+            'project_id' => $project->id,
             'milestone_id' => $this->milestone->id,
-            'url'          => route('projects.show', $project),
+            'url' => route('projects.show', $project),
         ];
     }
 }

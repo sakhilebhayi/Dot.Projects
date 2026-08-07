@@ -5,6 +5,7 @@ namespace App\Livewire\Projects;
 use App\Models\Project;
 use App\Models\ProjectComment;
 use App\Notifications\NewCommentNotification;
+use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -36,9 +37,9 @@ class ProjectComments extends Component
 
         $comment = ProjectComment::create([
             'commentable_type' => Project::class,
-            'commentable_id'   => $this->project->id,
-            'user_id'          => auth()->id(),
-            'body'             => $this->body,
+            'commentable_id' => $this->project->id,
+            'user_id' => auth()->id(),
+            'body' => $this->body,
         ]);
 
         $this->body = '';
@@ -49,7 +50,7 @@ class ProjectComments extends Component
         }
     }
 
-    public function render(): \Illuminate\View\View
+    public function render(): View
     {
         return view('livewire.projects.project-comments');
     }
