@@ -75,7 +75,7 @@ class MilestoneAndProjectStatusEventsTest extends TestCase
         Event::assertNotDispatched(MilestoneReached::class);
     }
 
-    public function test_completing_the_last_milestone_closes_the_project_and_dispatches_the_event(): void
+    public function test_completing_the_last_milestone_proposes_closure_but_does_not_close_it(): void
     {
         Event::fake();
 
@@ -99,8 +99,8 @@ class MilestoneAndProjectStatusEventsTest extends TestCase
             ->call('moveTask', $task->id, 'done');
 
         $this->assertEquals('completed', $lastMilestone->fresh()->status);
-        $this->assertEquals('completed', $project->fresh()->status);
-        Event::assertDispatched(ProjectClosed::class, fn ($event) => $event->project->is($project));
+        $this->assertEquals('pending_closure_approval', $project->fresh()->status);
+        Event::assertNotDispatched(ProjectClosed::class);
     }
 
     public function test_an_on_hold_project_is_not_auto_closed(): void

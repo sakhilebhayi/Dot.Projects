@@ -16,6 +16,7 @@ class Project extends Model
 
     protected $fillable = [
         'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date',
+        'closure_reviewed_by', 'closure_reviewed_at', 'closure_rejected_reason',
     ];
 
     protected $casts = [
@@ -72,22 +73,23 @@ class Project extends Model
     }
 
     /**
-     * Close this project (status -> "completed") once it has at least one
-     * milestone and every milestone is "completed". A no-op if the project
-     * has no milestones yet, is already completed, or is "on_hold" (an
-     * on-hold project isn't auto-reopened or auto-closed by task activity —
-     * that status change stays a deliberate, manual one).
+     * Propose closing this project (status -> "pending_closure_approval")
+     * once it has at least one milestone and every milestone is
+     * "completed". A no-op if the project has no milestones yet, is
+     * already completed, is "on_hold" (an on-hold project isn't
+     * auto-reopened or auto-closed by task activity -- that status change
+     * stays a deliberate, manual one), or already has a closure pending.
      *
-     * Dispatches ProjectClosed, wiring the `delivery.project.closed` event
-     * contract described in wiki.md §5 to the actual status transition.
+     * Does NOT dispatch ProjectClosed -- that now only happens from
+     * confirmClosure(), once the project's owner has actually confirmed.
      *
      * Called from ProjectBoard::moveTask() after Milestone::syncStatusFromTasks()
-     * so a task move that finishes the last milestone can also close the project
-     * in the same request.
+     * so a task move that finishes the last milestone can also propose
+     * closing the project in the same request.
      */
     public function closeIfAllMilestonesCompleted(): bool
     {
-        if (in_array($this->status, ['completed', 'on_hold'], true)) {
+        if (in_array($this->status, ['completed', 'on_hold', 'pending_closure_approval'], true)) {
             return false;
         }
 
@@ -97,9 +99,55 @@ class Project extends Model
             return false;
         }
 
-        $this->update(['status' => 'completed']);
+        $this->update(['status' => 'pending_closure_approval']);
+
+        return true;
+    }
+
+    /**
+     * The project owner confirms a pending closure. This is the only
+     * place ProjectClosed is dispatched. A no-op (returns false) unless
+     * the project is actually pending_closure_approval -- callers are
+     * responsible for authorizing the caller as the owner before calling
+     * this (see ProjectPolicy::closeProject(), checked in
+     * ProjectBoard::confirmProjectClosure()).
+     */
+    public function confirmClosure(): bool
+    {
+        if ($this->status !== 'pending_closure_approval') {
+            return false;
+        }
+
+        $this->update([
+            'status' => 'completed',
+            'closure_reviewed_by' => $this->owner_id,
+            'closure_reviewed_at' => now(),
+        ]);
 
         ProjectClosed::dispatch($this);
+
+        return true;
+    }
+
+    /**
+     * The project owner rejects a pending closure. Not a terminal state --
+     * the project returns to "active" so work can continue, and
+     * closeIfAllMilestonesCompleted() can propose closure again later.
+     * A no-op (returns false) unless the project is actually
+     * pending_closure_approval.
+     */
+    public function rejectClosure(string $reason): bool
+    {
+        if ($this->status !== 'pending_closure_approval') {
+            return false;
+        }
+
+        $this->update([
+            'status' => 'active',
+            'closure_rejected_reason' => $reason,
+            'closure_reviewed_by' => $this->owner_id,
+            'closure_reviewed_at' => now(),
+        ]);
 
         return true;
     }
