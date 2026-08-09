@@ -52,4 +52,15 @@ class ProjectPolicy
     {
         return $user->belongsToTeam($project->team);
     }
+
+    /**
+     * Determine whether the user can confirm or reject a pending project
+     * closure. Narrower than update() -- any team member can edit the
+     * board, but only the project's owner may finalize (or reject) an
+     * automatically-proposed closure.
+     */
+    public function closeProject(User $user, Project $project): bool
+    {
+        return $user->id === $project->owner_id;
+    }
 }

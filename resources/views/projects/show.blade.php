@@ -7,6 +7,7 @@
                 'active'    => ['rgba(96,165,250,0.12)', '#60a5fa'],
                 'planning'  => ['rgba(148,163,184,0.12)', '#94a3b8'],
                 'on_hold'   => ['rgba(251,146,60,0.12)', '#fb923c'],
+                'pending_closure_approval' => ['rgba(245,158,11,0.12)', '#f59e0b'],
                 'completed' => ['rgba(34,197,94,0.12)', '#22c55e'],
                 default     => ['rgba(148,163,184,0.12)', '#94a3b8'],
             };

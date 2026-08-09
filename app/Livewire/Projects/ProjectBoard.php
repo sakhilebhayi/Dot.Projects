@@ -18,6 +18,10 @@ class ProjectBoard extends Component
 
     public ?int $movingTaskId = null;
 
+    public bool $rejectingClosure = false;
+
+    public string $closureRejectReason = '';
+
     public const COLUMNS = [
         'backlog' => 'Backlog',
         'todo' => 'To Do',
@@ -77,6 +81,42 @@ class ProjectBoard extends Component
         }
 
         unset($this->tasksByStatus);
+    }
+
+    public function confirmProjectClosure(): void
+    {
+        $this->authorize('closeProject', $this->project);
+
+        $this->project->confirmClosure();
+        $this->project->refresh();
+    }
+
+    public function promptRejectClosure(): void
+    {
+        $this->authorize('closeProject', $this->project);
+
+        $this->rejectingClosure = true;
+        $this->closureRejectReason = '';
+    }
+
+    public function cancelRejectClosure(): void
+    {
+        $this->rejectingClosure = false;
+        $this->closureRejectReason = '';
+    }
+
+    public function confirmRejectClosure(): void
+    {
+        $this->authorize('closeProject', $this->project);
+
+        if (trim($this->closureRejectReason) === '') {
+            return;
+        }
+
+        $this->project->rejectClosure($this->closureRejectReason);
+        $this->project->refresh();
+        $this->rejectingClosure = false;
+        $this->closureRejectReason = '';
     }
 
     public function assignTask(int $taskId, ?int $userId): void
