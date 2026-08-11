@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Projects;
 
+use App\Events\DependencyBlocked;
+use App\Events\ProjectBoardUpdated;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
@@ -21,6 +23,8 @@ class ProjectBoard extends Component
     public bool $rejectingClosure = false;
 
     public string $closureRejectReason = '';
+
+    public ?string $blockedMessage = null;
 
     public const COLUMNS = [
         'backlog' => 'Backlog',
@@ -50,7 +54,7 @@ class ProjectBoard extends Component
     public function tasksByStatus(): array
     {
         $tasks = $this->project->tasks()
-            ->with(['assignee', 'milestone'])
+            ->with(['assignee', 'milestone', 'dependencies', 'timeLogs'])
             ->orderBy('sort_order')
             ->get()
             ->groupBy('status');
@@ -63,12 +67,32 @@ class ProjectBoard extends Component
         return $columns;
     }
 
+    /** All of this project's tasks, keyed by id -- used to populate the "add dependency" picker. */
+    #[Computed]
+    public function allTasks()
+    {
+        return $this->project->tasks()->orderBy('title')->get();
+    }
+
     public function moveTask(int $taskId, string $newStatus): void
     {
         $this->authorize('update', $this->project);
+        $this->blockedMessage = null;
 
         $task = ProjectTask::findOrFail($taskId);
         abort_unless($task->project_id === $this->project->id, 403);
+
+        if ($newStatus === 'done') {
+            $blockingTask = $task->dependencies()->where('status', '!=', 'done')->first();
+
+            if ($blockingTask) {
+                DependencyBlocked::dispatch($task, $blockingTask);
+                $this->blockedMessage = "\"{$task->title}\" can't be marked done until \"{$blockingTask->title}\" is done first.";
+                unset($this->tasksByStatus);
+
+                return;
+            }
+        }
 
         $task->update(['status' => $newStatus]);
 
@@ -80,7 +104,84 @@ class ProjectBoard extends Component
             }
         }
 
+        broadcast(new ProjectBoardUpdated($this->project))->toOthers();
         unset($this->tasksByStatus);
+    }
+
+    /**
+     * Add a "must be done first" dependency. Rejects a dependency that
+     * would create a cycle (A depends on B, which already transitively
+     * depends on A) rather than allowing an unsatisfiable graph.
+     */
+    public function addDependency(int $taskId, int $dependsOnTaskId): void
+    {
+        $this->authorize('update', $this->project);
+        $this->blockedMessage = null;
+
+        if ($taskId === $dependsOnTaskId) {
+            return;
+        }
+
+        $task = ProjectTask::findOrFail($taskId);
+        $dependsOn = ProjectTask::findOrFail($dependsOnTaskId);
+        abort_unless($task->project_id === $this->project->id, 403);
+        abort_unless($dependsOn->project_id === $this->project->id, 403);
+
+        if ($this->wouldCreateCycle($dependsOn, $task)) {
+            $this->blockedMessage = "That would create a circular dependency between \"{$task->title}\" and \"{$dependsOn->title}\".";
+
+            return;
+        }
+
+        $task->dependencies()->syncWithoutDetaching([$dependsOn->id]);
+
+        broadcast(new ProjectBoardUpdated($this->project))->toOthers();
+        unset($this->tasksByStatus);
+    }
+
+    public function removeDependency(int $taskId, int $dependsOnTaskId): void
+    {
+        $this->authorize('update', $this->project);
+
+        $task = ProjectTask::findOrFail($taskId);
+        abort_unless($task->project_id === $this->project->id, 403);
+
+        $task->dependencies()->detach($dependsOnTaskId);
+
+        broadcast(new ProjectBoardUpdated($this->project))->toOthers();
+        unset($this->tasksByStatus);
+    }
+
+    /**
+     * True when $candidate already (transitively) depends on $task -- adding
+     * "$task depends on $candidate" on top of that would make both
+     * unsatisfiable. Walks the dependency graph breadth-first; project
+     * boards are small enough that this is cheap.
+     */
+    private function wouldCreateCycle(ProjectTask $candidate, ProjectTask $task): bool
+    {
+        $visited = [];
+        $queue = [$candidate->id];
+
+        while ($queue) {
+            $currentId = array_shift($queue);
+
+            if ($currentId === $task->id) {
+                return true;
+            }
+
+            if (in_array($currentId, $visited, true)) {
+                continue;
+            }
+            $visited[] = $currentId;
+
+            $queue = array_merge(
+                $queue,
+                ProjectTask::find($currentId)?->dependencies()->pluck('project_tasks.id')->all() ?? []
+            );
+        }
+
+        return false;
     }
 
     public function confirmProjectClosure(): void
@@ -141,7 +242,41 @@ class ProjectBoard extends Component
             $assignee->notify(new TaskAssignedNotification($task));
         }
 
+        broadcast(new ProjectBoardUpdated($this->project))->toOthers();
         unset($this->tasksByStatus);
+    }
+
+    /** Log time spent on a task -- a lightweight manual entry, not a live timer. */
+    public function logTime(int $taskId, int $minutes, string $note = ''): void
+    {
+        $this->authorize('update', $this->project);
+
+        if ($minutes < 1) {
+            return;
+        }
+
+        $task = ProjectTask::findOrFail($taskId);
+        abort_unless($task->project_id === $this->project->id, 403);
+
+        $task->timeLogs()->create([
+            'user_id' => auth()->id(),
+            'minutes' => $minutes,
+            'note' => trim($note) ?: null,
+            'logged_at' => now()->toDateString(),
+        ]);
+
+        broadcast(new ProjectBoardUpdated($this->project))->toOthers();
+        unset($this->tasksByStatus);
+    }
+
+    /**
+     * Called from the board view's Echo listener when another viewer's
+     * action broadcasts a ProjectBoardUpdated event -- just invalidates the
+     * cached computed properties so the next render re-fetches current state.
+     */
+    public function refreshBoard(): void
+    {
+        unset($this->tasksByStatus, $this->allTasks);
     }
 
     public function render(): View

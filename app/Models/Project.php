@@ -72,6 +72,12 @@ class Project extends Model
         return (int) round(($done / $total) * 100);
     }
 
+    /** Sum of every logged minute across every task in this project. */
+    public function totalMinutesLogged(): int
+    {
+        return (int) TimeLog::whereIn('project_task_id', $this->tasks()->pluck('id'))->sum('minutes');
+    }
+
     /**
      * Propose closing this project (status -> "pending_closure_approval")
      * once it has at least one milestone and every milestone is

@@ -3,12 +3,17 @@
 namespace App\Notifications;
 
 use App\Models\ProjectTask;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
 /**
  * In-app (database channel) notification sent to a user the moment they are
  * assigned a task on a project's kanban board. Dispatched from
  * App\Livewire\Projects\ProjectBoard::assignTask().
+ *
+ * Also broadcasts, so NotificationBell updates the moment the assignment
+ * happens rather than only on the assignee's next page load -- see its
+ * echo-notification listener.
  */
 class TaskAssignedNotification extends Notification
 {
@@ -19,7 +24,7 @@ class TaskAssignedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     /**
@@ -37,5 +42,10 @@ class TaskAssignedNotification extends Notification
             'task_id' => $this->task->id,
             'url' => route('projects.show', $project),
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage($this->toDatabase($notifiable));
     }
 }

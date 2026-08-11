@@ -7,6 +7,7 @@ use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\User;
 use App\Notifications\MilestoneDueSoonNotification;
+use App\Notifications\TaskAssignedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -102,5 +103,38 @@ class NotificationBellTest extends TestCase
             ->get(route('notifications.index'))
             ->assertOk()
             ->assertSee('Milestone due soon');
+    }
+
+    /**
+     * refresh() is what #[On('echo-notification:App.Models.User.{userId},
+     * notification')] calls when a BroadcastNotificationCreated event
+     * arrives over the socket -- it never receives the notification data
+     * itself, it just needs to bust the cached computed properties so the
+     * next render re-queries the database. This proves that hook actually
+     * picks up a notification created after the component already mounted
+     * (and cached an empty/stale result), which is exactly the live-update
+     * scenario the WebSocket listener exists for.
+     */
+    public function test_refresh_picks_up_a_notification_created_after_mount(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $project = Project::create([
+            'team_id' => $owner->currentTeam->id,
+            'owner_id' => $owner->id,
+            'name' => 'Refresh Test Project',
+            'status' => 'active',
+        ]);
+        $task = $project->tasks()->create(['title' => 'Wire the board', 'status' => 'todo']);
+
+        $component = Livewire::actingAs($owner)->test(NotificationBell::class);
+        $component->assertSet('unreadCount', 0);
+
+        $owner->notify(new TaskAssignedNotification($task));
+
+        $component->call('refresh')
+            ->call('toggle')
+            ->assertSee('Task assigned to you');
+
+        $this->assertEquals(1, $owner->fresh()->unreadNotifications()->count());
     }
 }
