@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\Auth\EcosystemAuthController;
+use App\Http\Controllers\GuardianHealthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\SchedulerProbeController;
+use App\Http\Middleware\AuthenticateGuardian;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -52,3 +55,14 @@ Route::middleware([
     Route::get('/projects/create', fn () => view('projects.create'))->name('projects.create');
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 });
+
+// Public liveness probe for the cron scheduler, watched from GitHub every
+// 15 minutes by .github/workflows/scheduler-watchdog.yml.
+Route::get('/up/scheduler', SchedulerProbeController::class)->name('up.scheduler');
+
+// Guardian observability report for Dot.Brain (dot-guardian/v1): operational
+// detail, so behind a bearer token (fails closed with 503 when none is
+// configured) rather than public like /up and /up/scheduler.
+Route::get('/guardian/health', GuardianHealthController::class)
+    ->middleware(AuthenticateGuardian::class)
+    ->name('guardian.health');

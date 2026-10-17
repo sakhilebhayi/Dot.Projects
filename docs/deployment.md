@@ -35,3 +35,20 @@ Run **Deploy to Production** with `confirm=deploy` (`gh workflow run deploy.yml 
 ## Not covered yet
 
 PHPStan is not in CI. There is no health document for the Dot.Brain guardian, no nightly backup and no scheduler probe for Projects; the other Dot apps have all three.
+
+## Monitoring (Dot.Brain guardian)
+
+| What | Where | Auth |
+|---|---|---|
+| Scheduler liveness | `GET /up/scheduler`: 200 while the minute heartbeat is fresh, 503 when stale | none |
+| Guardian report | `GET /guardian/health` (`dot-guardian/v1`, platform `dot-projects`) | `Authorization: Bearer <GUARDIAN_TOKEN>`; 503 when no token is configured, 401 when wrong |
+| Alarm | `scheduler-watchdog.yml` asks `/up/scheduler` every 15 minutes (three tries) and fails the run, which GitHub emails | none |
+
+One-time provisioning, after the release that ships this is deployed:
+
+1. Generate a long random token and store it as the repository secret `GUARDIAN_TOKEN`.
+2. Run **Provision Guardian Token** (`confirm=provision`). It writes the token to the production `.env` and refreshes the config; the value is never printed. It then calls `/guardian/health` and expects 200.
+3. Enrolling the platform in Dot.Brain (registry entry and `DOT_PROJECTS_GUARDIAN_TOKEN`) is a separate change in that repository.
+
+Checks in the report: database, cache, scheduler, error rate. A missing heartbeat is `unknown`, never a claim of health.
+
