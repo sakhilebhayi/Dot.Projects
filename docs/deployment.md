@@ -52,3 +52,13 @@ One-time provisioning, after the release that ships this is deployed:
 
 Checks in the report: database, cache, scheduler, error rate. A missing heartbeat is `unknown`, never a claim of health.
 
+
+### Nightly database backup (PostgreSQL)
+
+Production runs on PostgreSQL (`DB_CONNECTION=pgsql`), so the SQLite file copy the other Dot apps use does not apply. `php artisan projects:backup-database` runs `pg_dump --format=custom --compress=9` and writes `storage/backups/projects-YYYY-MM-DD.dump` (mode 0640, outside the web root), keeps the newest 14 (`--keep=N`), and is scheduled daily at 02:45 server time through the same `schedule:run` cron line.
+
+- It **fails loudly** (non-zero, message in `storage/logs/cron-scheduler.log`) when `pg_dump` is missing or the dump is bad, instead of skipping quietly. A written dump is checked with `pg_restore --list`; if `pg_restore` itself is absent the dump is kept and flagged "not verified".
+- The password goes to `pg_dump` in `PGPASSWORD`, never on the command line, and is scrubbed from error text.
+- Check the host has the tools before relying on it: `which pg_dump pg_restore && pg_dump --version`.
+- Restore into a fresh, empty database: `pg_restore --no-owner --dbname=<database> storage/backups/projects-YYYY-MM-DD.dump` (add `--clean --if-exists` to overwrite an existing schema). Try a restore into a scratch database once, so the first time is not during an incident.
+- The copy sits on the same host as the database server. It covers a bad migration or deletion, not a lost host; copying it off the host is still a separate step. The release rollback tarballs include `storage/backups`.
