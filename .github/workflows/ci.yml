@@ -6,7 +6,7 @@ name: CI
 # What gates and what only informs:
 #   gates:   the PHP test suite, Pint (code style), the frontend build and a
 #            check that the build's manifest contains every entry the views ask
-#            for (the missing-manifest 500 that broke /login on 2026-10-17).
+#            for (the missing-manifest 500 that broke the Dot.Projects login pages on 2026-10-17).
 #   informs: composer and npm audit. Both report real advisories today; making
 #            them blocking would turn every run red until they are cleared
 #            (Dot.Agents sat red for a month that way), so they warn instead.
@@ -35,7 +35,7 @@ jobs:
           php-version: '8.4'
           tools: composer:v2
           coverage: none
-          extensions: mbstring, intl, sqlite3, pdo_sqlite, bcmath
+          extensions: mbstring, intl, sqlite3, pdo_sqlite, bcmath, gd, zip, xml, fileinfo
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress

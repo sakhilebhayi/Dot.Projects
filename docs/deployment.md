@@ -15,7 +15,7 @@ The app folder on the host was uploaded by hand. It is not a git checkout, its c
 
 ## First time (once)
 
-1. Set the five repository secrets: `DEPLOY_HOST` (`projects.infodot.co.za`), `DEPLOY_USER` (`infodotc`), `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_PATH` (the app folder: `/home/infodotc/projects.infodot.co.za/main`).
+1. Set the repository secrets: `DEPLOY_HOST` (`projects.infodot.co.za`), `DEPLOY_USER` (`infodotc`), `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`. `DEPLOY_PATH` is optional: left unset, the app folder is the one `artisan` found under the docroot.
 2. Run **Drift Report**. It says how many files differ and lists them. Read it.
 3. Run **Deploy to Production** with `confirm=adopt`. It makes a rollback copy, turns the folder into a checkout of `main` without deleting anything untracked (`.env`, `storage/`, `database/`), installs dependencies, ships the build, forces `APP_DEBUG=false`, lists pending migrations (it does **not** run them unless you also pass `migrate=migrate`), rebuilds the caches and checks the site.
 4. Check the pending-migrations list, then run `confirm=deploy` to apply them.
@@ -29,9 +29,9 @@ Run **Deploy to Production** with `confirm=deploy` (`gh workflow run deploy.yml 
 - A rollback copy of the app folder (without `vendor/`, `node_modules/`, logs and the build) is written to `~/dot-projects-<mode>-<time>.tgz`; the newest three are kept. To restore: stop writes, `tar xzf` it over the app folder, `php artisan up`.
 - A failure after maintenance mode starts **leaves the site down** and says so, with the copy's name. A failure before it says the site is untouched.
 - `APP_DEBUG` is forced to `false` on every run, because with it on any error prints a ~840 KB debug page to every visitor. `APP_ENV=local` and an `http://` `APP_URL` are reported as warnings, not changed.
-- The scheduler's cron line (`schedule:run`, which drives `projects:check-milestones-due`) goes through the same locked, verified crontab block as the other Dot apps. The first run adds one line, so the account's crontab grows from 9 lines to 10. Every deploy log prints `== crontab: 1 line(s) for # dot-projects installed, N other line(s) preserved`; N must not shrink.
+- Cron: one scheduled command (projects:check-milestones-due, daily 07:00) and no queued jobs. The deploy installs 1 line through the same locked, verified crontab block as the other Dot apps, so the account's crontab grows by 1 the first time. Every deploy log prints `== crontab: 1 line(s) for # dot-projects installed, M other line(s) preserved`; M must not shrink.
 - The smoke check requests `/`, `/login`, `/up`, the built CSS and a harmless `POST /up`, and fails the run if any is wrong or if a debug page is served.
 
 ## Not covered yet
 
-PHPStan is not in CI (the repo's tool wrapper swallows its output). There is no health document for the Dot.Brain guardian, no nightly backup and no scheduler probe for Projects; the other Dot apps have all three.
+PHPStan is not in CI. There is no health document for the Dot.Brain guardian, no nightly backup and no scheduler probe for Projects; the other Dot apps have all three.

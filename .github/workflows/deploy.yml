@@ -23,9 +23,8 @@ name: Deploy to Production
 #      warning, not a change, for APP_ENV=local or an http APP_URL), swap in the
 #      new public/build, keep the docroot's build/ in step, migrations, caches,
 #      back up.
-#   4. Installs the scheduler's cron line (the shared crontab block, with its
-#      lock and verified read-back; ONE line, so the account total goes from
-#      9 to 10 the first time).
+#   4. Installs the cron line (1: schedule:run) through the shared crontab block, with its
+#      lock and verified read-back. First run: the account total grows by 1.
 #   5. Smoke check from the runner, like a browser: / and /login answer 200,
 #      the built CSS answers 200, /up answers 200, and a harmless POST /up (a
 #      405) does not return a debug page.
@@ -36,8 +35,8 @@ name: Deploy to Production
 # touched the server).
 #
 # Repository secrets: DEPLOY_HOST (projects.infodot.co.za), DEPLOY_USER,
-# DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS, DEPLOY_PATH (the app folder, e.g.
-# /home/infodotc/projects.infodot.co.za/main).
+# DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS. DEPLOY_PATH is optional: left unset, the
+# app folder is found as the one `artisan` under the docroot.
 on:
   workflow_dispatch:
     inputs:
@@ -116,19 +115,44 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
+      - name: Locate the app on the host
+        # DEPLOY_PATH is optional. Without it the app is found as the single
+        # `artisan` within two levels of the docroot ~/<DEPLOY_HOST>; zero or
+        # several is an error, not a guess.
+        run: |
+          APP="${{ secrets.DEPLOY_PATH }}"
+          if [ -z "$APP" ]; then
+            APP="$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+                "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+                SITE="${{ secrets.DEPLOY_HOST }}" \
+                'bash -s' <<'FIND'
+          set -euo pipefail
+          D="$HOME/$SITE"
+          A="$(find "$D" -maxdepth 2 -name artisan -type f -exec dirname {} \; | sort -u)"
+          if [ "$(printf '%s\n' "$A" | grep -c .)" != 1 ]; then
+            echo "expected exactly one Laravel app under the docroot, found: ${A:-none}" >&2
+            exit 1
+          fi
+          printf '%s\n' "$A"
+          FIND
+            )"
+          fi
+          echo "APP_PATH=$APP" >> "$GITHUB_ENV"
+          echo "App directory: ${APP#/home/}"
+
       # Staged beside the live build so the swap on the host is two renames,
       # and a failed upload leaves the running site untouched.
       - name: Upload the built frontend (staged)
         run: |
           rsync -az --delete -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
             public/build/ \
-            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/public/build.incoming/"
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:$APP_PATH/public/build.incoming/"
 
       - name: Deploy the code
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
               "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-              DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}" \
+              DEPLOY_PATH="$APP_PATH" \
               MODE="${{ needs.confirm.outputs.mode }}" \
               MIGRATE="${{ needs.confirm.outputs.migrate }}" \
               REPO_URL="$REPO_URL" \
@@ -248,7 +272,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
               "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-              DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}" \
+              DEPLOY_PATH="$APP_PATH" \
               'bash -s' <<'CRON'
           set -euo pipefail
           cd "$DEPLOY_PATH"
@@ -311,7 +335,7 @@ jobs:
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL$PAGE" || true)
             if [ "$CODE" = "200" ]; then echo "200 $SITE_URL$PAGE"; else echo "::error::$SITE_URL$PAGE answered ${CODE:-no response} (expected 200)"; FAILED=1; fi
           done
-          for ASSET in $(python3 -c "import json; print(' '.join(v['file'] for v in json.load(open('public/build/manifest.json')).values()))"); do
+          for ASSET in $(python3 -c "import json; m=json.load(open('public/build/manifest.json')); print(' '.join(sorted({v['file'] for v in m.values() if v.get('isEntry')} | {f for v in m.values() if v.get('isEntry') for f in v.get('css', [])})))"); do
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/build/$ASSET" || true)
             if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/build/$ASSET"; else echo "::error::$SITE_URL/build/$ASSET answered ${CODE:-no response} (expected 200): the docroot is not serving the new build"; FAILED=1; fi
           done
