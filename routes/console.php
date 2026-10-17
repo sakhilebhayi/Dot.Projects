@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\BackupPostgresDatabase;
 use App\Http\Controllers\SchedulerProbeController;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -21,3 +22,7 @@ Schedule::command('projects:check-milestones-due')->dailyAt('07:00');
 Schedule::call(fn () => Cache::forever(SchedulerProbeController::SCHEDULER_KEY, now()->toIso8601String()))
     ->everyMinute()
     ->name('scheduler-heartbeat');
+
+// Nightly dump of the PostgreSQL database. Slot 02:45 beside the other Dot
+// apps' backups (02:15 to 02:55). Fails loudly if pg_dump is missing.
+Schedule::command(BackupPostgresDatabase::class)->dailyAt('02:45')->onOneServer();
