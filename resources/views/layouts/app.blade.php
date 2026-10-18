@@ -89,7 +89,8 @@
         select.dot-input option { background:#1a1a1f; }
     </style>
     @livewireStyles
-    <script defer src="https://unpkg.com/alpinejs@3.10.2/dist/cdn.min.js"></script>
+    {{-- No stand-alone Alpine here: Livewire 3 bundles and starts its own (@livewireScripts). A second copy
+         replaces window.Alpine and breaks every Livewire re-render ('Alpine.cloneNode is not a function'). --}}
 </head>
 <body>
     <x-banner />
