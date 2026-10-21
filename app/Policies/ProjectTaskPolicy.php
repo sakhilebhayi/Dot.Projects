@@ -21,11 +21,11 @@ class ProjectTaskPolicy
 
     public function update(User $user, ProjectTask $task): bool
     {
-        return $user->belongsToTeam($task->project->team);
+        return $user->hasTeamPermission($task->project->team, 'update');
     }
 
     public function delete(User $user, ProjectTask $task): bool
     {
-        return $user->belongsToTeam($task->project->team);
+        return $user->hasTeamPermission($task->project->team, 'update');
     }
 }

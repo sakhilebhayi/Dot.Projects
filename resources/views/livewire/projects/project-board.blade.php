@@ -1,7 +1,8 @@
 <div>
+    @php($canEdit = auth()->user()->can('update', $project))
     @if($project->status === 'pending_closure_approval')
         <div class="mb-4 p-4 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
-            @if(auth()->id() === $project->owner_id)
+            @can('closeProject', $project)
                 <p class="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
                     All milestones are complete. Confirm to close this project, or reject to keep it active.
                 </p>
@@ -30,16 +31,18 @@
                 <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
                     All milestones are complete. Awaiting the project owner's confirmation to close this project.
                 </p>
-            @endif
+            @endcan
         </div>
     @endif
 
     <div class="flex gap-4 overflow-x-auto pb-4">
         @foreach(\App\Livewire\Projects\ProjectBoard::COLUMNS as $status => $label)
             <div class="shrink-0 w-72 bg-gray-100 dark:bg-gray-900 rounded-xl p-3"
+                 @if($canEdit)
                  x-data
                  x-on:dragover.prevent
-                 x-on:drop.prevent="$wire.moveTask($event.dataTransfer.getData('taskId'), '{{ $status }}')">
+                 x-on:drop.prevent="$wire.moveTask($event.dataTransfer.getData('taskId'), '{{ $status }}')"
+                 @endif>
 
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $label }}</h3>
@@ -50,9 +53,11 @@
 
                 <div class="space-y-2 min-h-8">
                     @foreach($this->tasksByStatus[$status] as $task)
-                        <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing border border-gray-200 dark:border-gray-700"
+                        <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm {{ $canEdit ? 'cursor-grab active:cursor-grabbing' : '' }} border border-gray-200 dark:border-gray-700"
+                             @if($canEdit)
                              draggable="true"
-                             x-on:dragstart="$event.dataTransfer.setData('taskId', '{{ $task->id }}')">
+                             x-on:dragstart="$event.dataTransfer.setData('taskId', '{{ $task->id }}')"
+                             @endif>
                             <p class="text-sm text-gray-900 dark:text-white font-medium mb-2">{{ $task->title }}</p>
                             <div class="flex items-center justify-between">
                                 <span class="text-xs px-1.5 py-0.5 rounded
@@ -67,6 +72,7 @@
                                 </span>
                                 <select wire:change="assignTask({{ $task->id }}, $event.target.value || null)"
                                         x-on:click.stop x-on:mousedown.stop
+                                        @disabled(! $canEdit)
                                         class="text-xs bg-transparent text-gray-500 dark:text-gray-400 border-0 max-w-24 focus:ring-0 cursor-pointer">
                                     <option value="" {{ ! $task->assignee_id ? 'selected' : '' }}>Unassigned</option>
                                     @foreach($this->assignableUsers as $teamMember)

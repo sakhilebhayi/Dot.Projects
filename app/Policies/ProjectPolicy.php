@@ -33,7 +33,9 @@ class ProjectPolicy
      */
     public function create(User $user): bool
     {
-        return $user->currentTeam !== null;
+        $team = $user->currentTeam;
+
+        return $team !== null && $user->hasTeamPermission($team, 'create');
     }
 
     /**
@@ -42,25 +44,38 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
-        return $user->belongsToTeam($project->team);
+        return $user->hasTeamPermission($project->team, 'update');
     }
 
     /**
-     * Determine whether the user can delete the project.
+     * Determine whether the user can comment on the project (adding a record, so the
+     * "create" permission; a read-only viewer can read the thread but not post to it).
+     */
+    public function comment(User $user, Project $project): bool
+    {
+        return $user->hasTeamPermission($project->team, 'create');
+    }
+
+    /**
+     * Determine whether the user can delete the project. Gated on "update", not
+     * "delete": this app has no delete route yet, and editors (who lack "delete")
+     * have always passed this check, so it keeps that and only excludes viewers.
      */
     public function delete(User $user, Project $project): bool
     {
-        return $user->belongsToTeam($project->team);
+        return $user->hasTeamPermission($project->team, 'update');
     }
 
     /**
      * Determine whether the user can confirm or reject a pending project
      * closure. Narrower than update() -- any team member can edit the
      * board, but only the project's owner may finalize (or reject) an
-     * automatically-proposed closure.
+     * automatically-proposed closure, and only while they can still write to
+     * the team (a read-only viewer who still owns a project cannot).
      */
     public function closeProject(User $user, Project $project): bool
     {
-        return $user->id === $project->owner_id;
+        return $user->id === $project->owner_id
+            && $user->hasTeamPermission($project->team, 'update');
     }
 }
