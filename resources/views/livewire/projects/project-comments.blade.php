@@ -1,6 +1,7 @@
 <div>
     <h2 style="font-family:'Manrope',sans-serif;font-size:0.72rem;font-weight:700;color:#8d90a2;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.85rem;">Comments</h2>
 
+    @can('comment', $project)
     <form wire:submit="addComment" style="margin-bottom:1.25rem;">
         <textarea wire:model="body" rows="2" placeholder="Add a comment…"
                   style="width:100%;background:#0b1326;border:1px solid rgba(67,70,86,0.5);border-radius:0.5rem;padding:0.65rem 0.85rem;font-size:0.82rem;color:#dae2fd;font-family:'Inter',sans-serif;outline:none;resize:vertical;"></textarea>
@@ -12,6 +13,9 @@
             </button>
         </div>
     </form>
+    @else
+        <p style="margin-bottom:1.25rem;font-size:0.75rem;color:#8d90a2;">You have read-only access to this team, so you can read comments but not post.</p>
+    @endcan
 
     @if($this->comments->isEmpty())
         <p style="font-size:0.78rem;color:#52525b;">No comments yet.</p>

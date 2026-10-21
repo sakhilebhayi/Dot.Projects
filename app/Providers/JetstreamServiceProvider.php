@@ -9,8 +9,10 @@ use App\Actions\Jetstream\DeleteUser;
 use App\Actions\Jetstream\InviteTeamMember;
 use App\Actions\Jetstream\RemoveTeamMember;
 use App\Actions\Jetstream\UpdateTeamName;
+use App\Livewire\Teams\TeamMemberManager;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Jetstream\Jetstream;
+use Livewire\Livewire;
 
 class JetstreamServiceProvider extends ServiceProvider
 {
@@ -36,6 +38,9 @@ class JetstreamServiceProvider extends ServiceProvider
         Jetstream::removeTeamMembersUsing(RemoveTeamMember::class);
         Jetstream::deleteTeamsUsing(DeleteTeam::class);
         Jetstream::deleteUsersUsing(DeleteUser::class);
+
+        // Jetstream's component leaves cancelTeamInvitation()/manageRole() unauthorized.
+        Livewire::component('teams.team-member-manager', TeamMemberManager::class);
     }
 
     /**
@@ -57,5 +62,11 @@ class JetstreamServiceProvider extends ServiceProvider
             'create',
             'update',
         ])->description('Editor users have the ability to read, create, and update.');
+
+        // Read-only. This is also where an InfoDot viewer lands (see SyncTeamsFromInfoDot);
+        // the policies check these permissions server-side, the UI only hides the controls.
+        Jetstream::role('viewer', 'Viewer', [
+            'read',
+        ])->description('Viewer users can read everything on the team but cannot change anything.');
     }
 }

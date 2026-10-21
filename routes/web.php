@@ -53,7 +53,9 @@ Route::middleware([
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 
-    Route::get('/projects/create', fn () => view('projects.create'))->name('projects.create');
+    Route::get('/projects/create', fn () => view('projects.create'))
+        ->middleware('can:create,'.Project::class)
+        ->name('projects.create');
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 });
 

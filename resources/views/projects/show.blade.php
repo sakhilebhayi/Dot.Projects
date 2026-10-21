@@ -39,6 +39,7 @@
                     @endif
                 </div>
 
+                @can('update', $project)
                 <div style="display:flex;gap:0.75rem;flex-shrink:0;">
                     <a href="#" style="display:inline-flex;align-items:center;gap:0.4rem;border-radius:9999px;border:1px solid rgba(67,70,86,0.5);background:rgba(19,27,46,0.8);padding:0.55rem 1rem;font-family:'Manrope',sans-serif;font-size:0.75rem;font-weight:700;color:#b7c8e1;text-decoration:none;">
                         <span class="material-symbols-outlined" style="font-size:16px;">flag</span>
@@ -49,6 +50,7 @@
                         Add Task
                     </a>
                 </div>
+                @endcan
             </div>
         </div>
 

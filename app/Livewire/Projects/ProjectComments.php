@@ -32,7 +32,7 @@ class ProjectComments extends Component
 
     public function addComment(): void
     {
-        $this->authorize('view', $this->project);
+        $this->authorize('comment', $this->project);
         $this->validate();
 
         $comment = ProjectComment::create([

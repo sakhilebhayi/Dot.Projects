@@ -7,10 +7,12 @@
                 <h1 style="font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:#f4f4f5;margin:0 0 0.25rem;">Projects Dashboard</h1>
                 <p style="font-size:0.8rem;color:#71717a;margin:0;">Overview of all your team projects</p>
             </div>
+            @can('create', \App\Models\Project::class)
             <a href="{{ route('projects.create') }}" style="display:flex;align-items:center;gap:0.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:0.65rem 1.25rem;font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:#f7f5ff;text-decoration:none;box-shadow:0 8px 20px rgba(124,58,237,0.3);">
                 <span class="material-symbols-rounded" style="font-size:18px;">add_circle</span>
                 New Project
             </a>
+            @endcan
         </div>
 
         {{-- KPI Cards --}}
@@ -66,10 +68,12 @@
                 @else
                     <p style="font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:#f4f4f5;margin:0 0 0.4rem;">No projects yet</p>
                     <p style="font-size:0.8rem;color:#71717a;margin:0 0 1.75rem;">Create your first project to get your team started.</p>
+                    @can('create', \App\Models\Project::class)
                     <a href="{{ route('projects.create') }}" style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:0.7rem 1.5rem;font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:#f7f5ff;text-decoration:none;box-shadow:0 8px 20px rgba(124,58,237,0.3);">
                         <span class="material-symbols-rounded" style="font-size:16px;">add_circle</span>
                         Create your first project
                     </a>
+                    @endcan
                 @endif
             </div>
         @else

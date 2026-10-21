@@ -97,7 +97,7 @@ class InfoDotTeamSyncTest extends TestCase
         $this->assertSame('admin', $carl->fresh()->teamRole($team->fresh())->key);
     }
 
-    public function test_an_infodot_viewer_becomes_an_editor_because_this_app_has_no_read_only_role(): void
+    public function test_an_infodot_viewer_stays_a_viewer_and_cannot_write(): void
     {
         $this->signIn('ann@acme.test', [$this->company(self::ACME, 'Acme Ltd', 'owner')], self::ACME);
         $this->signIn('vic@acme.test', [$this->company(self::ACME, 'Acme Ltd', 'viewer')], self::ACME);
@@ -106,7 +106,46 @@ class InfoDotTeamSyncTest extends TestCase
         $vic = User::where('email', 'vic@acme.test')->firstOrFail();
 
         $this->assertTrue($vic->belongsToTeam($team));
-        $this->assertSame('editor', $vic->teamRole($team)->key);
+        $this->assertSame('viewer', $vic->teamRole($team)->key);
+        $this->assertTrue($vic->hasTeamPermission($team, 'read'));
+        $this->assertFalse($vic->hasTeamPermission($team, 'update'));
+        $this->assertFalse($vic->hasTeamPermission($team, 'create'));
+    }
+
+    public function test_every_infodot_role_maps_to_the_least_privileged_matching_local_role(): void
+    {
+        $this->signIn('ann@acme.test', [$this->company(self::ACME, 'Acme Ltd', 'owner')], self::ACME);
+        $team = Team::where('infodot_team_uuid', self::ACME)->firstOrFail();
+
+        // owner is covered by the owner's own sign-in (no membership row); the rest become members.
+        $expected = ['admin' => 'admin', 'editor' => 'editor', 'viewer' => 'viewer', 'guest' => 'viewer', '' => 'viewer', 'OWNER' => 'viewer'];
+        $n = 0;
+        foreach ($expected as $infodotRole => $local) {
+            $email = 'user'.(++$n).'@acme.test';
+            $this->signIn($email, [$this->company(self::ACME, 'Acme Ltd', $infodotRole)], self::ACME);
+
+            $this->assertSame($local, User::where('email', $email)->firstOrFail()->teamRole($team->fresh())->key, "InfoDot role '{$infodotRole}'");
+        }
+
+        // A second member signs in as owner: InfoDot owner is a local admin (the local owner row is Ann's).
+        $this->signIn('olga@acme.test', [$this->company(self::ACME, 'Acme Ltd', 'owner')], self::ACME);
+        $this->assertSame('admin', User::where('email', 'olga@acme.test')->firstOrFail()->teamRole($team->fresh())->key);
+    }
+
+    public function test_an_existing_editor_membership_is_demoted_to_viewer_at_the_next_sign_in_when_infodot_says_viewer(): void
+    {
+        $this->signIn('ann@acme.test', [$this->company(self::ACME, 'Acme Ltd', 'owner')], self::ACME);
+        $team = Team::where('infodot_team_uuid', self::ACME)->firstOrFail();
+
+        // What production holds today for an InfoDot viewer: the old fallback stored editor.
+        $vic = User::factory()->create(['email' => 'vic@acme.test']);
+        $team->users()->attach($vic, ['role' => 'editor']);
+        $this->assertSame('editor', $vic->fresh()->teamRole($team->fresh())->key);
+
+        $this->signIn('vic@acme.test', [$this->company(self::ACME, 'Acme Ltd', 'viewer')], self::ACME);
+
+        $this->assertSame('viewer', $vic->fresh()->teamRole($team->fresh())->key);
+        $this->assertSame(1, $team->users()->where('users.id', $vic->id)->count(), 'updated in place, not duplicated');
     }
 
     public function test_a_person_removed_in_infodot_loses_the_company_here_at_next_sign_in(): void

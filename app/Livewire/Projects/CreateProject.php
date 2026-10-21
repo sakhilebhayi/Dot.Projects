@@ -47,6 +47,7 @@ class CreateProject extends Component
 
     public function save(): void
     {
+        $this->authorize('create', Project::class);
         $this->validate();
 
         $team = $this->resolveCurrentTeam();
@@ -69,6 +70,7 @@ class CreateProject extends Component
 
     public function generatePlan(): void
     {
+        $this->authorize('create', Project::class);
         $this->validate();
 
         $team = $this->resolveCurrentTeam();
