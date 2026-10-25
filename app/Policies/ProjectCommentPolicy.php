@@ -24,12 +24,24 @@ class ProjectCommentPolicy
 
     public function update(User $user, ProjectComment $comment): bool
     {
-        return $comment->user_id === $user->id || $user->belongsToTeam($this->team($comment));
+        return $this->canWrite($user, $comment);
     }
 
     public function delete(User $user, ProjectComment $comment): bool
     {
-        return $comment->user_id === $user->id || $user->belongsToTeam($this->team($comment));
+        return $this->canWrite($user, $comment);
+    }
+
+    /**
+     * Editing or deleting a comment is a write: it needs the "update" permission on
+     * the owning team, so a read-only viewer cannot, even on a comment they wrote
+     * before being made a viewer.
+     */
+    private function canWrite(User $user, ProjectComment $comment): bool
+    {
+        $team = $this->team($comment);
+
+        return $team !== null && $user->hasTeamPermission($team, 'update');
     }
 
     private function team(ProjectComment $comment): ?Team

@@ -17,11 +17,11 @@ class MilestonePolicy
 
     public function update(User $user, Milestone $milestone): bool
     {
-        return $user->belongsToTeam($milestone->project->team);
+        return $user->hasTeamPermission($milestone->project->team, 'update');
     }
 
     public function delete(User $user, Milestone $milestone): bool
     {
-        return $user->belongsToTeam($milestone->project->team);
+        return $user->hasTeamPermission($milestone->project->team, 'update');
     }
 }
