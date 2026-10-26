@@ -10,20 +10,20 @@
     <form wire:submit="save" style="display:flex;flex-direction:column;gap:1.25rem;">
 
         <div>
-            <label class="dp-label">Project Name</label>
-            <input wire:model="name" type="text" placeholder="e.g. Website Redesign" class="dp-input">
+            <label for="livewire-projects-create-project-name" class="dp-label">Project Name</label>
+            <input id="livewire-projects-create-project-name" wire:model="name" type="text" placeholder="e.g. Website Redesign" class="dp-input">
             @error('name')<p style="margin-top:0.35rem;font-size:0.72rem;color:#f87171;">{{ $message }}</p>@enderror
         </div>
 
         <div>
-            <label class="dp-label">Description</label>
-            <textarea wire:model="description" rows="3" placeholder="What is this project about? The more detail, the better the AI plan." class="dp-input" style="resize:vertical;min-height:80px;"></textarea>
+            <label for="livewire-projects-create-project-description" class="dp-label">Description</label>
+            <textarea id="livewire-projects-create-project-description" wire:model="description" rows="3" placeholder="What is this project about? The more detail, the better the AI plan." class="dp-input" style="resize:vertical;min-height:80px;"></textarea>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div>
-                <label class="dp-label">Status</label>
-                <select wire:model="status" class="dp-input">
+                <label for="livewire-projects-create-project-status" class="dp-label">Status</label>
+                <select id="livewire-projects-create-project-status" wire:model="status" class="dp-input">
                     <option value="planning">Planning</option>
                     <option value="active">Active</option>
                     <option value="on_hold">On Hold</option>
@@ -31,14 +31,14 @@
                 </select>
             </div>
             <div>
-                <label class="dp-label">Start Date</label>
-                <input wire:model="startDate" type="date" class="dp-input">
+                <label for="livewire-projects-create-project-startdate" class="dp-label">Start Date</label>
+                <input id="livewire-projects-create-project-startdate" wire:model="startDate" type="date" class="dp-input">
             </div>
         </div>
 
         <div>
-            <label class="dp-label">Due Date</label>
-            <input wire:model="dueDate" type="date" class="dp-input">
+            <label for="livewire-projects-create-project-duedate" class="dp-label">Due Date</label>
+            <input id="livewire-projects-create-project-duedate" wire:model="dueDate" type="date" class="dp-input">
         </div>
 
         @if($aiError)
