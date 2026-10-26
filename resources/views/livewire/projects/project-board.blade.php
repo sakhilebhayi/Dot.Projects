@@ -8,7 +8,7 @@
                 </p>
                 @if($rejectingClosure)
                     <div class="flex items-center gap-2">
-                        <input type="text" wire:model="closureRejectReason" placeholder="Reason for rejecting"
+                        <input aria-label="Reason for rejecting" type="text" wire:model="closureRejectReason" placeholder="Reason for rejecting"
                             class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
                         <button wire:click="confirmRejectClosure" class="text-xs px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white font-medium">
                             Confirm Reject

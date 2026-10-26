@@ -39,10 +39,10 @@
         <form method="GET" action="{{ route('dashboard') }}" style="display:flex;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap;">
             <div style="position:relative;flex:1;min-width:220px;">
                 <span class="material-symbols-rounded" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);font-size:17px;color:#52525b;">search</span>
-                <input type="text" name="search" value="{{ $search }}" placeholder="Search projects by name…"
+                <input aria-label="Search projects by name" type="text" name="search" value="{{ $search }}" placeholder="Search projects by name…"
                        style="width:100%;background:#141416;border:1px solid rgba(67,70,86,0.4);border-radius:0.6rem;padding:0.6rem 0.85rem 0.6rem 2.25rem;font-size:0.8rem;color:#f4f4f5;outline:none;">
             </div>
-            <select name="status" onchange="this.form.submit()" style="background:#141416;border:1px solid rgba(67,70,86,0.4);border-radius:0.6rem;padding:0.6rem 0.85rem;font-size:0.8rem;color:#f4f4f5;">
+            <select aria-label="Status" name="status" onchange="this.form.submit()" style="background:#141416;border:1px solid rgba(67,70,86,0.4);border-radius:0.6rem;padding:0.6rem 0.85rem;font-size:0.8rem;color:#f4f4f5;">
                 <option value="" {{ $statusFilter === '' ? 'selected' : '' }}>All statuses</option>
                 <option value="planning" {{ $statusFilter === 'planning' ? 'selected' : '' }}>Planning</option>
                 <option value="active" {{ $statusFilter === 'active' ? 'selected' : '' }}>Active</option>

@@ -3,7 +3,7 @@
 
     @can('comment', $project)
     <form wire:submit="addComment" style="margin-bottom:1.25rem;">
-        <textarea wire:model="body" rows="2" placeholder="Add a comment…"
+        <textarea aria-label="Add a comment" wire:model="body" rows="2" placeholder="Add a comment…"
                   style="width:100%;background:#0b1326;border:1px solid rgba(67,70,86,0.5);border-radius:0.5rem;padding:0.65rem 0.85rem;font-size:0.82rem;color:#dae2fd;font-family:'Inter',sans-serif;outline:none;resize:vertical;"></textarea>
         @error('body')<p style="margin-top:0.35rem;font-size:0.72rem;color:#f87171;">{{ $message }}</p>@enderror
         <div style="display:flex;justify-content:flex-end;margin-top:0.5rem;">
