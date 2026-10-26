@@ -70,7 +70,7 @@
                                     } }}">
                                     {{ ucfirst($task->priority) }}
                                 </span>
-                                <select wire:change="assignTask({{ $task->id }}, $event.target.value || null)"
+                                <select aria-label="Assign task" wire:change="assignTask({{ $task->id }}, $event.target.value || null)"
                                         x-on:click.stop x-on:mousedown.stop
                                         @disabled(! $canEdit)
                                         class="text-xs bg-transparent text-gray-500 dark:text-gray-400 border-0 max-w-24 focus:ring-0 cursor-pointer">
