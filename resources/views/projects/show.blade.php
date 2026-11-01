@@ -63,6 +63,9 @@
                         @if ($forecast)
                             <span class="d">Tasks as dated finish <a href="{{ route('projects.schedule', $project) }}">{{ $forecast->format('j M') }}</a>@if ($project->due_date && $forecast->gt($project->due_date)), <span class="pg-neg">{{ (int) $project->due_date->diffInDays($forecast) }} {{ Str::plural('day', (int) $project->due_date->diffInDays($forecast)) }} late</span>@endif</span>
                         @endif
+                        @if ($latestReport)
+                            <span class="d">Status <a href="{{ route('projects.reports.show', [$project, $latestReport]) }}">{{ $latestReport->ref() }}</a>: <span class="{{ $latestReport->overall === 'off_track' ? 'pg-neg' : '' }}">{{ mb_strtolower(App\Models\ProjectReport::RATINGS[$latestReport->overall] ?? '') }}</span>, {{ $latestReport->period_to->format('j M') }}</span>
+                        @endif
                         @if ($baseline && $baseDue)
                             <span class="d pg-muted">Baseline {{ $baseline->number }} was due {{ $baseDue->format('j M') }}@if ($project->due_date && ! $baseDue->isSameDay($project->due_date))@php $moved = (int) $baseDue->diffInDays($project->due_date, false); @endphp, now {{ abs($moved) }} {{ Str::plural('day', abs($moved)) }} {{ $moved > 0 ? 'later' : 'earlier' }}@endif</span>
                         @endif

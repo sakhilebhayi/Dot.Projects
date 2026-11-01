@@ -8,12 +8,13 @@ use App\Models\ProjectDecision;
 use App\Models\ProjectGate;
 use App\Models\ProjectIssue;
 use App\Models\ProjectMeeting;
+use App\Models\ProjectReport;
 use App\Models\ProjectRisk;
 use App\Services\ProjectSummary;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** The Governance tab: risks, issues, changes, decisions, gates, meetings and actions. */
+/** The Governance tab: risks, issues, changes, decisions, gates, meetings, actions and status reports. */
 class GovernanceController extends Controller
 {
     public function risks(Request $request, Project $project): View
@@ -107,6 +108,20 @@ class GovernanceController extends Controller
         return $this->page($project, 'actions');
     }
 
+    public function reports(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return $this->page($project, 'reports');
+    }
+
+    public function report(Request $request, Project $project, ProjectReport $report): View
+    {
+        $this->authorize('view', $report);
+
+        return $this->page($project, 'reports', ['report' => $report]);
+    }
+
     /** @param array<string, mixed> $extra */
     private function page(Project $project, string $section, array $extra = []): View
     {
@@ -121,6 +136,7 @@ class GovernanceController extends Controller
             'openGates' => $project->gates()->whereIn('status', ['pending', 'held'])->count(),
             'meetingCount' => $project->meetings()->count(),
             'openActions' => $project->actions()->where('status', 'open')->count(),
+            'reportCount' => $project->reports()->where('status', 'published')->count(),
         ] + $extra);
     }
 }

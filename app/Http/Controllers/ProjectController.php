@@ -30,6 +30,7 @@ class ProjectController extends Controller
             'openIssues' => $project->issues()->whereIn('status', ProjectIssue::OPEN)->get(),
             'waitingChanges' => $project->changes()->where('status', 'submitted')->with('approver:id,name')->get(),
             'openDecisions' => $project->decisions()->where('status', 'proposed')->with('owner:id,name')->get(),
+            'latestReport' => $project->reports()->where('status', 'published')->orderByDesc('number')->first(),
             'openGates' => $project->gates()->whereIn('status', ['pending', 'held'])->get(),
             'lateActions' => $project->actions()->where('status', 'open')->whereNotNull('due_date')->whereDate('due_date', '<', today())->count(),
         ]);

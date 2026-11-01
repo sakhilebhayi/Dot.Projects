@@ -267,4 +267,10 @@ class Project extends Model
     {
         return $this->hasMany(ProjectAction::class);
     }
+
+    /** @return HasMany<ProjectReport, $this> */
+    public function reports(): HasMany
+    {
+        return $this->hasMany(ProjectReport::class);
+    }
 }

@@ -1,7 +1,8 @@
 <x-app-layout>
     @php
         $item = $risk ?? $issue ?? $change ?? $decision ?? $gate ?? $meeting ?? null;
-        $crumb = $item ? $item->ref().' '.$item->title : ucfirst($section);
+        if (isset($report)) { $item = null; }
+        $crumb = $item ? $item->ref().' '.$item->title : (isset($report) ? $report->ref().' status report' : ucfirst($section));
     @endphp
     <x-slot name="title">{{ $crumb }}, {{ $project->name }}</x-slot>
     <x-slot name="header"><a href="{{ route('dashboard') }}" style="text-decoration:none">Projects</a> <span aria-hidden="true">/</span> <b>{{ $project->name }}</b></x-slot>
@@ -15,6 +16,7 @@
             <a href="{{ route('projects.gates', $project) }}" @if ($section === 'gates') aria-current="page" @endif>Gates <span>{{ $openGates }}</span></a>
             <a href="{{ route('projects.meetings', $project) }}" @if ($section === 'meetings') aria-current="page" @endif>Meetings <span>{{ $meetingCount }}</span></a>
             <a href="{{ route('projects.actions', $project) }}" @if ($section === 'actions') aria-current="page" @endif>Actions <span>{{ $openActions }}</span></a>
+            <a href="{{ route('projects.reports', $project) }}" @if ($section === 'reports') aria-current="page" @endif>Reports <span>{{ $reportCount }}</span></a>
         </nav>
         @if (isset($risk))
             <livewire:governance.risk-panel :project="$project" :risk="$risk" />
@@ -28,6 +30,10 @@
             <livewire:governance.gate-panel :project="$project" :gate="$gate" />
         @elseif (isset($meeting))
             <livewire:governance.meeting-panel :project="$project" :meeting="$meeting" />
+        @elseif (isset($report))
+            <livewire:governance.report-panel :project="$project" :report="$report" />
+        @elseif ($section === 'reports')
+            <livewire:governance.report-list :project="$project" />
         @elseif ($section === 'gates')
             <livewire:governance.gate-list :project="$project" />
         @elseif ($section === 'meetings')

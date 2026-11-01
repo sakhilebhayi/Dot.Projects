@@ -26,6 +26,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $decided_at
  * @property int|null $decision_id
  * @property Carbon $created_at
+ * @property int|null $checks_count loaded by withCount
+ * @property int|null $checks_done_count loaded by withCount
  * @property-read Project $project
  * @property-read Milestone|null $milestone
  * @property-read User|null $approver

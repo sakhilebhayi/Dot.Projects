@@ -11,6 +11,7 @@ use App\Models\ProjectDecision;
 use App\Models\ProjectGate;
 use App\Models\ProjectIssue;
 use App\Models\ProjectMeeting;
+use App\Models\ProjectReport;
 use App\Models\ProjectRisk;
 use App\Models\ProjectTask;
 use App\Models\User;
@@ -56,6 +57,7 @@ final class ActivityFeed
         $gates = $refs(ProjectGate::class, ['id', 'number', 'title']);
         $meetings = $refs(ProjectMeeting::class, ['id', 'number', 'title']);
         $actions = $refs(ProjectAction::class, ['id', 'number', 'title']);
+        $reports = ProjectReport::query()->whereIn('id', $lines->where('subject_type', (new ProjectReport)->getMorphClass())->pluck('subject_id'))->get(['id', 'number'])->mapWithKeys(fn ($r) => [$r->id => $r->ref()]);
         $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
@@ -134,6 +136,10 @@ final class ActivityFeed
                 'action.updated' => 'edited '.($actions->get($l->subject_id) ?? 'an action'),
                 'action.done' => 'completed '.($actions->get($l->subject_id) ?? 'an action'),
                 'action.reopened' => 'reopened '.($actions->get($l->subject_id) ?? 'an action'),
+                'report.started' => 'started the status report '.($reports->get($l->subject_id) ?? ''),
+                'report.updated' => 'edited the draft status report '.($reports->get($l->subject_id) ?? ''),
+                'report.published' => 'published the status report '.($reports->get($l->subject_id) ?? '').(isset($c['overall']) ? ': '.mb_strtolower(ProjectReport::RATINGS[$c['overall']] ?? (string) $c['overall']) : ''),
+                'report.discarded' => 'discarded a draft status report',
                 'matrix.changed' => 'set the risk matrix to '.($c['size']['to'] ?? '?').' by '.($c['size']['to'] ?? '?'),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
