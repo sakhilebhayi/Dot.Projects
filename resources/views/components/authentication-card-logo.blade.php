@@ -1,3 +1,4 @@
-<a href="/">
-    <img class="h-14 sm:h-[4.5rem] w-auto" src="{{ asset('images/logo-light.png') }}" alt="Dot.Projects">
+<a href="/" aria-label="Dot.Projects home" style="display:block">
+    <img class="pg-logo-day" src="{{ asset('images/logo.png') }}" alt="Dot.Projects" style="height:72px;width:auto;display:block">
+    <img class="pg-logo-night" src="{{ asset('images/logo-light.png') }}" alt="Dot.Projects" style="height:72px;width:auto;display:none">
 </a>

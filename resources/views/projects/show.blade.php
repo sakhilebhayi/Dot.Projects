@@ -1,114 +1,129 @@
 <x-app-layout>
-    <div style="padding:2rem 2.5rem;">
+    <x-slot name="title">{{ $project->name }}</x-slot>
+    <x-slot name="header"><a href="{{ route('dashboard') }}" style="text-decoration:none">Projects</a> <span aria-hidden="true">/</span> <b>{{ $project->name }}</b></x-slot>
+    @php
+        $counts = $summary->counts();
+        $total = array_sum($counts);
+        $rows = $summary->milestoneRows();
+        $dated = $rows->filter(fn ($r) => $r['milestone']->due_date);
+        // The date line runs from the project's start (or first milestone) to its due date (or last milestone).
+        $from = collect([$project->start_date, $dated->min(fn ($r) => $r['milestone']->due_date), $summary->today])->filter()->min()->copy()->startOfMonth();
+        $to = collect([$project->due_date, $dated->max(fn ($r) => $r['milestone']->due_date), $summary->today])->filter()->max()->copy()->endOfMonth();
+        $span = max(1, $from->diffInDays($to));
+        $at = fn ($d) => round($from->diffInDays($d) / $span * 100, 3).'%';
+        $days = $summary->daysToDue();
+        $colours = ['backlog' => 'var(--pg-raised)', 'todo' => 'var(--pg-control)', 'in_progress' => 'var(--pg-bar-active)', 'review' => 'var(--pg-muted)', 'done' => 'var(--pg-bar-done)'];
+        $months = []; for ($m = $from->copy(); $m->lte($to); $m->addMonth()) { $months[] = $m->copy(); }
+        $prev = null;
+    @endphp
+    <div class="pg-page">
+        @include('projects._head', ['view' => 'overview'])
 
-        {{-- Project header --}}
-        @php
-            [$badgeBg, $badgeColor] = match($project->status) {
-                'active'    => ['rgba(96,165,250,0.12)', '#60a5fa'],
-                'planning'  => ['rgba(148,163,184,0.12)', '#94a3b8'],
-                'on_hold'   => ['rgba(251,146,60,0.12)', '#fb923c'],
-                'pending_closure_approval' => ['rgba(245,158,11,0.12)', '#f59e0b'],
-                'completed' => ['rgba(34,197,94,0.12)', '#22c55e'],
-                default     => ['rgba(148,163,184,0.12)', '#94a3b8'],
-            };
-        @endphp
-
-        <div style="margin-bottom:2rem;">
-            <a href="{{ route('dashboard') }}" style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.75rem;color:#8d90a2;text-decoration:none;margin-bottom:1rem;"
-               onmouseover="this.style.color='#b6c4ff'" onmouseout="this.style.color='#8d90a2'">
-                <span class="material-symbols-rounded" style="font-size:16px;">arrow_back</span>
-                All Projects
-            </a>
-
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-                <div>
-                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.4rem;">
-                        <h1 style="font-family:'Manrope',sans-serif;font-size:1.6rem;font-weight:800;color:#dae2fd;margin:0;">{{ $project->name }}</h1>
-                        <span style="font-size:0.62rem;font-weight:700;padding:0.25rem 0.65rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.07em;background:{{ $badgeBg }};color:{{ $badgeColor }};">
-                            {{ str_replace('_', ' ', ucfirst($project->status)) }}
-                        </span>
-                    </div>
-                    @if($project->due_date)
-                        <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.5rem;">
-                            <span class="material-symbols-rounded" style="font-size:14px;color:#8d90a2;">calendar_today</span>
-                            <span style="font-size:0.72rem;color:#8d90a2;">Due {{ \Carbon\Carbon::parse($project->due_date)->format('M d, Y') }}</span>
-                        </div>
-                    @endif
-                    @if($project->description)
-                        <p style="font-size:0.82rem;color:#6b7a9a;margin:0;max-width:640px;">{{ $project->description }}</p>
-                    @endif
-                </div>
-
-                @can('update', $project)
-                <div style="display:flex;gap:0.75rem;flex-shrink:0;">
-                    <a href="#" style="display:inline-flex;align-items:center;gap:0.4rem;border-radius:9999px;border:1px solid rgba(67,70,86,0.5);background:rgba(19,27,46,0.8);padding:0.55rem 1rem;font-family:'Manrope',sans-serif;font-size:0.75rem;font-weight:700;color:#b7c8e1;text-decoration:none;">
-                        <span class="material-symbols-rounded" style="font-size:16px;">flag</span>
-                        Add Milestone
-                    </a>
-                    <a href="#" style="display:inline-flex;align-items:center;gap:0.4rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:0.55rem 1rem;font-family:'Manrope',sans-serif;font-size:0.75rem;font-weight:700;color:#f7f5ff;text-decoration:none;">
-                        <span class="material-symbols-rounded" style="font-size:16px;">add_task</span>
-                        Add Task
-                    </a>
-                </div>
-                @endcan
-            </div>
-        </div>
-
-        {{-- Milestones section --}}
-        @if($project->milestones->isNotEmpty())
-            <div style="margin-bottom:2rem;">
-                <h2 style="font-family:'Manrope',sans-serif;font-size:0.72rem;font-weight:700;color:#8d90a2;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.85rem;">Milestones</h2>
-                <div style="display:flex;flex-direction:column;gap:0.5rem;">
-                    @foreach($project->milestones as $milestone)
-                        @php
-                            $msDone = $milestone->tasks->where('status','done')->count();
-                            $msTotal = $milestone->tasks->count();
-                            $msPct = $msTotal > 0 ? round(($msDone / $msTotal) * 100) : 0;
-                            [$msBadgeBg, $msBadgeColor] = match($milestone->status) {
-                                'completed'   => ['rgba(34,197,94,0.12)', '#22c55e'],
-                                'in_progress' => ['rgba(96,165,250,0.12)', '#60a5fa'],
-                                default       => ['rgba(148,163,184,0.1)', '#94a3b8'],
-                            };
-                        @endphp
-                        <div style="background:#131b2e;border:1px solid rgba(67,70,86,0.3);border-radius:0.65rem;padding:1rem 1.25rem;display:flex;align-items:center;gap:1.25rem;">
-                            <span class="material-symbols-rounded" style="font-size:18px;color:#8d90a2;flex-shrink:0;">flag</span>
-                            <div style="flex:1;min-width:0;">
-                                <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.3rem;">
-                                    <span style="font-family:'Manrope',sans-serif;font-size:0.85rem;font-weight:700;color:#dae2fd;">{{ $milestone->title }}</span>
-                                    <span style="font-size:0.6rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.07em;background:{{ $msBadgeBg }};color:{{ $msBadgeColor }};">
-                                        {{ str_replace('_', ' ', ucfirst($milestone->status)) }}
-                                    </span>
-                                </div>
-                                <div style="height:4px;background:rgba(67,70,86,0.4);border-radius:9999px;overflow:hidden;max-width:240px;">
-                                    <div style="height:100%;width:{{ $msPct }}%;background:{{ $msBadgeColor }};border-radius:9999px;"></div>
-                                </div>
-                            </div>
-                            <div style="text-align:right;flex-shrink:0;">
-                                <div style="font-size:0.72rem;font-weight:700;color:#dae2fd;">{{ $msDone }}/{{ $msTotal }}</div>
-                                <div style="font-size:0.6rem;color:#8d90a2;">tasks done</div>
-                            </div>
-                            @if($milestone->due_date)
-                                <div style="flex-shrink:0;display:flex;align-items:center;gap:0.3rem;">
-                                    <span class="material-symbols-rounded" style="font-size:13px;color:#8d90a2;">calendar_today</span>
-                                    <span style="font-size:0.65rem;color:#8d90a2;">{{ $milestone->due_date->format('M d') }}</span>
-                                </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </div>
+        @if ($project->status === 'pending_closure_approval')
+            <div class="pg-notice" role="status"><span><b>Every milestone is complete.</b> {{ $project->owner?->name ?? 'The owner' }} confirms or rejects closing the project on the board.</span><a href="{{ route('projects.board', $project) }}" class="pg-btn pg-btn--secondary pg-btn--sm">Go to the board</a></div>
         @endif
 
-        {{-- Tasks board --}}
-        <div style="margin-bottom:2rem;">
-            <h2 style="font-family:'Manrope',sans-serif;font-size:0.72rem;font-weight:700;color:#8d90a2;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.85rem;">Tasks Board</h2>
-            <livewire:projects.project-board :project="$project" />
-        </div>
+        <div class="pg-grid">
+            <section class="pg-card pg-s12" aria-labelledby="land-h">
+                <div class="pg-card-head"><h2 id="land-h">When we land</h2><small>Milestones on their planned dates. Black dots are done; red ones are past due.</small></div>
+                <div class="pg-land">
+                    @if ($dated->isEmpty())
+                        <p class="pg-empty" style="align-self:center">No milestone has a date yet. @can('update', $project)<a href="{{ route('projects.board', $project) }}#add-milestone">Add a dated milestone</a> to draw this line.@endcan</p>
+                    @else
+                        <div class="pg-land-line" role="img" aria-label="Milestones on a date line from {{ $from->format('j M Y') }} to {{ $to->format('j M Y') }}">
+                            @foreach ($months as $m)<span class="tick" style="left:{{ $at($m) }}"><span>{{ $m->format($m->month === 1 ? 'M Y' : 'M') }}</span></span>@endforeach
+                            <span class="axis"></span>
+                            <span class="today" style="left:{{ $at($summary->today) }}"><span>Today</span></span>
+                            @foreach ($dated->sortBy(fn ($r) => $r['milestone']->due_date->timestamp)->values() as $i => $r)
+                                @php
+                                    $m = $r['milestone'];
+                                    $low = $prev && $prev->diffInDays($m->due_date) < 21;
+                                    $prev = $low ? null : $m->due_date;
+                                @endphp
+                                <span class="ms {{ $m->status === 'completed' ? 'done' : ($r['late'] ? 'late' : '') }}" style="left:{{ $at($m->due_date) }}" title="{{ $m->title }}, {{ $m->due_date->format('j M Y') }}"></span>
+                                <span class="lbl {{ $low ? 'low' : '' }} {{ $i % 2 ? 'odd' : '' }}" style="left:{{ $at($m->due_date) }}"><span class="t">{{ Str::limit($m->title, 28) }}</span><small class="{{ $r['late'] ? 'late' : '' }}">{{ $m->due_date->format('j M') }}</small></span>
+                            @endforeach
+                        </div>
+                    @endif
+                    <div class="pg-land-big">
+                        <span class="k">Project due</span>
+                        @if ($project->due_date)
+                            <span class="v">{{ $project->due_date->format('j M') }}</span>
+                            <span class="d">{{ $project->due_date->format('Y') }}, @if ($project->status === 'completed')completed @elseif ($days < 0)<span class="pg-neg">{{ abs($days) }} {{ Str::plural('day', abs($days)) }} past due</span>@elseif ($days === 0)today @else in {{ $days }} {{ Str::plural('day', $days) }}@endif</span>
+                        @else
+                            <span class="v">–</span>
+                            <span class="d pg-muted">No due date set</span>
+                        @endif
+                        <span class="d pg-muted">{{ $summary->done() }} of {{ $total }} {{ Str::plural('task', $total) }} done</span>
+                    </div>
+                </div>
+            </section>
 
-        {{-- Comments --}}
-        <div style="max-width:640px;">
-            <livewire:projects.project-comments :project="$project" />
-        </div>
+            <section class="pg-card pg-s5" aria-labelledby="way-h">
+                <div class="pg-card-head"><h2 id="way-h">In the way</h2><small>{{ $summary->overdue()->count() }} overdue</small></div>
+                @forelse ($summary->inTheWay() as $task)
+                    @php $late = $task->due_date && $task->due_date->lt($summary->today); @endphp
+                    <div class="pg-row">
+                        <div>
+                            @if ($task->assignee)<span class="pg-avatar" style="margin-right:6px;vertical-align:-6px" aria-hidden="true">{{ App\Services\ProjectSummary::initials($task->assignee->name) }}</span>@endif{{ $task->title }}
+                            <div class="pg-sub">{{ $task->assignee?->name ?? 'Unassigned' }}@if ($task->milestone), {{ $task->milestone->title }}@endif</div>
+                        </div>
+                        @if ($late)
+                            <span class="pg-pill pg-pill--negative">{{ (int) $task->due_date->diffInDays($summary->today) }} {{ Str::plural('day', (int) $task->due_date->diffInDays($summary->today)) }} late</span>
+                        @else
+                            <span class="pg-pill pg-pill--warning">Urgent</span>
+                        @endif
+                    </div>
+                @empty
+                    <p class="pg-empty">Nothing is overdue or marked urgent.</p>
+                @endforelse
+            </section>
 
+            <section class="pg-card pg-s4" aria-labelledby="ms-h">
+                <div class="pg-card-head"><h2 id="ms-h">Milestones</h2><small>{{ $rows->where('milestone.status', 'completed')->count() }} of {{ $rows->count() }} complete</small></div>
+                @forelse ($rows as $r)
+                    @php $m = $r['milestone']; @endphp
+                    <div class="pg-row">
+                        <div>{{ $m->title }}<div class="pg-sub {{ $r['late'] ? 'pg-neg' : '' }}">{{ $m->due_date ? ($r['late'] ? 'Was due ' : 'Due ').$m->due_date->format('j M Y') : 'No date' }}, {{ $r['done'] }} of {{ $r['total'] }} {{ Str::plural('task', $r['total']) }} done</div></div>
+                        <span class="pg-pill {{ $m->status === 'completed' ? 'pg-pill--positive' : ($r['late'] ? 'pg-pill--negative' : '') }}">{{ $m->status === 'completed' ? 'Complete' : ($r['late'] ? 'Late' : ($m->status === 'in_progress' ? 'Under way' : 'Not started')) }}</span>
+                    </div>
+                @empty
+                    <p class="pg-empty">No milestones yet.</p>
+                @endforelse
+            </section>
+
+            <section class="pg-card pg-s3" aria-labelledby="work-h">
+                <div class="pg-card-head"><h2 id="work-h">Work</h2><small>{{ $total }} {{ Str::plural('task', $total) }}</small></div>
+                @if ($total)
+                    <div class="pg-stack" role="img" aria-label="{{ collect($counts)->map(fn ($n, $s) => $n.' '.strtolower(App\Services\ProjectSummary::STATUSES[$s]))->implode(', ') }}">
+                        @foreach ($counts as $s => $n)@if ($n)<i style="flex:{{ $n }};background:{{ $colours[$s] }}"></i>@endif @endforeach
+                    </div>
+                    <div class="pg-key">@foreach ($counts as $s => $n)<span><i style="background:{{ $colours[$s] }};{{ $s === 'backlog' ? 'outline:1px solid var(--pg-border)' : '' }}"></i>{{ $n }} {{ strtolower(App\Services\ProjectSummary::STATUSES[$s]) }}</span>@endforeach</div>
+                @else
+                    <p class="pg-empty">No tasks yet.</p>
+                @endif
+                <div class="pg-card-head" style="margin-top:16px"><h2>People</h2><small>open tasks</small></div>
+                @forelse ($summary->people()->take(6) as $person)
+                    <div class="pg-row"><div><span class="pg-avatar" style="margin-right:6px;vertical-align:-6px" aria-hidden="true">{{ $person['initials'] }}</span>{{ $person['name'] }}</div><span class="{{ $person['overdue'] ? 'pg-neg' : '' }}">{{ $person['open'] }}@if ($person['overdue']), {{ $person['overdue'] }} late @endif</span></div>
+                @empty
+                    <p class="pg-empty">Nobody holds open work yet.</p>
+                @endforelse
+                @if ($summary->unassignedOpen())<p class="pg-help">{{ $summary->unassignedOpen() }} open {{ Str::plural('task', $summary->unassignedOpen()) }} unassigned.</p>@endif
+            </section>
+
+            <section class="pg-card pg-s7" aria-labelledby="talk-h">
+                <div class="pg-card-head"><h2 id="talk-h">Discussion</h2></div>
+                <livewire:projects.project-comments :project="$project" />
+            </section>
+
+            <section class="pg-card pg-s5" aria-labelledby="act-h">
+                <div class="pg-card-head"><h2 id="act-h">Recent activity</h2></div>
+                @forelse ($activity as $line)
+                    <div class="pg-act"><time datetime="{{ $line['at']->toIso8601String() }}">{{ $line['at']->format('j M, H:i') }}</time><span>@if ($line['who'])<b style="font-weight:500">{{ $line['who'] }}</b> @endif{{ $line['text'] }}</span></div>
+                @empty
+                    <p class="pg-empty">Changes to this project appear here as people make them.</p>
+                @endforelse
+            </section>
+        </div>
     </div>
 </x-app-layout>

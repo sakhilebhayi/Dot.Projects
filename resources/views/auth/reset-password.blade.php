@@ -4,7 +4,7 @@
             <x-authentication-card-logo />
         </x-slot>
 
-        <h1 class="font-display font-semibold text-2xl text-[var(--paper)] mb-6">Choose a new password</h1>
+        <h1 class="pg-title" style="font-size:22px;margin-bottom:4px">Choose a new password</h1>
 
         <x-validation-errors class="mb-4" />
 

@@ -7,7 +7,18 @@ use App\Services\Activity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $project_id
+ * @property string $title
+ * @property string|null $description
+ * @property Carbon|null $due_date
+ * @property string $status
+ * @property int $sort_order
+ * @property-read Project $project
+ */
 class Milestone extends Model
 {
     protected $fillable = [
@@ -18,11 +29,13 @@ class Milestone extends Model
         'due_date' => 'date',
     ];
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
+    /** @return HasMany<ProjectTask, $this> */
     public function tasks(): HasMany
     {
         return $this->hasMany(ProjectTask::class);

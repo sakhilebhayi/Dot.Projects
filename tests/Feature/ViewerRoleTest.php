@@ -118,7 +118,8 @@ class ViewerRoleTest extends TestCase
         $viewer = $this->member('viewer');
 
         $this->actingAs($viewer)->get(route('dashboard'))->assertOk()->assertSee('Shared Project');
-        $this->actingAs($viewer)->get(route('projects.show', $this->project))->assertOk()->assertSee('A task');
+        $this->actingAs($viewer)->get(route('projects.show', $this->project))->assertOk()->assertSee('Shared Project');
+        $this->actingAs($viewer)->get(route('projects.board', $this->project))->assertOk()->assertSee('A task');
         $this->actingAs($viewer)->get(route('notifications.index'))->assertOk();
         $this->actingAs($viewer)->get(route('teams.show', $this->team))->assertOk();
         $this->actingAs($viewer)->get(route('profile.show'))->assertOk();
@@ -129,18 +130,21 @@ class ViewerRoleTest extends TestCase
         $viewer = $this->member('viewer');
         $editor = $this->member('editor');
 
-        $this->actingAs($viewer)->get(route('dashboard'))->assertDontSee('New Project');
-        $this->actingAs($viewer)->get(route('projects.show', $this->project))
-            ->assertDontSee('Add Task')
+        $this->actingAs($viewer)->get(route('dashboard'))->assertDontSee('New project');
+        $this->actingAs($viewer)->get(route('projects.board', $this->project))
+            ->assertDontSee('Add a task')
             ->assertDontSee('draggable="true"', false)
-            ->assertDontSee('Post Comment')
+            ->assertSee('read-only access');
+        $this->actingAs($viewer)->get(route('projects.show', $this->project))
+            ->assertDontSee('Post comment')
             ->assertSee('read-only access');
 
-        $this->actingAs($editor)->get(route('dashboard'))->assertSee('New Project');
+        $this->actingAs($editor)->get(route('dashboard'))->assertSee('New project');
+        $this->actingAs($editor)->get(route('projects.board', $this->project))
+            ->assertSee('Add a task')
+            ->assertSee('draggable="true"', false);
         $this->actingAs($editor)->get(route('projects.show', $this->project))
-            ->assertSee('Add Task')
-            ->assertSee('draggable="true"', false)
-            ->assertSee('Post Comment');
+            ->assertSee('Post comment');
     }
 
     // --- family: creating projects ------------------------------------------

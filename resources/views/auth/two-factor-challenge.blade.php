@@ -4,7 +4,7 @@
             <x-authentication-card-logo />
         </x-slot>
 
-        <h1 class="font-display font-semibold text-2xl text-[var(--paper)] mb-4">Two-factor authentication</h1>
+        <h1 class="pg-title" style="font-size:22px;margin-bottom:4px">Two-factor authentication</h1>
 
         <div x-data="{ recovery: false }">
             <div class="mb-4 text-sm text-gray-600 dark:text-gray-400" x-show="! recovery">
@@ -51,7 +51,7 @@
                     </button>
 
                     <x-button class="ms-4">
-                        {{ __('Log in') }}
+                        {{ __('Sign in') }}
                     </x-button>
                 </div>
             </form>

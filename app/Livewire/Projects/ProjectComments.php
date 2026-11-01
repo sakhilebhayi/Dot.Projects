@@ -47,7 +47,7 @@ class ProjectComments extends Component
         $this->body = '';
         unset($this->comments);
 
-        if ($this->project->owner && $this->project->owner->id !== auth()->id()) {
+        if ($this->project->owner->id !== auth()->id()) { // owner_id is a required foreign key
             $this->project->owner->notify(new NewCommentNotification($comment, $this->project));
         }
     }

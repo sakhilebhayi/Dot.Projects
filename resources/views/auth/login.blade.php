@@ -4,8 +4,8 @@
             <x-authentication-card-logo />
         </x-slot>
 
-        <h1 class="font-display font-semibold text-2xl text-[var(--paper)] mb-1">Sign in</h1>
-        <p class="text-sm text-[var(--mist)] mb-6">Welcome back to Dot.Projects.</p>
+        <h1 class="pg-title" style="font-size:22px;margin-bottom:4px">Sign in</h1>
+        <p class="pg-help mb-6" style="margin:0 0 18px">Welcome back to Dot.Projects.</p>
 
         <x-validation-errors class="mb-4" />
 
@@ -43,7 +43,7 @@
                 @endif
 
                 <x-button class="ms-4">
-                    {{ __('Log in') }}
+                    {{ __('Sign in') }}
                 </x-button>
             </div>
         </form>

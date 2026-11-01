@@ -8,14 +8,14 @@
 
     <div class="mt-5 md:mt-0 md:col-span-2">
         <form wire:submit="{{ $submit }}">
-            <div class="px-4 py-5 bg-white dark:bg-gray-800 sm:p-6 shadow {{ isset($actions) ? 'sm:rounded-tl-md sm:rounded-tr-md' : 'sm:rounded-md' }}">
+            <div class="pg-card" style="{{ isset($actions) ? 'border-bottom-left-radius:0;border-bottom-right-radius:0;' : '' }}padding:20px 22px">
                 <div class="grid grid-cols-6 gap-6">
                     {{ $form }}
                 </div>
             </div>
 
             @if (isset($actions))
-                <div class="flex items-center justify-end px-4 py-3 bg-gray-50 dark:bg-gray-800 text-end sm:px-6 shadow sm:rounded-bl-md sm:rounded-br-md">
+                <div class="flex items-center justify-end" style="gap:10px;padding:12px 22px;background:var(--pg-ground);border:1px solid var(--pg-border);border-top:0;border-radius:0 0 8px 8px">
                     {{ $actions }}
                 </div>
             @endif
