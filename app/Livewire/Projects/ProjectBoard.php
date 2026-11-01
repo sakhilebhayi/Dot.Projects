@@ -93,7 +93,7 @@ class ProjectBoard extends Component
         abort_unless($task->project_id === $this->project->id, 403);
 
         $from = $task->status;
-        $task->update(['status' => $newStatus]);
+        $task->update(['status' => $newStatus, 'completed_at' => $newStatus === 'done' ? ($task->completed_at ?? now()) : null]);
         if ($from !== $newStatus) {
             Activity::record('task.moved', $task, ['status' => ['from' => $from, 'to' => $newStatus]], $this->project);
         }

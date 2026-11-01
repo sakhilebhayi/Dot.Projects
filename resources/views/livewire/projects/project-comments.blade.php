@@ -3,7 +3,7 @@
         <form wire:submit="addComment" class="pg-form" style="margin-bottom:6px">
             <div class="pg-field">
                 <label for="comment-body" class="pg-sr">Write to the team</label>
-                <textarea id="comment-body" wire:model="body" rows="2" class="pg-textarea" placeholder="Write to the team about this project"></textarea>
+                <textarea id="comment-body" wire:model="body" rows="2" class="pg-textarea" placeholder="{{ $task ? 'Write to the team about this task' : 'Write to the team about this project' }}"></textarea>
                 @error('body')<p class="pg-error">{{ $message }}</p>@enderror
             </div>
             <div style="display:flex;justify-content:flex-end"><button type="submit" class="pg-btn pg-btn--secondary pg-btn--sm" wire:loading.attr="disabled">Post comment</button></div>

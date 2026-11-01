@@ -244,3 +244,10 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   Jetstream form components; light and dark; phone layouts. Not yet redesigned: the public welcome
   page (a Persuade surface, next) and the inside of Jetstream's profile and team pages beyond their
   shared components.
+- **P3a execution core** (2026-11-01): a task page (edit everything, start and due dates, estimate,
+  checklist, its own comments, delete), a Work view (all tasks by milestone with search, status,
+  person and late-only filters kept in the URL, status and assignee changed in place, milestones
+  renamed, dated, reordered and deleted with their tasks kept), project settings (details, archive
+  as read-only and restore, duplicate with milestones, tasks and checklists reset to not started).
+  Next, P3b: dependencies with cycle prevention and a blocked state, subtasks, labels, statuses as
+  data per project, saved views.

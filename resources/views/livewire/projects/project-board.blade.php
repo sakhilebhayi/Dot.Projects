@@ -81,7 +81,7 @@
                     @php($late = $task->status !== 'done' && $task->due_date && $task->due_date->isPast() && ! $task->due_date->isToday())
                     <article class="pg-task" wire:key="task-{{ $task->id }}"
                          @if ($canEdit) draggable="true" x-data x-on:dragstart="$event.dataTransfer.setData('taskId', '{{ $task->id }}')" @endif>
-                        <div>{{ $task->title }}</div>
+                        <a href="{{ route('projects.tasks.show', [$project, $task]) }}" style="text-decoration:none" draggable="false">{{ $task->title }}</a>
                         @if ($task->milestone)<div class="pg-sub" style="font-size:12px;color:var(--pg-muted)">{{ $task->milestone->title }}</div>@endif
                         <div class="pg-task-meta">
                             <span>

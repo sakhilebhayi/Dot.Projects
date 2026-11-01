@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Project;
 use App\Models\ProjectComment;
+use App\Models\ProjectTask;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -13,7 +14,7 @@ use Illuminate\Notifications\Notification;
  */
 class NewCommentNotification extends Notification
 {
-    public function __construct(public ProjectComment $comment, public Project $project) {}
+    public function __construct(public ProjectComment $comment, public Project $project, public ?ProjectTask $task = null) {}
 
     /**
      * @return array<int, string>
@@ -30,11 +31,13 @@ class NewCommentNotification extends Notification
     {
         return [
             'type' => 'new_comment',
-            'title' => 'New comment on your project',
-            'message' => "{$this->comment->user->name} commented on \"{$this->project->name}\".",
+            'title' => $this->task ? 'New comment on your task' : 'New comment on your project',
+            'message' => $this->task
+                ? "{$this->comment->user->name} commented on \"{$this->task->title}\" in \"{$this->project->name}\"."
+                : "{$this->comment->user->name} commented on \"{$this->project->name}\".",
             'project_id' => $this->project->id,
             'comment_id' => $this->comment->id,
-            'url' => route('projects.show', $this->project),
+            'url' => $this->task ? route('projects.tasks.show', [$this->project, $this->task]) : route('projects.show', $this->project),
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\ProjectTask;
 use App\Services\ActivityFeed;
 use App\Services\ProjectSummary;
 use Illuminate\Http\Request;
@@ -20,6 +21,30 @@ class ProjectController extends Controller
             'summary' => new ProjectSummary($project),
             'activity' => ActivityFeed::forProject($project),
         ]);
+    }
+
+    /** The work view: every task in a table grouped by milestone, with filters. */
+    public function work(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return view('projects.work', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
+    }
+
+    /** One task: details, checklist and its own comments. */
+    public function task(Request $request, Project $project, ProjectTask $task): View
+    {
+        $this->authorize('view', $task);
+
+        return view('projects.task', ['project' => $project->load('owner'), 'task' => $task, 'summary' => new ProjectSummary($project)]);
+    }
+
+    /** Details, archive and restore, duplicate. */
+    public function settings(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return view('projects.settings', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
     }
 
     /** The board view: the same tasks in five columns, with quick add for people who can edit. */
