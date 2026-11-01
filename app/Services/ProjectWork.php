@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Baseline;
+use App\Models\BaselineItem;
 use App\Models\ChecklistItem;
 use App\Models\Milestone;
 use App\Models\Project;
@@ -354,5 +356,51 @@ final class ProjectWork
         $clean = array_filter(array_intersect_key($filters, array_flip(['status', 'who', 'late', 'q', 'label'])), fn ($v) => $v !== '' && $v !== null && $v !== false);
 
         return SavedView::create(['user_id' => $user->id, 'project_id' => $project->id, 'name' => trim($name), 'filters' => $clean]);
+    }
+
+    /**
+     * Move a task on the schedule (dragged or resized on the timeline). The due date may not be
+     * before the start; conflicts with dependencies are shown on the schedule, not refused, because
+     * people often move one task and then the next.
+     */
+    public function reschedule(ProjectTask $task, ?string $start, string $due): void
+    {
+        $startDate = $start ? Carbon::parse($start)->startOfDay() : null;
+        $dueDate = Carbon::parse($due)->startOfDay();
+        if ($startDate && $dueDate->lt($startDate)) {
+            throw ValidationException::withMessages(['schedule' => 'A task cannot be due before it starts.']);
+        }
+        $from = [$task->start_date?->toDateString(), $task->due_date?->toDateString()];
+        $task->forceFill(['start_date' => $startDate, 'due_date' => $dueDate])->save();
+        Activity::record('task.rescheduled', $task, [
+            'start_date' => ['from' => $from[0], 'to' => $startDate?->toDateString()],
+            'due_date' => ['from' => $from[1], 'to' => $dueDate->toDateString()],
+        ], $task->project);
+    }
+
+    /** Takes the next numbered baseline: every task's start and due date, milestone and project due dates. */
+    public function setBaseline(Project $project, User $by, ?string $note): Baseline
+    {
+        return DB::transaction(function () use ($project, $by, $note) {
+            $baseline = Baseline::create([
+                'project_id' => $project->id,
+                'number' => (int) Baseline::query()->where('project_id', $project->id)->max('number') + 1,
+                'note' => $note !== null && trim($note) !== '' ? trim($note) : null,
+                'created_by' => $by->id,
+            ]);
+            $rows = [['project_baseline_id' => $baseline->id, 'item_type' => 'project', 'item_id' => $project->id, 'start_date' => $project->start_date?->toDateString(), 'due_date' => $project->due_date?->toDateString()]];
+            foreach ($project->milestones()->get() as $m) {
+                $rows[] = ['project_baseline_id' => $baseline->id, 'item_type' => 'milestone', 'item_id' => $m->id, 'start_date' => null, 'due_date' => $m->due_date?->toDateString()];
+            }
+            foreach ($project->tasks()->get(['id', 'start_date', 'due_date']) as $t) {
+                $rows[] = ['project_baseline_id' => $baseline->id, 'item_type' => 'task', 'item_id' => $t->id, 'start_date' => $t->start_date?->toDateString(), 'due_date' => $t->due_date?->toDateString()];
+            }
+            foreach (array_chunk($rows, 500) as $chunk) {
+                BaselineItem::query()->insert($chunk);
+            }
+            Activity::record('baseline.set', $project, ['number' => $baseline->number]);
+
+            return $baseline;
+        });
     }
 }

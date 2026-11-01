@@ -113,6 +113,12 @@ class Project extends Model
         return $this->hasMany(ProjectLabel::class)->orderBy('name');
     }
 
+    /** @return HasMany<Baseline, $this> */
+    public function baselines(): HasMany
+    {
+        return $this->hasMany(Baseline::class)->orderByDesc('number');
+    }
+
     /** @return HasMany<AiPlanLog, $this> */
     public function aiPlanLogs(): HasMany
     {

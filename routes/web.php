@@ -67,6 +67,7 @@ Route::middleware([
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::get('/projects/{project}/board', [ProjectController::class, 'board'])->name('projects.board');
     Route::get('/projects/{project}/work', [ProjectController::class, 'work'])->name('projects.work');
+    Route::get('/projects/{project}/schedule', [ProjectController::class, 'schedule'])->name('projects.schedule');
     Route::get('/projects/{project}/settings', [ProjectController::class, 'settings'])->name('projects.settings');
     Route::get('/projects/{project}/tasks/{task}', [ProjectController::class, 'task'])->scopeBindings()->name('projects.tasks.show');
 });
