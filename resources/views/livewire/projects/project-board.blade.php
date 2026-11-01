@@ -68,6 +68,7 @@
         <p class="pg-help" style="margin:0 0 12px">You have read-only access to this business, so you can see the board but not change it.</p>
     @endif
 
+    @error('status')<div class="pg-notice" role="alert" style="margin-bottom:12px"><span>{{ $message }}</span></div>@enderror
     <div class="pg-board">
         @foreach (\App\Livewire\Projects\ProjectBoard::COLUMNS as $status => $label)
             <section class="pg-col" aria-label="{{ $label }}"
@@ -88,6 +89,7 @@
                                 @if ($late)<span class="pg-pill pg-pill--negative">Due {{ $task->due_date->format('j M') }}</span>
                                 @elseif ($task->due_date)<span>Due {{ $task->due_date->format('j M') }}</span>
                                 @endif
+                                @if ($task->isBlocked())<span class="pg-pill pg-pill--warning" title="Waits for {{ $task->predecessors->where('status', '!=', 'done')->pluck('title')->join(', ') }}">Blocked</span>@endif
                                 @if (in_array($task->priority, ['urgent', 'high'], true))<span class="pg-pill {{ $task->priority === 'urgent' ? 'pg-pill--warning' : '' }}">{{ ucfirst($task->priority) }}</span>@endif
                             </span>
                             <label for="assign-{{ $task->id }}" class="pg-sr">Who does {{ $task->title }}</label>

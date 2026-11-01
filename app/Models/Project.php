@@ -107,6 +107,12 @@ class Project extends Model
         return $this->morphMany(ProjectComment::class, 'commentable');
     }
 
+    /** @return HasMany<ProjectLabel, $this> */
+    public function labels(): HasMany
+    {
+        return $this->hasMany(ProjectLabel::class)->orderBy('name');
+    }
+
     /** @return HasMany<AiPlanLog, $this> */
     public function aiPlanLogs(): HasMany
     {

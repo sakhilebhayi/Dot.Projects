@@ -8,6 +8,7 @@ use App\Models\ProjectTask;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use App\Services\Activity;
+use App\Services\ProjectWork;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -69,7 +70,7 @@ class ProjectBoard extends Component
     public function tasksByStatus(): array
     {
         $tasks = $this->project->tasks()
-            ->with(['assignee', 'milestone'])
+            ->with(['assignee', 'milestone', 'predecessors:id,title,status', 'labels'])
             ->orderBy('sort_order')
             ->get()
             ->groupBy('status');
@@ -91,6 +92,7 @@ class ProjectBoard extends Component
 
         $task = ProjectTask::findOrFail($taskId);
         abort_unless($task->project_id === $this->project->id, 403);
+        app(ProjectWork::class)->assertCanStart($task, $newStatus);
 
         $from = $task->status;
         $task->update(['status' => $newStatus, 'completed_at' => $newStatus === 'done' ? ($task->completed_at ?? now()) : null]);

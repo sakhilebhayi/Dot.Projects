@@ -22,10 +22,38 @@
             <option value="none">Unassigned</option>
             @foreach ($this->people as $person)<option value="{{ $person->id }}">{{ $person->name }}</option>@endforeach
         </select>
+        @if ($this->labels->isNotEmpty())
+            <label for="w-label" class="pg-sr">Label</label>
+            <select id="w-label" wire:model.live="label" class="pg-select">
+                <option value="">Any label</option>
+                @foreach ($this->labels as $l)<option value="{{ $l->id }}">{{ $l->name }}</option>@endforeach
+            </select>
+        @endif
         <label class="pg-chip" for="w-late" style="cursor:pointer"><input id="w-late" type="checkbox" class="pg-check" wire:model.live="lateOnly"> Late only</label>
         @if ($this->filtered())<button type="button" class="pg-btn pg-btn--ghost" wire:click="clearFilters">Clear</button>@endif
         <span class="pg-help" style="margin:0 0 0 auto" role="status">{{ $this->tasks->count() }} {{ Str::plural('task', $this->tasks->count()) }}{{ $this->filtered() ? ' match' : '' }}</span>
     </form>
+
+    @if ($this->views->isNotEmpty() || $this->filtered())
+        <div class="pg-filters" aria-label="Saved views" style="margin-top:-4px">
+            @foreach ($this->views as $v)
+                <span class="pg-chip" wire:key="view-{{ $v->id }}" style="gap:2px;padding-right:4px">
+                    <button type="button" wire:click="applyView({{ $v->id }})" style="border:0;background:none;padding:0 4px;cursor:pointer;font:inherit;color:inherit">{{ $v->name }}</button>
+                    <button type="button" wire:click="deleteView({{ $v->id }})" aria-label="Delete the view {{ $v->name }}" style="border:0;background:none;padding:0 4px;cursor:pointer;color:var(--pg-muted);font:inherit">×</button>
+                </span>
+            @endforeach
+            @if ($this->filtered())
+                <form wire:submit="saveView" style="display:flex;gap:6px">
+                    <label for="w-viewname" class="pg-sr">Name this view</label>
+                    <input id="w-viewname" type="text" wire:model="viewName" maxlength="60" class="pg-input" style="width:200px;min-height:32px" placeholder="Name this view">
+                    <button type="submit" class="pg-btn pg-btn--ghost pg-btn--sm">Save view</button>
+                </form>
+                @error('viewName')<p class="pg-error">{{ $message }}</p>@enderror
+            @endif
+        </div>
+    @endif
+
+    @error('status')<div class="pg-notice" role="alert"><span>{{ $message }}</span></div>@enderror
 
     @forelse ($groups as $g)
         @php($m = $g['milestone'])
@@ -77,7 +105,7 @@
                             @php($late = $task->status !== 'done' && $task->due_date && $task->due_date->lt($today))
                             @php($items = $task->checklist)
                             <tr wire:key="task-{{ $task->id }}">
-                                <td class="pg-name"><a href="{{ route('projects.tasks.show', [$project, $task]) }}" style="{{ $task->status === 'done' ? 'color:var(--pg-muted)' : '' }}">{{ $task->title }}</a>@if ($items->isNotEmpty())<span class="pg-sub">Checklist {{ $items->whereNotNull('done_at')->count() }} of {{ $items->count() }}</span>@endif</td>
+                                <td class="pg-name"><a href="{{ route('projects.tasks.show', [$project, $task]) }}" style="{{ $task->status === 'done' ? 'color:var(--pg-muted)' : '' }}">{{ $task->title }}</a>@if ($task->parent)<span class="pg-sub">Part of {{ Str::limit($task->parent->title, 40) }}</span>@endif @if ($items->isNotEmpty())<span class="pg-sub">Checklist {{ $items->whereNotNull('done_at')->count() }} of {{ $items->count() }}</span>@endif @if ($task->isBlocked())<span class="pg-sub" style="color:var(--pg-warning)">Waits for {{ $task->predecessors->where('status', '!=', 'done')->pluck('title')->map(fn ($t) => Str::limit($t, 30))->join(', ') }}</span>@endif @if ($task->labels->isNotEmpty())<span class="pg-sub">{{ $task->labels->pluck('name')->join(', ') }}</span>@endif</td>
                                 <td data-label="Status">
                                     @if ($canEdit)
                                         <label for="st-{{ $task->id }}" class="pg-sr">Status of {{ $task->title }}</label>

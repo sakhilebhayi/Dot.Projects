@@ -5,6 +5,7 @@ namespace App\Livewire\Projects;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\SavedView;
 use App\Services\ProjectSummary;
 use App\Services\ProjectWork;
 use Illuminate\Database\Eloquent\Collection;
@@ -37,6 +38,11 @@ class WorkList extends Component
     #[Url(as: 'q', except: '')]
     public string $search = '';
 
+    #[Url(as: 'label', except: '')]
+    public string $label = '';
+
+    public string $viewName = '';
+
     public ?int $editingMilestone = null;
 
     public string $milestoneTitle = '';
@@ -68,7 +74,8 @@ class WorkList extends Component
     {
         $today = Carbon::today()->toDateString();
 
-        return $this->project->tasks()->with(['assignee', 'checklist'])
+        return $this->project->tasks()->with(['assignee', 'checklist', 'labels', 'parent:id,title', 'predecessors:id,title,status'])
+            ->when($this->label !== '', fn ($q) => $q->whereHas('labels', fn ($l) => $l->whereKey((int) $this->label)))
             ->when($this->status !== '', fn ($q) => $this->status === 'open' ? $q->where('status', '!=', 'done') : $q->where('status', $this->status))
             ->when($this->who !== '', fn ($q) => $this->who === 'none' ? $q->whereNull('assignee_id') : $q->where('assignee_id', (int) $this->who))
             ->when($this->lateOnly, fn ($q) => $q->where('status', '!=', 'done')->whereNotNull('due_date')->whereDate('due_date', '<', $today))
@@ -79,12 +86,53 @@ class WorkList extends Component
 
     public function filtered(): bool
     {
-        return $this->status !== '' || $this->who !== '' || $this->lateOnly || trim($this->search) !== '';
+        return $this->status !== '' || $this->who !== '' || $this->lateOnly || trim($this->search) !== '' || $this->label !== '';
     }
 
     public function clearFilters(): void
     {
-        $this->reset('status', 'who', 'lateOnly', 'search');
+        $this->reset('status', 'who', 'lateOnly', 'search', 'label');
+    }
+
+    #[Computed]
+    public function labels()
+    {
+        return $this->project->labels()->get();
+    }
+
+    /** The signed-in person's saved views of this project. */
+    #[Computed]
+    public function views()
+    {
+        return SavedView::query()->where('user_id', auth()->id())->where('project_id', $this->project->id)->orderBy('name')->get();
+    }
+
+    public function saveView(ProjectWork $work): void
+    {
+        $this->authorize('view', $this->project);
+        $this->validate(['viewName' => ['required', 'string', 'max:60']], [], ['viewName' => 'name']);
+        $work->saveView(auth()->user(), $this->project, $this->viewName, ['status' => $this->status, 'who' => $this->who, 'late' => $this->lateOnly, 'q' => trim($this->search), 'label' => $this->label]);
+        $this->reset('viewName');
+        unset($this->views);
+    }
+
+    public function applyView(int $id): void
+    {
+        // Someone else's view, or another project's, is simply not there.
+        $view = SavedView::query()->where('user_id', auth()->id())->where('project_id', $this->project->id)->find($id);
+        abort_if($view === null, 404);
+        $f = $view->filters;
+        $this->status = (string) ($f['status'] ?? '');
+        $this->who = (string) ($f['who'] ?? '');
+        $this->lateOnly = (bool) ($f['late'] ?? false);
+        $this->search = (string) ($f['q'] ?? '');
+        $this->label = (string) ($f['label'] ?? '');
+    }
+
+    public function deleteView(int $id): void
+    {
+        SavedView::query()->where('user_id', auth()->id())->where('project_id', $this->project->id)->whereKey($id)->delete();
+        unset($this->views);
     }
 
     public function setStatus(int $taskId, string $status, ProjectWork $work): void

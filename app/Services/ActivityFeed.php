@@ -54,6 +54,11 @@ final class ActivityFeed
                 'project.archived' => 'archived the project',
                 'project.restored' => 'restored the project',
                 'project.duplicated' => 'duplicated the project',
+                'dependency.added' => 'made '.$q($tasks->get($l->subject_id)).' wait for another task',
+                'dependency.removed' => 'removed a dependency from '.$q($tasks->get($l->subject_id)),
+                'subtask.added' => 'added the subtask '.$q($tasks->get($l->subject_id)),
+                'label.added' => 'labelled '.$q($tasks->get($l->subject_id)),
+                'label.removed' => 'removed a label from '.$q($tasks->get($l->subject_id)),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
 
