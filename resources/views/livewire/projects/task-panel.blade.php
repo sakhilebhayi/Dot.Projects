@@ -67,6 +67,7 @@
             </fieldset>
             @if ($canEdit)
                 <div class="pg-actions" style="justify-content:flex-end;align-items:center;border-top:1px solid var(--pg-rule);padding-top:14px">
+                    @error('status')<span class="pg-error" role="alert" style="margin:0">{{ $message }}</span>@enderror
                     @if (session('task-saved'))<span class="pg-help" role="status" style="margin:0">{{ session('task-saved') }}</span>@endif
                     <button type="submit" class="pg-btn pg-btn--primary" wire:loading.attr="disabled" wire:target="save">Save changes</button>
                 </div>
@@ -95,6 +96,81 @@
                     <button type="submit" class="pg-btn pg-btn--secondary">Add</button>
                 </form>
                 @error('newItem')<p class="pg-error">{{ $message }}</p>@enderror
+            @endif
+        </section>
+
+        <section class="pg-card" aria-labelledby="dep-h">
+            <div class="pg-card-head"><h2 id="dep-h">Waits for</h2><small>{{ $task->isBlocked() ? 'Blocked' : '' }}</small></div>
+            @forelse ($this->predecessors as $p)
+                <div class="pg-row" wire:key="pred-{{ $p->id }}">
+                    <div><a href="{{ route('projects.tasks.show', [$project, $p]) }}">{{ $p->title }}</a><div class="pg-sub">{{ App\Services\ProjectSummary::STATUSES[$p->status] ?? $p->status }}</div></div>
+                    <span style="display:flex;gap:6px;align-items:center">
+                        <span class="pg-pill {{ $p->status === 'done' ? 'pg-pill--positive' : 'pg-pill--warning' }}">{{ $p->status === 'done' ? 'Done' : 'Not done' }}</span>
+                        @if ($canEdit)<button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="removeDependency({{ $p->id }})" aria-label="Stop waiting for {{ $p->title }}">Remove</button>@endif
+                    </span>
+                </div>
+            @empty
+                <p class="pg-empty">Nothing. It can start any time.</p>
+            @endforelse
+            @if ($canEdit && $this->candidates->isNotEmpty())
+                <form wire:submit="addDependency" style="display:flex;gap:8px;margin-top:10px">
+                    <label for="dep-new" class="pg-sr">Task this one waits for</label>
+                    <select id="dep-new" wire:model="newDependency" class="pg-select">
+                        <option value="">Choose a task to wait for</option>
+                        @foreach ($this->candidates as $c)<option value="{{ $c->id }}">{{ Str::limit($c->title, 60) }}</option>@endforeach
+                    </select>
+                    <button type="submit" class="pg-btn pg-btn--secondary">Add</button>
+                </form>
+                @error('dependency')<p class="pg-error">{{ $message }}</p>@enderror
+                @error('newDependency')<p class="pg-error">{{ $message }}</p>@enderror
+            @endif
+            @if ($this->successors->isNotEmpty())
+                <div class="pg-card-head" style="margin-top:14px"><h2>Holds up</h2><small>{{ $this->successors->count() }}</small></div>
+                @foreach ($this->successors as $n)
+                    <div class="pg-row"><a href="{{ route('projects.tasks.show', [$project, $n]) }}">{{ $n->title }}</a><span class="pg-sub">{{ App\Services\ProjectSummary::STATUSES[$n->status] ?? $n->status }}</span></div>
+                @endforeach
+            @endif
+        </section>
+
+        <section class="pg-card" aria-labelledby="sub-h">
+            <div class="pg-card-head"><h2 id="sub-h">{{ $task->parent_id ? 'Part of' : 'Subtasks' }}</h2><small>{{ $task->parent_id ? '' : ($this->subtasks->count() ? $this->subtasks->where('status', 'done')->count().' of '.$this->subtasks->count().' done' : '') }}</small></div>
+            @if ($task->parent_id)
+                <p style="margin:0"><a href="{{ route('projects.tasks.show', [$project, $task->parent_id]) }}">{{ $task->parent?->title }}</a></p>
+            @else
+                @forelse ($this->subtasks as $sub)
+                    <div class="pg-row" wire:key="sub-{{ $sub->id }}"><a href="{{ route('projects.tasks.show', [$project, $sub]) }}" style="{{ $sub->status === 'done' ? 'color:var(--pg-muted)' : '' }}">{{ $sub->title }}</a><span class="pg-sub">{{ App\Services\ProjectSummary::STATUSES[$sub->status] ?? $sub->status }}</span></div>
+                @empty
+                    <p class="pg-empty">None. Split big work into tasks of their own.</p>
+                @endforelse
+                @if ($canEdit)
+                    <form wire:submit="addSubtask" style="display:flex;gap:8px;margin-top:10px">
+                        <label for="sub-new" class="pg-sr">New subtask</label>
+                        <input id="sub-new" type="text" wire:model="newSubtask" maxlength="255" class="pg-input" placeholder="Add a subtask">
+                        <button type="submit" class="pg-btn pg-btn--secondary">Add</button>
+                    </form>
+                    @error('newSubtask')<p class="pg-error">{{ $message }}</p>@enderror
+                    @error('subtask')<p class="pg-error">{{ $message }}</p>@enderror
+                @endif
+            @endif
+        </section>
+
+        <section class="pg-card" aria-labelledby="lab-h">
+            <div class="pg-card-head"><h2 id="lab-h">Labels</h2></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                @forelse ($this->labels as $label)
+                    <span class="pg-pill" wire:key="lab-{{ $label->id }}" style="display:inline-flex;gap:4px;align-items:center">{{ $label->name }}@if ($canEdit)<button type="button" wire:click="removeLabel({{ $label->id }})" aria-label="Remove label {{ $label->name }}" style="border:0;background:none;padding:0 0 0 2px;cursor:pointer;color:inherit;font:inherit">×</button>@endif</span>
+                @empty
+                    <p class="pg-empty">No labels.</p>
+                @endforelse
+            </div>
+            @if ($canEdit)
+                <form wire:submit="addLabel" style="display:flex;gap:8px;margin-top:10px">
+                    <label for="lab-new" class="pg-sr">New label</label>
+                    <input id="lab-new" type="text" wire:model="newLabel" maxlength="40" class="pg-input" placeholder="Customs, Kathu, Safety" list="project-labels">
+                    <datalist id="project-labels">@foreach ($project->labels()->get() as $l)<option value="{{ $l->name }}"></option>@endforeach</datalist>
+                    <button type="submit" class="pg-btn pg-btn--secondary">Add</button>
+                </form>
+                @error('label')<p class="pg-error">{{ $message }}</p>@enderror
             @endif
         </section>
 

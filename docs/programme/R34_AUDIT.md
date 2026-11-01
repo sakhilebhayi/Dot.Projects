@@ -251,3 +251,9 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   as read-only and restore, duplicate with milestones, tasks and checklists reset to not started).
   Next, P3b: dependencies with cycle prevention and a blocked state, subtasks, labels, statuses as
   data per project, saved views.
+- **P3b** (2026-11-01): finish-to-start dependencies inside a project, with loop prevention; a
+  blocked task (waiting on unfinished work) cannot move into In progress, In review or Done until
+  what it waits for is done, and is marked Blocked on the board, work table and overview; one level
+  of subtasks; text-only labels per project with a label filter; saved views of the work table per
+  person; duplicate carries subtasks, labels and dependencies. Statuses as data per project are
+  deferred to the methodology and template step, where Scrum and stage-gate need them.

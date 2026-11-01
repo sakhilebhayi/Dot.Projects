@@ -6,12 +6,15 @@ use App\Models\ChecklistItem;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Services\ProjectWork;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 /**
+ * @property-read Collection<int, ProjectTask> $predecessors
+ *
  * One task, read by every member and edited by people who can change the project: its details,
  * dates and estimate, who does it, its checklist, and deleting it. Saved with one button, so a
  * half-finished edit never changes the plan.
@@ -43,6 +46,12 @@ class TaskPanel extends Component
     public string $newItem = '';
 
     public bool $confirmingDelete = false;
+
+    public string $newDependency = '';
+
+    public string $newSubtask = '';
+
+    public string $newLabel = '';
 
     public function mount(Project $project, ProjectTask $task): void
     {
@@ -83,6 +92,79 @@ class TaskPanel extends Component
     public function checklist()
     {
         return $this->task->checklist()->get();
+    }
+
+    #[Computed]
+    public function predecessors()
+    {
+        return $this->task->predecessors()->orderBy('title')->get();
+    }
+
+    #[Computed]
+    public function successors()
+    {
+        return $this->task->successors()->orderBy('title')->get();
+    }
+
+    #[Computed]
+    public function subtasks()
+    {
+        return $this->task->subtasks()->with('assignee')->get();
+    }
+
+    #[Computed]
+    public function labels()
+    {
+        return $this->task->labels()->get();
+    }
+
+    /** Tasks this one could wait for: the project's others, not already linked. */
+    #[Computed]
+    public function candidates()
+    {
+        $linked = $this->predecessors->pluck('id')->push($this->task->id);
+
+        return ProjectTask::query()->where('project_id', $this->project->id)->whereNotIn('id', $linked)->orderBy('title')->get(['id', 'title', 'status']);
+    }
+
+    public function addDependency(ProjectWork $work): void
+    {
+        $this->authorize('update', $this->task);
+        $this->validate(['newDependency' => ['required', 'integer']], [], ['newDependency' => 'task']);
+        $work->addDependency($this->task, ProjectTask::query()->where('project_id', $this->project->id)->findOrFail((int) $this->newDependency), auth()->user());
+        $this->reset('newDependency');
+        unset($this->predecessors, $this->candidates);
+    }
+
+    public function removeDependency(int $id, ProjectWork $work): void
+    {
+        $this->authorize('update', $this->task);
+        $work->removeDependency($this->task, $id);
+        unset($this->predecessors, $this->candidates);
+    }
+
+    public function addSubtask(ProjectWork $work): void
+    {
+        $this->authorize('update', $this->task);
+        $this->validate(['newSubtask' => ['required', 'string', 'max:255']], [], ['newSubtask' => 'subtask']);
+        $work->addSubtask($this->task, $this->newSubtask);
+        $this->reset('newSubtask');
+        unset($this->subtasks);
+    }
+
+    public function addLabel(ProjectWork $work): void
+    {
+        $this->authorize('update', $this->task);
+        $work->addLabel($this->task, $this->newLabel);
+        $this->reset('newLabel');
+        unset($this->labels);
+    }
+
+    public function removeLabel(int $id, ProjectWork $work): void
+    {
+        $this->authorize('update', $this->task);
+        $work->removeLabel($this->task, $id);
+        unset($this->labels);
     }
 
     public function save(ProjectWork $work): void

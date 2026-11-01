@@ -30,7 +30,7 @@ final class ProjectSummary
     public function __construct(public readonly Project $project)
     {
         $this->today = Carbon::today();
-        $this->tasks = $project->tasks()->with(['assignee', 'milestone'])->orderBy('sort_order')->get();
+        $this->tasks = $project->tasks()->with(['assignee', 'milestone', 'predecessors:id,title,status'])->orderBy('sort_order')->get();
         $this->milestones = $project->milestones()->get();
     }
 
@@ -54,12 +54,18 @@ final class ProjectSummary
             ->sortBy(fn (ProjectTask $t) => $t->due_date->timestamp)->values();
     }
 
-    /** @return Collection<int, ProjectTask> overdue first, then urgent open work, at most $limit */
+    /** @return Collection<int, ProjectTask> open tasks waiting on unfinished work */
+    public function blocked(): Collection
+    {
+        return $this->tasks->filter(fn (ProjectTask $t) => $t->isBlocked())->values();
+    }
+
+    /** @return Collection<int, ProjectTask> overdue first, then blocked, then urgent open work, at most $limit */
     public function inTheWay(int $limit = 5): Collection
     {
         $urgent = $this->tasks->filter(fn (ProjectTask $t) => $t->status !== 'done' && $t->priority === 'urgent');
 
-        return $this->overdue()->concat($urgent)->unique('id')->take($limit)->values();
+        return $this->overdue()->concat($this->blocked())->concat($urgent)->unique('id')->take($limit)->values();
     }
 
     /** @return Collection<int, array{milestone: Milestone, done: int, total: int, late: bool}> in planned order */

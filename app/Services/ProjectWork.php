@@ -6,7 +6,9 @@ use App\Models\ChecklistItem;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectComment;
+use App\Models\ProjectLabel;
 use App\Models\ProjectTask;
+use App\Models\SavedView;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use Illuminate\Support\Carbon;
@@ -37,6 +39,10 @@ final class ProjectWork
             if (! $assignee || ! $assignee->belongsToTeam($project->team)) {
                 throw ValidationException::withMessages(['assignee_id' => 'Choose someone in this business.']);
             }
+        }
+
+        if (isset($data['status']) && $data['status'] !== $task->status) {
+            $this->assertCanStart($task, $data['status']);
         }
 
         return DB::transaction(function () use ($task, $data, $by, $project) {
@@ -176,8 +182,9 @@ final class ProjectWork
     }
 
     /**
-     * A new project with the same milestones, tasks and checklists, all reset to not started.
-     * Dates, people, priorities and estimates are kept; comments, activity and history are not.
+     * A new project with the same milestones, tasks, subtasks, checklists, labels and dependencies,
+     * all reset to not started. Dates, people, priorities and estimates are kept; comments,
+     * activity and history are not.
      */
     public function duplicate(Project $source, User $by, string $name): Project
     {
@@ -194,7 +201,13 @@ final class ProjectWork
                     'due_date' => $m->due_date, 'status' => 'pending', 'sort_order' => $m->sort_order,
                 ])->id;
             }
-            foreach ($source->tasks()->with('checklist')->get() as $t) {
+            $taskMap = [];
+            $sourceTasks = $source->tasks()->with(['checklist', 'labels'])->get();
+            $labelMap = [];
+            foreach ($source->labels()->get() as $label) {
+                $labelMap[$label->id] = ProjectLabel::create(['project_id' => $copy->id, 'name' => $label->name])->id;
+            }
+            foreach ($sourceTasks as $t) {
                 $task = ProjectTask::create([
                     'project_id' => $copy->id, 'milestone_id' => $t->milestone_id ? ($milestoneMap[$t->milestone_id] ?? null) : null,
                     'assignee_id' => $t->assignee_id, 'title' => $t->title, 'description' => $t->description,
@@ -204,11 +217,142 @@ final class ProjectWork
                 foreach ($t->checklist as $item) {
                     ChecklistItem::create(['project_task_id' => $task->id, 'body' => $item->body, 'position' => $item->position]);
                 }
+                $task->labels()->sync($t->labels->map(fn ($l) => $labelMap[$l->id] ?? null)->filter()->all());
+                $taskMap[$t->id] = $task->id;
+            }
+            // Second pass, once every copy exists: subtask parents and dependencies point at copies.
+            foreach ($sourceTasks->whereNotNull('parent_id') as $t) {
+                ProjectTask::query()->whereKey($taskMap[$t->id])->update(['parent_id' => $taskMap[$t->parent_id] ?? null]);
+            }
+            $edges = DB::table('task_dependencies')->whereIn('successor_id', array_keys($taskMap))->get(['predecessor_id', 'successor_id', 'type']);
+            foreach ($edges as $e) {
+                if (isset($taskMap[$e->predecessor_id], $taskMap[$e->successor_id])) {
+                    DB::table('task_dependencies')->insert(['predecessor_id' => $taskMap[$e->predecessor_id], 'successor_id' => $taskMap[$e->successor_id], 'type' => $e->type, 'created_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
+                }
             }
             Activity::record('project.created', $copy, ['duplicated_from' => $source->id]);
             Activity::record('project.duplicated', $source, ['copy' => $copy->id]);
 
             return $copy;
         });
+    }
+
+    /** Statuses that mean work has started; a blocked task cannot move into them. */
+    public const STARTED = ['in_progress', 'review', 'done'];
+
+    /** Refuses moving a task that still waits on unfinished work into a started status. */
+    public function assertCanStart(ProjectTask $task, string $status): void
+    {
+        if (! in_array($status, self::STARTED, true)) {
+            return;
+        }
+        $waiting = $task->predecessors()->where('status', '!=', 'done')->pluck('title');
+        if ($waiting->isNotEmpty()) {
+            throw ValidationException::withMessages(['status' => 'Waiting on '.$waiting->map(fn ($t) => '“'.$t.'”')->join(', ', ' and ').'. Finish '.($waiting->count() === 1 ? 'it' : 'them').' first, or remove the dependency.']);
+        }
+    }
+
+    /** $successor waits until $predecessor is done. Same project only, and never a loop. */
+    public function addDependency(ProjectTask $successor, ProjectTask $predecessor, User $by): void
+    {
+        if ($predecessor->project_id !== $successor->project_id) {
+            throw ValidationException::withMessages(['dependency' => 'Choose a task in this project.']);
+        }
+        if ($predecessor->id === $successor->id) {
+            throw ValidationException::withMessages(['dependency' => 'A task cannot wait for itself.']);
+        }
+        if ($successor->predecessors()->whereKey($predecessor->id)->exists()) {
+            throw ValidationException::withMessages(['dependency' => 'It already waits for that task.']);
+        }
+        if ($this->reaches($successor->project_id, $successor->id, $predecessor->id)) {
+            throw ValidationException::withMessages(['dependency' => '“'.$predecessor->title.'” already waits, directly or through other tasks, for this one. That would be a loop.']);
+        }
+
+        DB::transaction(function () use ($successor, $predecessor, $by) {
+            $successor->predecessors()->attach($predecessor->id, ['type' => 'finish_to_start', 'created_by' => $by->id]);
+            Activity::record('dependency.added', $successor, ['predecessor_id' => $predecessor->id], $successor->project);
+        });
+    }
+
+    public function removeDependency(ProjectTask $successor, int $predecessorId): void
+    {
+        if ($successor->predecessors()->detach($predecessorId) > 0) {
+            Activity::record('dependency.removed', $successor, ['predecessor_id' => $predecessorId], $successor->project);
+        }
+    }
+
+    /** Whether $to can be reached from $from by following "is waited for by" edges in one project. */
+    private function reaches(int $projectId, int $from, int $to): bool
+    {
+        $edges = DB::table('task_dependencies')
+            ->join('project_tasks', 'project_tasks.id', '=', 'task_dependencies.predecessor_id')
+            ->where('project_tasks.project_id', $projectId)
+            ->get(['predecessor_id', 'successor_id'])
+            ->groupBy('predecessor_id');
+        $seen = [$from => true];
+        $queue = [$from];
+        while ($queue !== []) {
+            $current = array_shift($queue);
+            foreach ($edges->get($current, collect()) as $edge) {
+                $next = (int) $edge->successor_id;
+                if ($next === $to) {
+                    return true;
+                }
+                if (! isset($seen[$next])) {
+                    $seen[$next] = true;
+                    $queue[] = $next;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** A subtask sits one level under its parent and shares its milestone. */
+    public function addSubtask(ProjectTask $parent, string $title): ProjectTask
+    {
+        if ($parent->parent_id !== null) {
+            throw ValidationException::withMessages(['subtask' => 'A subtask cannot have its own subtasks. Add it to “'.$parent->parent?->title.'” instead.']);
+        }
+
+        return DB::transaction(function () use ($parent, $title) {
+            $sub = ProjectTask::create([
+                'project_id' => $parent->project_id, 'milestone_id' => $parent->milestone_id, 'parent_id' => $parent->id,
+                'title' => trim($title), 'status' => 'backlog', 'priority' => 'medium',
+                'sort_order' => (int) $parent->subtasks()->max('sort_order') + 1,
+            ]);
+            Activity::record('subtask.added', $sub, ['parent_id' => $parent->id], $parent->project);
+            $sub->milestone?->syncStatusFromTasks();
+
+            return $sub;
+        });
+    }
+
+    /** Adds a label by name, reusing the project's label of the same name in any letter case. */
+    public function addLabel(ProjectTask $task, string $name): void
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name) ?? '');
+        if ($name === '' || mb_strlen($name) > 40) {
+            throw ValidationException::withMessages(['label' => 'A label is 1 to 40 characters.']);
+        }
+        $label = ProjectLabel::query()->where('project_id', $task->project_id)->whereRaw('lower(name) = ?', [mb_strtolower($name)])->first()
+            ?? ProjectLabel::create(['project_id' => $task->project_id, 'name' => $name]);
+        $task->labels()->syncWithoutDetaching([$label->id]);
+        Activity::record('label.added', $task, ['label_id' => $label->id], $task->project);
+    }
+
+    public function removeLabel(ProjectTask $task, int $labelId): void
+    {
+        if ($task->labels()->detach($labelId) > 0) {
+            Activity::record('label.removed', $task, ['label_id' => $labelId], $task->project);
+        }
+    }
+
+    /** @param array<string, mixed> $filters */
+    public function saveView(User $user, Project $project, string $name, array $filters): SavedView
+    {
+        $clean = array_filter(array_intersect_key($filters, array_flip(['status', 'who', 'late', 'q', 'label'])), fn ($v) => $v !== '' && $v !== null && $v !== false);
+
+        return SavedView::create(['user_id' => $user->id, 'project_id' => $project->id, 'name' => trim($name), 'filters' => $clean]);
     }
 }

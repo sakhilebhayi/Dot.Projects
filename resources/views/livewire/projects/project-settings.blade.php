@@ -52,7 +52,7 @@
         @can('duplicate', $project)
             <section class="pg-card" aria-labelledby="dup-h">
                 <div class="pg-card-head"><h2 id="dup-h">Duplicate</h2></div>
-                <p class="pg-help" style="margin:0 0 10px">A new project with the same milestones, tasks, checklists, dates and people, all set to not started. Comments and history stay here.</p>
+                <p class="pg-help" style="margin:0 0 10px">A new project with the same milestones, tasks, subtasks, checklists, labels, dependencies, dates and people, all set to not started. Comments and history stay here.</p>
                 <form wire:submit="duplicate" class="pg-form" style="gap:8px">
                     <label for="p-copy" class="pg-label" style="margin:0">Name of the copy</label>
                     <input id="p-copy" type="text" wire:model="copyName" maxlength="255" class="pg-input" required>

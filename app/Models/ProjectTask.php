@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
@@ -12,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $project_id
  * @property int|null $milestone_id
+ * @property int|null $parent_id
  * @property int|null $assignee_id
  * @property string $title
  * @property string|null $description
@@ -25,11 +28,12 @@ use Illuminate\Support\Carbon;
  * @property-read Project $project
  * @property-read Milestone|null $milestone
  * @property-read User|null $assignee
+ * @property-read Collection<int, ProjectTask> $predecessors
  */
 class ProjectTask extends Model
 {
     protected $fillable = [
-        'project_id', 'milestone_id', 'assignee_id',
+        'project_id', 'milestone_id', 'parent_id', 'assignee_id',
         'title', 'description', 'status', 'priority', 'start_date', 'due_date', 'estimate_minutes', 'completed_at', 'sort_order',
     ];
 
@@ -56,6 +60,50 @@ class ProjectTask extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    /** @return BelongsTo<ProjectTask, $this> */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(ProjectTask::class, 'parent_id');
+    }
+
+    /** @return HasMany<ProjectTask, $this> */
+    public function subtasks(): HasMany
+    {
+        return $this->hasMany(ProjectTask::class, 'parent_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** Tasks this one waits for (finish-to-start). @return BelongsToMany<ProjectTask, $this> */
+    public function predecessors(): BelongsToMany
+    {
+        return $this->belongsToMany(ProjectTask::class, 'task_dependencies', 'successor_id', 'predecessor_id')->withTimestamps();
+    }
+
+    /** Tasks waiting for this one. @return BelongsToMany<ProjectTask, $this> */
+    public function successors(): BelongsToMany
+    {
+        return $this->belongsToMany(ProjectTask::class, 'task_dependencies', 'predecessor_id', 'successor_id')->withTimestamps();
+    }
+
+    /** @return BelongsToMany<ProjectLabel, $this> */
+    public function labels(): BelongsToMany
+    {
+        return $this->belongsToMany(ProjectLabel::class, 'project_label_task')->orderBy('name');
+    }
+
+    /**
+     * Blocked: not done yet, and waiting on at least one task that is not done. Uses the loaded
+     * predecessors when present, so lists can eager-load them.
+     */
+    public function isBlocked(): bool
+    {
+        if ($this->status === 'done') {
+            return false;
+        }
+
+        return ($this->relationLoaded('predecessors') ? $this->predecessors : $this->predecessors()->get(['project_tasks.id', 'status']))
+            ->contains(fn ($p) => $p->status !== 'done');
     }
 
     /** @return HasMany<ChecklistItem, $this> */

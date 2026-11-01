@@ -60,22 +60,24 @@
             </section>
 
             <section class="pg-card pg-s5" aria-labelledby="way-h">
-                <div class="pg-card-head"><h2 id="way-h">In the way</h2><small>{{ $summary->overdue()->count() }} overdue</small></div>
+                <div class="pg-card-head"><h2 id="way-h">In the way</h2><small>{{ $summary->overdue()->count() }} overdue, {{ $summary->blocked()->count() }} blocked</small></div>
                 @forelse ($summary->inTheWay() as $task)
                     @php $late = $task->due_date && $task->due_date->lt($summary->today); @endphp
                     <div class="pg-row">
                         <div>
                             @if ($task->assignee)<span class="pg-avatar" style="margin-right:6px;vertical-align:-6px" aria-hidden="true">{{ App\Services\ProjectSummary::initials($task->assignee->name) }}</span>@endif{{ $task->title }}
-                            <div class="pg-sub">{{ $task->assignee?->name ?? 'Unassigned' }}@if ($task->milestone), {{ $task->milestone->title }}@endif</div>
+                            <div class="pg-sub">{{ $task->assignee?->name ?? 'Unassigned' }}@if ($task->milestone), {{ $task->milestone->title }}@endif @if ($task->isBlocked()), waits for {{ $task->predecessors->where('status', '!=', 'done')->pluck('title')->map(fn ($t) => Str::limit($t, 30))->join(', ') }}@endif</div>
                         </div>
-                        @if ($late)
+                        @if ($task->isBlocked() && ! $late)
+                            <span class="pg-pill pg-pill--warning" title="Waits for {{ $task->predecessors->where('status', '!=', 'done')->pluck('title')->join(', ') }}">Blocked</span>
+                        @elseif ($late)
                             <span class="pg-pill pg-pill--negative">{{ (int) $task->due_date->diffInDays($summary->today) }} {{ Str::plural('day', (int) $task->due_date->diffInDays($summary->today)) }} late</span>
                         @else
                             <span class="pg-pill pg-pill--warning">Urgent</span>
                         @endif
                     </div>
                 @empty
-                    <p class="pg-empty">Nothing is overdue or marked urgent.</p>
+                    <p class="pg-empty">Nothing is overdue, blocked or marked urgent.</p>
                 @endforelse
             </section>
 
