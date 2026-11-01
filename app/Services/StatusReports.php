@@ -90,7 +90,7 @@ final class StatusReports
         Activity::record('report.published', $r, ['overall' => $r->overall], $r->project);
 
         $label = ProjectReport::RATINGS[$r->overall];
-        foreach ($r->project->team->allUsers() as $member) {
+        foreach ($r->project->people() as $member) {
             if ($member->id !== $by->id) {
                 $member->notify(new GovernanceNotification('report_published', 'Status report: '.$label, $by->name.' published '.$r->ref().' for "'.$r->project->name.'" ('.$r->period_from->format('j M').' to '.$r->period_to->format('j M').'): '.$label.'.', $r->project_id, route('projects.reports.show', [$r->project_id, $r])));
             }

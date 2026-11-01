@@ -58,6 +58,7 @@ final class ActivityFeed
         $meetings = $refs(ProjectMeeting::class, ['id', 'number', 'title']);
         $actions = $refs(ProjectAction::class, ['id', 'number', 'title']);
         $reports = ProjectReport::query()->whereIn('id', $lines->where('subject_type', (new ProjectReport)->getMorphClass())->pluck('subject_id'))->get(['id', 'number'])->mapWithKeys(fn ($r) => [$r->id => $r->ref()]);
+        $people = User::query()->whereIn('id', $lines->filter(fn ($l) => str_starts_with($l->action, 'member.'))->map(fn ($l) => $l->changes['user_id'] ?? null)->filter())->pluck('name', 'id');
         $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
@@ -140,6 +141,10 @@ final class ActivityFeed
                 'report.updated' => 'edited the draft status report '.($reports->get($l->subject_id) ?? ''),
                 'report.published' => 'published the status report '.($reports->get($l->subject_id) ?? '').(isset($c['overall']) ? ': '.mb_strtolower(ProjectReport::RATINGS[$c['overall']] ?? (string) $c['overall']) : ''),
                 'report.discarded' => 'discarded a draft status report',
+                'member.added' => 'added '.($people->get($c['user_id'] ?? 0) ?? 'someone').' to the project as '.mb_strtolower(Project::ROLES[$c['role'] ?? ''] ?? 'member'),
+                'member.role_changed' => 'made '.($people->get($c['user_id'] ?? 0) ?? 'someone').' a '.mb_strtolower(Project::ROLES[$c['role']['to'] ?? ''] ?? 'member').' of the project',
+                'member.removed' => 'took '.($people->get($c['user_id'] ?? 0) ?? 'someone').' off the project',
+                'project.visibility_changed' => ($c['visibility']['to'] ?? '') === 'private' ? 'made the project private' : 'opened the project to the business',
                 'matrix.changed' => 'set the risk matrix to '.($c['size']['to'] ?? '?').' by '.($c['size']['to'] ?? '?'),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };

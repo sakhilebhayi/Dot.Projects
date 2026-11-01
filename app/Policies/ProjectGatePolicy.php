@@ -11,7 +11,7 @@ class ProjectGatePolicy
 {
     public function view(User $user, ProjectGate $item): bool
     {
-        return $user->belongsToTeam(Project::owningTeam($item->project_id));
+        return Project::visibleTo($user, $item->project_id);
     }
 
     public function update(User $user, ProjectGate $item): bool

@@ -13,7 +13,7 @@ class MilestonePolicy
 
     public function view(User $user, Milestone $milestone): bool
     {
-        return $user->belongsToTeam(Project::owningTeam($milestone->project_id));
+        return Project::visibleTo($user, $milestone->project_id);
     }
 
     public function update(User $user, Milestone $milestone): bool

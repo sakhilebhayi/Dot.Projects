@@ -22,6 +22,6 @@ class AiPlanLogPolicy
 
     public function view(User $user, AiPlanLog $log): bool
     {
-        return $user->belongsToTeam(Project::owningTeam($log->project_id));
+        return Project::visibleTo($user, $log->project_id);
     }
 }

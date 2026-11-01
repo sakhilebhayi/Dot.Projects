@@ -322,3 +322,16 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   facts into the report, and tells the team in the app. A published report is a record that reads
   as a document and prints cleanly; the overview shows the latest rating. **P5 governance is
   complete** (risks, issues, matrix, changes, decisions, gates, meetings, actions, reports).
+- **P6a project roles and private projects** (2026-11-01): the owner's decision on roles, built.
+  Existing projects stay open to the whole business, exactly as before. A project can be made
+  private (at creation or in Settings, by its owner or the business owner); then only its owner,
+  the people added to it and the business owner can see it, in every list and by every link, and
+  so can see its tasks, risks, issues, changes, decisions, gates, meetings, actions and reports.
+  People are added from the business with a role: manager (changes its work and manages its
+  people), member (changes its work) or viewer (reads). Someone who can only read in the business
+  can only be a project viewer. Work, approvals and notices only go to people who can see the
+  project, and making a project private is refused while someone with open work on it would lose
+  sight of it. The rules live in one place (Project::canBeSeenBy, canBeChangedBy, canBeManagedBy,
+  people()) used by every policy, plus a fail-closed query scope. The "external" and "client"
+  roles need sign-in for people outside the business and come with the client portal (P11).
+  Next, P6b: time entries, timers and timesheets.

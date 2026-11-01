@@ -87,7 +87,7 @@ class DecisionPanel extends Component
     public function render(): View
     {
         return view('livewire.governance.decision-panel', [
-            'people' => $this->project->team->allUsers()->sortBy('name')->values(),
+            'people' => $this->project->people(),
             'later' => $this->project->decisions()->where('status', 'decided')->where('number', '>', $this->decision->number)->orderBy('number')->get(['id', 'number', 'title']),
             'history' => ActivityFeed::forSubject($this->decision),
             'canEdit' => auth()->user()->can('update', $this->decision),

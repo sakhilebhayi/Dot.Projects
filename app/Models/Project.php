@@ -4,13 +4,18 @@ namespace App\Models;
 
 use App\Events\ProjectClosed;
 use App\Models\Concerns\HasTeamScope;
+use App\Models\Concerns\TeamScopeBypass;
 use App\Services\Activity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property int $id
@@ -22,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $start_date
  * @property Carbon|null $due_date
  * @property Carbon|null $archived_at
+ * @property string $visibility team (everyone in the business) or private (its members only)
  * @property array<string, mixed>|null $risk_matrix
  * @property int|null $archived_by
  * @property-read Team $team
@@ -32,7 +38,7 @@ class Project extends Model
     use HasTeamScope;
 
     protected $fillable = [
-        'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date',
+        'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'visibility',
         'closure_reviewed_by', 'closure_reviewed_at', 'closure_rejected_reason',
     ];
 
@@ -42,6 +48,88 @@ class Project extends Model
         'archived_at' => 'datetime',
         'risk_matrix' => 'array',
     ];
+
+    /** Roles a person can hold on a project. Managers run it; members change its work; viewers read. */
+    public const ROLES = ['manager' => 'Manager', 'member' => 'Member', 'viewer' => 'Viewer'];
+
+    protected static function booted(): void
+    {
+        // Private projects are invisible to everyone outside them, in every query, by default.
+        // Policies read with withoutTeamScope() and check canBeSeenBy() themselves.
+        static::addGlobalScope('private', function (Builder $builder): void {
+            if (TeamScopeBypass::active()) {
+                return;
+            }
+            $user = Auth::user();
+            if ($user === null) {
+                return; // the team scope already returns nothing
+            }
+            $table = $builder->getModel()->getTable();
+            $builder->where(fn (Builder $q) => $q->where($table.'.visibility', 'team')
+                ->orWhere($table.'.owner_id', $user->getAuthIdentifier())
+                ->orWhereIn($table.'.team_id', fn ($t) => $t->select('id')->from('teams')->where('user_id', $user->getAuthIdentifier()))
+                ->orWhereExists(fn ($m) => $m->selectRaw('1')->from('project_members')->whereColumn('project_members.project_id', $table.'.id')->where('project_members.user_id', $user->getAuthIdentifier())));
+        });
+    }
+
+    public function isPrivate(): bool
+    {
+        return $this->visibility === 'private';
+    }
+
+    /** The person's role on this project, if they were added to it. */
+    public function roleOf(User $user): ?string
+    {
+        $role = DB::table('project_members')->where('project_id', $this->id)->where('user_id', $user->id)->value('role');
+
+        return $role === null ? null : (string) $role;
+    }
+
+    /**
+     * Who may see the project: anyone in its business for a team project; for a private one, its
+     * members, its owner and the owner of the business (who answers for everything in it).
+     */
+    public function canBeSeenBy(User $user): bool
+    {
+        if (! $user->belongsToTeam($this->team)) {
+            return false;
+        }
+
+        return ! $this->isPrivate() || $user->id === $this->owner_id || $user->ownsTeam($this->team) || $this->roleOf($user) !== null;
+    }
+
+    /**
+     * Who may change its work: someone who can see it and holds the business's "update"
+     * permission, while it is not archived; on a private project, not a project viewer.
+     */
+    public function canBeChangedBy(User $user): bool
+    {
+        if ($this->isArchived() || ! $user->hasTeamPermission($this->team, 'update') || ! $this->canBeSeenBy($user)) {
+            return false;
+        }
+
+        return ! $this->isPrivate() || $user->id === $this->owner_id || $user->ownsTeam($this->team) || in_array($this->roleOf($user), ['manager', 'member'], true);
+    }
+
+    /** Who may add people, change their roles and (with the owner) the project's visibility. */
+    public function canBeManagedBy(User $user): bool
+    {
+        return $this->canBeChangedBy($user) && ($user->id === $this->owner_id || $user->ownsTeam($this->team) || $this->roleOf($user) === 'manager');
+    }
+
+    /** Everyone in the business who can see this project, by name: the people work can go to. @return Collection<int, User> */
+    public function people(): Collection
+    {
+        return $this->team->allUsers()->filter(fn (User $u) => $this->canBeSeenBy($u))->sortBy('name')->values();
+    }
+
+    /** Whether $user may see the project $projectId, read without the scopes (policies use it). */
+    public static function visibleTo(User $user, ?int $projectId): bool
+    {
+        $project = $projectId === null ? null : static::withoutTeamScope(fn () => static::query()->with('team')->find($projectId));
+
+        return $project !== null && $project->canBeSeenBy($user);
+    }
 
     /**
      * The team a project belongs to, read without the team scope. Policies use it: they are the
@@ -68,7 +156,7 @@ class Project extends Model
         }
         $project = static::withoutTeamScope(fn () => static::query()->with('team')->find($projectId));
 
-        return $project !== null && ! $project->isArchived() && $user->hasTeamPermission($project->team, 'update');
+        return $project !== null && $project->canBeChangedBy($user);
     }
 
     /** @return BelongsTo<Team, $this> */

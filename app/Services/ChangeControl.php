@@ -27,7 +27,7 @@ final class ChangeControl
     /** People who may approve a change: members who can change the business's projects. @return Collection<int, User> */
     public function approvers(Project $project): Collection
     {
-        return $project->team->allUsers()->filter(fn (User $u) => $u->hasTeamPermission($project->team, 'update'))->sortBy('name')->values();
+        return $project->people()->filter(fn (User $u) => $project->canBeChangedBy($u))->values();
     }
 
     /** @param array<string, mixed> $data */
@@ -262,7 +262,7 @@ final class ChangeControl
             'context' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'options' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'outcome' => ['sometimes', 'nullable', 'string', 'max:5000'],
-            'owner_id' => ['sometimes', 'nullable', 'integer', Rule::in($project->team->allUsers()->pluck('id')->map(fn ($id) => (int) $id)->all())],
+            'owner_id' => ['sometimes', 'nullable', 'integer', Rule::in($project->people()->pluck('id')->map(fn ($id) => (int) $id)->all())],
             'decide_by' => ['sometimes', 'nullable', 'date'],
         ], ['owner_id.in' => 'Choose someone in this business.'])->validate();
     }

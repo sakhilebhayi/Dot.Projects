@@ -55,7 +55,7 @@ final class Meetings
             $changes['fields'] = $edited;
         }
         if ($attendees !== null) {
-            $members = $m->project->team->allUsers()->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $members = $m->project->people()->pluck('id')->map(fn ($id) => (int) $id)->all();
             $attendees = array_values(array_unique(array_map('intval', $attendees)));
             if (array_diff($attendees, $members) !== []) {
                 throw ValidationException::withMessages(['attendees' => 'Attendees are people in this business; add guests by name.']);
@@ -156,7 +156,7 @@ final class Meetings
     {
         return Validator::make($data, [
             'title' => [$creating ? 'required' : 'sometimes', 'string', 'max:255'],
-            'owner_id' => ['sometimes', 'nullable', 'integer', Rule::in($project->team->allUsers()->pluck('id')->map(fn ($id) => (int) $id)->all())],
+            'owner_id' => ['sometimes', 'nullable', 'integer', Rule::in($project->people()->pluck('id')->map(fn ($id) => (int) $id)->all())],
             'due_date' => ['sometimes', 'nullable', 'date'],
         ], ['owner_id.in' => 'Choose someone in this business.'])->validate();
     }

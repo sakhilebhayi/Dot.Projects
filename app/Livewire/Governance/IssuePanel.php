@@ -110,7 +110,7 @@ class IssuePanel extends Component
     public function render(): View
     {
         return view('livewire.governance.issue-panel', [
-            'people' => $this->project->team->allUsers()->sortBy('name')->values(),
+            'people' => $this->project->people(),
             'history' => ActivityFeed::forSubject($this->issue),
             'canEdit' => auth()->user()->can('update', $this->issue),
         ]);

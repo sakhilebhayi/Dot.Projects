@@ -71,7 +71,7 @@
                                 $pastDue = $project->status !== 'completed' && $project->due_date && $project->due_date->lt($today);
                             @endphp
                             <tr>
-                                <td class="pg-name"><a href="{{ route('projects.show', $project) }}">{{ $project->name }}</a>@if ($project->description)<span class="pg-sub">{{ $project->description }}</span>@endif</td>
+                                <td class="pg-name"><a href="{{ route('projects.show', $project) }}">{{ $project->name }}</a>@if ($project->isPrivate()) <span class="pg-pill" style="margin-left:4px">Private</span>@endif @if ($project->description)<span class="pg-sub">{{ $project->description }}</span>@endif</td>
                                 <td data-label="Status"><span class="pg-pill {{ $pill($project->status) }}">{{ $project->archived_at ? 'Archived' : ($statuses[$project->status] ?? Str::headline($project->status)) }}</span></td>
                                 <td data-label="Next milestone">@if ($next){{ $next->title }}<span class="pg-sub {{ $next->due_date->lt($today) ? 'pg-neg' : '' }}">{{ $next->due_date->lt($today) ? 'Was due '.$next->due_date->format('j M') : $next->due_date->format('j M Y') }}</span>@else<span class="pg-muted">None dated</span>@endif</td>
                                 <td data-label="Tasks done">
