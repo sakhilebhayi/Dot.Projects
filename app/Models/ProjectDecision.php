@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $decided_by
  * @property Carbon|null $decided_on
  * @property int|null $superseded_by
+ * @property int|null $meeting_id
  * @property int|null $created_by
  * @property Carbon $created_at
  * @property-read Project $project
@@ -37,7 +38,7 @@ class ProjectDecision extends Model
 {
     public const STATUSES = ['proposed' => 'Needs deciding', 'decided' => 'Decided', 'superseded' => 'Superseded'];
 
-    protected $fillable = ['title', 'context', 'options', 'outcome', 'owner_id', 'decide_by'];
+    protected $fillable = ['title', 'context', 'options', 'outcome', 'owner_id', 'decide_by', 'meeting_id'];
 
     protected $casts = ['decide_by' => 'date', 'decided_on' => 'date'];
 
@@ -69,6 +70,12 @@ class ProjectDecision extends Model
     public function change(): HasOne
     {
         return $this->hasOne(ProjectChange::class, 'decision_id');
+    }
+
+    /** @return BelongsTo<ProjectMeeting, $this> */
+    public function meeting(): BelongsTo
+    {
+        return $this->belongsTo(ProjectMeeting::class, 'meeting_id');
     }
 
     public function ref(): string
