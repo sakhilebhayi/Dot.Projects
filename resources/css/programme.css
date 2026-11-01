@@ -450,3 +450,26 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-people-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: 8px 14px; }
 .pg-radio input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--pg-primary); margin: 0; }
 .pg-quick-action { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+
+/* ---------- Status reports ----------
+   A published report reads as a document: one measured column, sections ruled apart, the
+   manager's words first and the frozen facts after. Printing drops the app around it. */
+.pg-report { max-width: 780px; }
+.pg-report-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.pg-report-head h2 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+.pg-report .pg-pill--rating { font-size: 14px; padding: 2px 12px; }
+.pg-report-text h3, .pg-facts h3 { font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+.pg-report-text section { padding: 14px 0; border-top: 1px solid var(--pg-rule); }
+.pg-report-text p { margin: 0; white-space: pre-line; max-width: 70ch; line-height: 1.6; }
+.pg-facts { display: grid; gap: 0; }
+.pg-facts section { padding: 12px 0; border-top: 1px solid var(--pg-rule); }
+.pg-facts section:first-child { border-top: 0; padding-top: 0; }
+.pg-factlist { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
+.pg-reasons { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--pg-muted); }
+@media print {
+    .pg-rail, .pg-top, .pg-views, .pg-subnav, .pg-crumb, .pg-titlerow, .pg-noprint { display: none !important; }
+    .pg-content { padding: 0 !important; margin: 0 !important; }
+    .pg-card { border: 0 !important; padding: 0 !important; }
+    .pg-report { max-width: none; }
+    body { background: var(--pg-surface) !important; }
+}

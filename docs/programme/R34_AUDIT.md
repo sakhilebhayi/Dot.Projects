@@ -311,3 +311,14 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   called out, owner and date changed in place, and the meeting it came from. Owners and gate
   approvers are notified. The overview's Governance card adds held or due gates and late actions.
   Next, P5d: status reports.
+- **P5d status reports** (2026-11-01): status reports (SR-01) under Governance. One draft at a time
+  covers the days since the last report (or the last week). Beside the manager's words (summary,
+  done in this period, next, help needed) the draft shows the project's facts live: the schedule
+  forecast against the due date and the latest baseline, work done in the period, overdue and
+  blocked work, the next milestone, risks and issues (with the most serious listed), changes and
+  decisions waiting and made in the period, the next gate and gates decided, and actions open, late
+  and done. A suggested rating (on track, at risk, off track) is shown with the facts behind it; the
+  rating the report carries is the manager's. Publishing needs a rating and a summary, freezes the
+  facts into the report, and tells the team in the app. A published report is a record that reads
+  as a document and prints cleanly; the overview shows the latest rating. **P5 governance is
+  complete** (risks, issues, matrix, changes, decisions, gates, meetings, actions, reports).

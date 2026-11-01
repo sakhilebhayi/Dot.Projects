@@ -82,6 +82,8 @@ Route::middleware([
     Route::get('/projects/{project}/meetings', [GovernanceController::class, 'meetings'])->name('projects.meetings');
     Route::get('/projects/{project}/meetings/{meeting}', [GovernanceController::class, 'meeting'])->scopeBindings()->name('projects.meetings.show');
     Route::get('/projects/{project}/actions', [GovernanceController::class, 'actions'])->name('projects.actions');
+    Route::get('/projects/{project}/reports', [GovernanceController::class, 'reports'])->name('projects.reports');
+    Route::get('/projects/{project}/reports/{report}', [GovernanceController::class, 'report'])->scopeBindings()->name('projects.reports.show');
     Route::get('/projects/{project}/settings', [ProjectController::class, 'settings'])->name('projects.settings');
     Route::get('/projects/{project}/tasks/{task}', [ProjectController::class, 'task'])->scopeBindings()->name('projects.tasks.show');
 });
