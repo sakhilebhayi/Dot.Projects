@@ -60,10 +60,9 @@ class ProjectBoard extends Component
     #[Computed]
     public function assignableUsers()
     {
-        // Assignment is scoped to the project's team (not the separate `project_members`
-        // pivot, which has no UI to populate it yet) — matches the team-membership check
-        // enforced server-side in assignTask().
-        return $this->project->team->allUsers();
+        // The people who can see the project (everyone in the business, or a private project's
+        // own people), matching the check enforced server-side in assignTask().
+        return $this->project->people();
     }
 
     #[Computed]
@@ -160,7 +159,7 @@ class ProjectBoard extends Component
             // Only allow assigning to someone who actually belongs to the project's team,
             // regardless of what a tampered client sends.
             $assignee = User::find($userId);
-            abort_unless($assignee && $assignee->belongsToTeam($this->project->team), 403);
+            abort_unless($assignee && $this->project->canBeSeenBy($assignee), 403);
         }
 
         $from = $task->assignee_id;

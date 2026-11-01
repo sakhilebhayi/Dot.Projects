@@ -66,7 +66,7 @@ class WorkList extends Component
     #[Computed]
     public function people()
     {
-        return $this->project->team->allUsers()->sortBy('name')->values();
+        return $this->project->people();
     }
 
     #[Computed]

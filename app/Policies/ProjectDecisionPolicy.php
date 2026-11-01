@@ -11,7 +11,7 @@ class ProjectDecisionPolicy
 {
     public function view(User $user, ProjectDecision $item): bool
     {
-        return $user->belongsToTeam(Project::owningTeam($item->project_id));
+        return Project::visibleTo($user, $item->project_id);
     }
 
     public function update(User $user, ProjectDecision $item): bool

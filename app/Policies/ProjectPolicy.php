@@ -25,7 +25,7 @@ class ProjectPolicy
      */
     public function view(User $user, Project $project): bool
     {
-        return $user->belongsToTeam($project->team);
+        return $project->canBeSeenBy($user);
     }
 
     /**
@@ -44,8 +44,9 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
-        // An archived project is read-only for everyone until it is restored.
-        return ! $project->isArchived() && $user->hasTeamPermission($project->team, 'update');
+        // An archived project is read-only for everyone until it is restored; a private one is
+        // changed only by its owner, its managers and members (and the business owner).
+        return $project->canBeChangedBy($user);
     }
 
     /**
@@ -54,14 +55,14 @@ class ProjectPolicy
      */
     public function archive(User $user, Project $project): bool
     {
-        return $user->belongsToTeam($project->team)
+        return $project->canBeSeenBy($user)
             && ($user->id === $project->owner_id ? $user->hasTeamPermission($project->team, 'update') : $user->hasTeamPermission($project->team, 'delete'));
     }
 
     /** Duplicating makes a new project, so it needs the "create" permission. */
     public function duplicate(User $user, Project $project): bool
     {
-        return $user->belongsToTeam($project->team) && $user->hasTeamPermission($project->team, 'create');
+        return $project->canBeSeenBy($user) && $user->hasTeamPermission($project->team, 'create');
     }
 
     /**
@@ -70,7 +71,7 @@ class ProjectPolicy
      */
     public function comment(User $user, Project $project): bool
     {
-        return ! $project->isArchived() && $user->hasTeamPermission($project->team, 'create');
+        return $project->canBeChangedBy($user) && $user->hasTeamPermission($project->team, 'create');
     }
 
     /**
@@ -80,7 +81,7 @@ class ProjectPolicy
      */
     public function delete(User $user, Project $project): bool
     {
-        return $user->hasTeamPermission($project->team, 'update');
+        return $project->canBeSeenBy($user) && $user->hasTeamPermission($project->team, 'update');
     }
 
     /**
@@ -94,5 +95,17 @@ class ProjectPolicy
     {
         return $user->id === $project->owner_id
             && $user->hasTeamPermission($project->team, 'update');
+    }
+
+    /** Add and remove people and set their roles: the owner, a project manager or the business owner. */
+    public function manageMembers(User $user, Project $project): bool
+    {
+        return $project->canBeManagedBy($user);
+    }
+
+    /** Make the project private or open it to the business: its owner or the business owner. */
+    public function changeVisibility(User $user, Project $project): bool
+    {
+        return $project->canBeChangedBy($user) && ($user->id === $project->owner_id || $user->ownsTeam($project->team));
     }
 }

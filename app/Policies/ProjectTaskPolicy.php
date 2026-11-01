@@ -17,7 +17,7 @@ class ProjectTaskPolicy
      */
     public function view(User $user, ProjectTask $task): bool
     {
-        return $user->belongsToTeam(Project::owningTeam($task->project_id));
+        return Project::visibleTo($user, $task->project_id);
     }
 
     public function update(User $user, ProjectTask $task): bool

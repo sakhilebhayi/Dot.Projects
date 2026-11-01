@@ -130,7 +130,7 @@ class MeetingPanel extends Component
     public function render(): View
     {
         return view('livewire.governance.meeting-panel', [
-            'people' => $this->project->team->allUsers()->sortBy('name')->values(),
+            'people' => $this->project->people(),
             'actions' => $this->meeting->actions()->with('owner:id,name')->get(),
             'decisions' => $this->meeting->decisions()->get(),
             'history' => ActivityFeed::forSubject($this->meeting),

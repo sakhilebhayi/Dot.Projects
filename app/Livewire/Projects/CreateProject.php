@@ -32,6 +32,10 @@ class CreateProject extends Component
     #[Validate('nullable|date|after_or_equal:startDate')]
     public string $dueDate = '';
 
+    /** Who can see the new project: everyone in the business, or only the people on it. */
+    #[Validate('required|in:team,private')]
+    public string $visibility = 'team';
+
     public bool $generating = false;
 
     public ?string $aiError = null;
@@ -64,6 +68,7 @@ class CreateProject extends Component
             'name' => $this->name,
             'description' => $this->description ?: null,
             'status' => $this->status,
+            'visibility' => $this->visibility,
             'start_date' => $this->startDate ?: null,
             'due_date' => $this->dueDate ?: null,
         ]);
@@ -106,6 +111,7 @@ class CreateProject extends Component
             'name' => $this->name,
             'description' => $this->description ?: null,
             'status' => $this->status,
+            'visibility' => $this->visibility,
             'start_date' => $this->startDate ?: null,
             'due_date' => $this->dueDate ?: null,
         ]);

@@ -38,7 +38,7 @@ final class ProjectWork
         }
         if (isset($data['assignee_id'])) {
             $assignee = User::query()->find($data['assignee_id']);
-            if (! $assignee || ! $assignee->belongsToTeam($project->team)) {
+            if (! $assignee || ! $project->canBeSeenBy($assignee)) {
                 throw ValidationException::withMessages(['assignee_id' => 'Choose someone in this business.']);
             }
         }

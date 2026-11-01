@@ -36,6 +36,15 @@
             </div>
         </div>
 
+        <fieldset class="pg-fieldset">
+            <legend>Who can see it</legend>
+            <div style="display:grid;gap:8px">
+                <label class="pg-radio"><input type="radio" wire:model="visibility" value="team"> Everyone in {{ auth()->user()->currentTeam?->name ?? 'the business' }}</label>
+                <label class="pg-radio"><input type="radio" wire:model="visibility" value="private"> Only people I add (private)</label>
+            </div>
+            <p class="pg-help" style="margin:6px 0 0">You can add people and change this later in the project's settings.</p>
+        </fieldset>
+
         @if ($aiError)
             <div class="pg-notice" role="alert" style="margin:0">{{ $aiError }}</div>
         @endif

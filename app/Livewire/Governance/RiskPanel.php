@@ -127,7 +127,7 @@ class RiskPanel extends Component
     {
         return view('livewire.governance.risk-panel', [
             'matrix' => RiskMatrix::forProject($this->project),
-            'people' => $this->project->team->allUsers()->sortBy('name')->values(),
+            'people' => $this->project->people(),
             'history' => ActivityFeed::forSubject($this->risk),
             'issues' => $this->risk->issues()->get(['id', 'number', 'title', 'status']),
             'canEdit' => auth()->user()->can('update', $this->risk),

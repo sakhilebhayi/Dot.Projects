@@ -22,7 +22,7 @@ class DashboardController extends Controller
         $today = Carbon::today()->toDateString();
 
         $projects = Project::query()
-            ->select(['id', 'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'archived_at', 'created_at', 'updated_at'])
+            ->select(['id', 'team_id', 'owner_id', 'name', 'description', 'status', 'visibility', 'start_date', 'due_date', 'archived_at', 'created_at', 'updated_at'])
             ->withCount([
                 'tasks',
                 'tasks as done_tasks_count' => fn ($q) => $q->where('status', 'done'),

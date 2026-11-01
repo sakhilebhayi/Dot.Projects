@@ -246,7 +246,7 @@ final class Governance
     /** @return list<int> */
     private function members(Project $project): array
     {
-        return $project->team->allUsers()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        return $project->people()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
     }
 
     /** @param class-string<ProjectRisk|ProjectIssue> $model */

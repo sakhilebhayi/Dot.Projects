@@ -106,7 +106,7 @@ class RiskRegister extends Component
     public function render(): View
     {
         return view('livewire.governance.risk-register', [
-            'people' => $this->project->team->allUsers()->sortBy('name')->values(),
+            'people' => $this->project->people(),
             'canEdit' => auth()->user()->can('update', $this->project),
         ]);
     }

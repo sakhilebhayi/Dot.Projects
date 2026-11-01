@@ -82,7 +82,7 @@ class IssueLog extends Component
     public function render(): View
     {
         return view('livewire.governance.issue-log', [
-            'people' => $this->project->team->allUsers()->sortBy('name')->values(),
+            'people' => $this->project->people(),
             'canEdit' => auth()->user()->can('update', $this->project),
         ]);
     }

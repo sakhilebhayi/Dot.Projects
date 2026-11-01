@@ -5,7 +5,6 @@ namespace App\Policies;
 use App\Models\Project;
 use App\Models\ProjectComment;
 use App\Models\ProjectTask;
-use App\Models\Team;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -19,7 +18,7 @@ class ProjectCommentPolicy
      */
     public function view(User $user, ProjectComment $comment): bool
     {
-        return $user->belongsToTeam($this->team($comment));
+        return Project::visibleTo($user, $this->projectId($comment));
     }
 
     public function update(User $user, ProjectComment $comment): bool
@@ -33,23 +32,22 @@ class ProjectCommentPolicy
     }
 
     /**
-     * Editing or deleting a comment is a write: it needs the "update" permission on
-     * the owning team, so a read-only viewer cannot, even on a comment they wrote
-     * before being made a viewer.
+     * Editing or deleting a comment is a write: it needs the right to change the project, so a
+     * read-only viewer cannot, even on a comment they wrote before being made a viewer.
      */
     private function canWrite(User $user, ProjectComment $comment): bool
     {
-        $team = $this->team($comment);
-
-        return $team !== null && $user->hasTeamPermission($team, 'update');
+        return Project::writableBy($user, $this->projectId($comment));
     }
 
-    private function team(ProjectComment $comment): ?Team
+    private function projectId(ProjectComment $comment): ?int
     {
-        return match ($comment->commentable_type) {
-            Project::class => Project::owningTeam($comment->commentable_id),
-            ProjectTask::class => Project::owningTeam(ProjectTask::query()->whereKey($comment->commentable_id)->value('project_id')),
+        $id = match ($comment->commentable_type) {
+            Project::class => $comment->commentable_id,
+            ProjectTask::class => ProjectTask::query()->whereKey($comment->commentable_id)->value('project_id'),
             default => null,
         };
+
+        return $id === null ? null : (int) $id;
     }
 }

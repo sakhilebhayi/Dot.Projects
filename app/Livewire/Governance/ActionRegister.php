@@ -99,7 +99,7 @@ class ActionRegister extends Component
     public function render(): View
     {
         return view('livewire.governance.action-register', [
-            'people' => $this->project->team->allUsers()->sortBy('name')->values(),
+            'people' => $this->project->people(),
             'canEdit' => auth()->user()->can('update', $this->project),
         ]);
     }
