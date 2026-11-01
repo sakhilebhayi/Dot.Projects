@@ -28,6 +28,8 @@ class ProjectController extends Controller
             'base' => Schedule::baselineMap($baseline),
             'liveRisks' => $project->risks()->whereIn('status', ProjectRisk::LIVE)->get(),
             'openIssues' => $project->issues()->whereIn('status', ProjectIssue::OPEN)->get(),
+            'waitingChanges' => $project->changes()->where('status', 'submitted')->with('approver:id,name')->get(),
+            'openDecisions' => $project->decisions()->where('status', 'proposed')->with('owner:id,name')->get(),
         ]);
     }
 

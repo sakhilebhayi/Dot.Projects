@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Activity as ActivityLine;
 use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\ProjectChange;
+use App\Models\ProjectDecision;
 use App\Models\ProjectIssue;
 use App\Models\ProjectRisk;
 use App\Models\ProjectTask;
@@ -45,6 +47,8 @@ final class ActivityFeed
         $milestones = Milestone::query()->whereIn('id', $lines->where('subject_type', (new Milestone)->getMorphClass())->pluck('subject_id'))->pluck('title', 'id');
         $risks = ProjectRisk::query()->whereIn('id', $lines->where('subject_type', (new ProjectRisk)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($r) => [$r->id => $r->ref().' “'.$r->title.'”']);
         $issues = ProjectIssue::query()->whereIn('id', $lines->where('subject_type', (new ProjectIssue)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($i) => [$i->id => $i->ref().' “'.$i->title.'”']);
+        $changes = ProjectChange::query()->whereIn('id', $lines->where('subject_type', (new ProjectChange)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($c) => [$c->id => $c->ref().' “'.$c->title.'”']);
+        $decisions = ProjectDecision::query()->whereIn('id', $lines->where('subject_type', (new ProjectDecision)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($d) => [$d->id => $d->ref().' “'.$d->title.'”']);
         $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
@@ -94,6 +98,19 @@ final class ActivityFeed
                 'issue.updated' => self::governanceUpdate($issues->get($l->subject_id) ?? 'a deleted issue', $c, ProjectIssue::STATUSES, $assignees),
                 'issue.escalated' => 'escalated '.($issues->get($l->subject_id) ?? 'an issue').' to the project owner',
                 'issue.escalation_closed' => 'closed the escalation on '.($issues->get($l->subject_id) ?? 'an issue'),
+                'change.added' => 'raised the change '.($changes->get($l->subject_id) ?? 'a change'),
+                'change.updated' => 'edited '.($changes->get($l->subject_id) ?? 'a change'),
+                'change.submitted' => 'asked for approval of '.($changes->get($l->subject_id) ?? 'a change'),
+                'change.approved' => 'approved '.($changes->get($l->subject_id) ?? 'a change'),
+                'change.rejected' => 'rejected '.($changes->get($l->subject_id) ?? 'a change'),
+                'change.withdrawn' => 'withdrew '.($changes->get($l->subject_id) ?? 'a change'),
+                'change.rebaselined' => 're-baselined the plan after '.($changes->get($l->subject_id) ?? 'a change').(isset($c['baseline']) ? ' (baseline '.$c['baseline'].')' : ''),
+                'change.implemented' => 'marked '.($changes->get($l->subject_id) ?? 'a change').' implemented',
+                'decision.proposed' => 'asked for the decision '.($decisions->get($l->subject_id) ?? 'a decision'),
+                'decision.recorded' => 'recorded the decision '.($decisions->get($l->subject_id) ?? 'a decision'),
+                'decision.decided' => 'decided '.($decisions->get($l->subject_id) ?? 'a decision'),
+                'decision.updated' => 'edited '.($decisions->get($l->subject_id) ?? 'a decision'),
+                'decision.superseded' => 'marked '.($decisions->get($l->subject_id) ?? 'a decision').' as superseded',
                 'matrix.changed' => 'set the risk matrix to '.($c['size']['to'] ?? '?').' by '.($c['size']['to'] ?? '?'),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };

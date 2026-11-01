@@ -73,6 +73,10 @@ Route::middleware([
     Route::get('/projects/{project}/risks/{risk}', [GovernanceController::class, 'risk'])->scopeBindings()->name('projects.risks.show');
     Route::get('/projects/{project}/issues', [GovernanceController::class, 'issues'])->name('projects.issues');
     Route::get('/projects/{project}/issues/{issue}', [GovernanceController::class, 'issue'])->scopeBindings()->name('projects.issues.show');
+    Route::get('/projects/{project}/changes', [GovernanceController::class, 'changes'])->name('projects.changes');
+    Route::get('/projects/{project}/changes/{change}', [GovernanceController::class, 'change'])->scopeBindings()->name('projects.changes.show');
+    Route::get('/projects/{project}/decisions', [GovernanceController::class, 'decisions'])->name('projects.decisions');
+    Route::get('/projects/{project}/decisions/{decision}', [GovernanceController::class, 'decision'])->scopeBindings()->name('projects.decisions.show');
     Route::get('/projects/{project}/settings', [ProjectController::class, 'settings'])->name('projects.settings');
     Route::get('/projects/{project}/tasks/{task}', [ProjectController::class, 'task'])->scopeBindings()->name('projects.tasks.show');
 });

@@ -285,3 +285,16 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   Owners are notified when given a risk or issue. The overview gains a "Risks and issues" card.
   Next, P5b: change requests with impact and approval, decisions, stage gates, meetings and
   actions, status reports.
+- **P5b change requests and decisions** (2026-11-01): change requests (CR-01) under Governance,
+  each with what changes and why, its kind, and an impact assessment (schedule in days, cost in rand,
+  scope and quality, people, risks). A draft is edited freely, then sent to a named approver (anyone
+  in the business who can change projects); once sent it is fixed, and can only be approved,
+  rejected (a reason is required) or withdrawn. Only the named approver decides; approving your own
+  request is allowed and recorded as self-approved. The decision is written to the decision
+  register, and the requester and approver are notified. An approved change can re-baseline the
+  plan in one action (a numbered baseline noted "After CR-01") and be marked implemented. The change
+  log states what approved changes add up to in days and rand. The decision register (D-01) asks
+  for decisions (who decides and by when, overdue flagged, owner notified) or records ones already
+  made. A decision on record is never edited; it is superseded by a later one. The overview's
+  Governance card adds changes waiting for approval and decisions due. Next, P5c: stage gates with
+  governance checklists, meetings and steering records with an action register, status reports.

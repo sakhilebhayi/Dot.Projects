@@ -132,7 +132,7 @@ class GovernanceTest extends TestCase
         $note = $owner->notifications()->where('data->type', 'risk_escalated')->sole();
         $this->assertStringContainsString('R-01', $note->data['message']);
         $this->actingAs($owner)->get(route('projects.risks', $project))->assertSee('Escalated by Sipho Editor');
-        $this->actingAs($owner)->get(route('projects.show', $project))->assertSee('Risks and issues')->assertSee('Crane fails inspection')->assertSee('Escalated');
+        $this->actingAs($owner)->get(route('projects.show', $project))->assertSee('Governance')->assertSee('Crane fails inspection')->assertSee('Escalated');
         $panel->call('withdraw');
         $this->assertNull($risk->fresh()->escalated_at);
 

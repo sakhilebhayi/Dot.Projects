@@ -1,7 +1,7 @@
 <x-app-layout>
     @php
-        $item = $risk ?? $issue ?? null;
-        $crumb = $item ? $item->ref().' '.$item->title : ($section === 'risks' ? 'Risks' : 'Issues');
+        $item = $risk ?? $issue ?? $change ?? $decision ?? null;
+        $crumb = $item ? $item->ref().' '.$item->title : ucfirst($section);
     @endphp
     <x-slot name="title">{{ $crumb }}, {{ $project->name }}</x-slot>
     <x-slot name="header"><a href="{{ route('dashboard') }}" style="text-decoration:none">Projects</a> <span aria-hidden="true">/</span> <b>{{ $project->name }}</b></x-slot>
@@ -10,11 +10,21 @@
         <nav class="pg-subnav" aria-label="Governance">
             <a href="{{ route('projects.risks', $project) }}" @if ($section === 'risks') aria-current="page" @endif>Risks <span>{{ $liveRisks }}</span></a>
             <a href="{{ route('projects.issues', $project) }}" @if ($section === 'issues') aria-current="page" @endif>Issues <span>{{ $openIssues }}</span></a>
+            <a href="{{ route('projects.changes', $project) }}" @if ($section === 'changes') aria-current="page" @endif>Changes <span>{{ $pendingChanges }}</span></a>
+            <a href="{{ route('projects.decisions', $project) }}" @if ($section === 'decisions') aria-current="page" @endif>Decisions <span>{{ $openDecisions }}</span></a>
         </nav>
         @if (isset($risk))
             <livewire:governance.risk-panel :project="$project" :risk="$risk" />
         @elseif (isset($issue))
             <livewire:governance.issue-panel :project="$project" :issue="$issue" />
+        @elseif (isset($change))
+            <livewire:governance.change-panel :project="$project" :change="$change" />
+        @elseif (isset($decision))
+            <livewire:governance.decision-panel :project="$project" :decision="$decision" />
+        @elseif ($section === 'changes')
+            <livewire:governance.change-log :project="$project" />
+        @elseif ($section === 'decisions')
+            <livewire:governance.decision-register :project="$project" />
         @elseif ($section === 'risks')
             <livewire:governance.risk-register :project="$project" />
         @else
