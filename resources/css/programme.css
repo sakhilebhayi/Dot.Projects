@@ -426,3 +426,27 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
     .pg-rm-y { font-size: 11.5px; padding-right: 6px; }
 }
 .pg-key .pg-rm-dot, .pg-key .pg-rm-ring { width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; }
+
+/* ---------- Stage gates ----------
+   Gates read as a numbered sequence; each card carries one meter of its checklist (a tick per
+   check, filled ink when met). State is named in the pill; colour is never the only signal. */
+.pg-gates { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: var(--pg-gap); }
+.pg-gate-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.pg-gate-no { font-family: var(--pg-mono); font-size: 12px; color: var(--pg-muted); border: 1px solid var(--pg-border); border-radius: 6px; padding: 2px 6px; }
+.pg-gate.is-passed .pg-gate-no, .pg-gate.is-conditional .pg-gate-no { background: var(--pg-ink); color: var(--pg-surface); border-color: var(--pg-ink); }
+.pg-gate-title { font-weight: 600; text-decoration: none; }
+.pg-gate-title:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pg-gate-meter { display: flex; gap: 3px; margin-top: 14px; }
+.pg-gate-meter i { flex: 1; height: 6px; border-radius: 2px; background: var(--pg-raised); }
+.pg-gate-meter i.on { background: var(--pg-ink); }
+.pg-checks { list-style: none; margin: 0; padding: 0; }
+.pg-checks li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--pg-rule); }
+.pg-checks li:first-child { border-top: 0; }
+.pg-checks label { cursor: pointer; }
+.pg-checks .is-done label { color: var(--pg-muted); }
+.pg-radio { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
+.pg-radio input { width: 16px; height: 16px; accent-color: var(--pg-primary); margin: 0; }
+.pg-radio:has(input:disabled) { color: var(--pg-muted); cursor: not-allowed; }
+.pg-people-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: 8px 14px; }
+.pg-radio input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--pg-primary); margin: 0; }
+.pg-quick-action { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }

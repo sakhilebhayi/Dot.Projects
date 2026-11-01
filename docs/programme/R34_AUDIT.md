@@ -298,3 +298,16 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   made. A decision on record is never edited; it is superseded by a later one. The overview's
   Governance card adds changes waiting for approval and decisions due. Next, P5c: stage gates with
   governance checklists, meetings and steering records with an action register, status reports.
+- **P5c gates, meetings and actions** (2026-11-01): stage gates (G1, G2, …) under Governance, each
+  with a purpose, a due date, an optional milestone, a named approver and a governance checklist
+  (start from a standard list: ready to start, to execute, to hand over, to close; then edit
+  freely). The team ticks the checks; only the approver decides: pass (every check met), pass with
+  conditions (conditions written) or hold (reason written; a held gate is put forward again once
+  dealt with). Every gate decision is written to the decision register, and a decided gate's
+  record no longer changes. Meetings (M-01), steering committee meetings among them, keep when and
+  where, who attended (members) and guests, the agenda and the minutes. Decisions taken there go
+  into the decision register linked to the meeting; actions agreed go into the action register
+  (A-01). The register lists every action, open ones by due date, with late ones and unowned ones
+  called out, owner and date changed in place, and the meeting it came from. Owners and gate
+  approvers are notified. The overview's Governance card adds held or due gates and late actions.
+  Next, P5d: status reports.

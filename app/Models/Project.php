@@ -249,4 +249,22 @@ class Project extends Model
     {
         return $this->hasMany(ProjectDecision::class);
     }
+
+    /** @return HasMany<ProjectGate, $this> */
+    public function gates(): HasMany
+    {
+        return $this->hasMany(ProjectGate::class)->orderBy('number');
+    }
+
+    /** @return HasMany<ProjectMeeting, $this> */
+    public function meetings(): HasMany
+    {
+        return $this->hasMany(ProjectMeeting::class);
+    }
+
+    /** @return HasMany<ProjectAction, $this> */
+    public function actions(): HasMany
+    {
+        return $this->hasMany(ProjectAction::class);
+    }
 }

@@ -5,13 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\ProjectChange;
 use App\Models\ProjectDecision;
+use App\Models\ProjectGate;
 use App\Models\ProjectIssue;
+use App\Models\ProjectMeeting;
 use App\Models\ProjectRisk;
 use App\Services\ProjectSummary;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** The Governance tab: risks, issues, change requests and decisions, each with its own page. */
+/** The Governance tab: risks, issues, changes, decisions, gates, meetings and actions. */
 class GovernanceController extends Controller
 {
     public function risks(Request $request, Project $project): View
@@ -70,6 +72,41 @@ class GovernanceController extends Controller
         return $this->page($project, 'decisions', ['decision' => $decision]);
     }
 
+    public function gates(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return $this->page($project, 'gates');
+    }
+
+    public function gate(Request $request, Project $project, ProjectGate $gate): View
+    {
+        $this->authorize('view', $gate);
+
+        return $this->page($project, 'gates', ['gate' => $gate]);
+    }
+
+    public function meetings(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return $this->page($project, 'meetings');
+    }
+
+    public function meeting(Request $request, Project $project, ProjectMeeting $meeting): View
+    {
+        $this->authorize('view', $meeting);
+
+        return $this->page($project, 'meetings', ['meeting' => $meeting]);
+    }
+
+    public function actions(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return $this->page($project, 'actions');
+    }
+
     /** @param array<string, mixed> $extra */
     private function page(Project $project, string $section, array $extra = []): View
     {
@@ -81,6 +118,9 @@ class GovernanceController extends Controller
             'openIssues' => $project->issues()->whereIn('status', ProjectIssue::OPEN)->count(),
             'pendingChanges' => $project->changes()->whereIn('status', ['draft', 'submitted'])->count(),
             'openDecisions' => $project->decisions()->where('status', 'proposed')->count(),
+            'openGates' => $project->gates()->whereIn('status', ['pending', 'held'])->count(),
+            'meetingCount' => $project->meetings()->count(),
+            'openActions' => $project->actions()->where('status', 'open')->count(),
         ] + $extra);
     }
 }

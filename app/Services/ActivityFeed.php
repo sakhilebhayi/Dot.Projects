@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Models\Activity as ActivityLine;
 use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\ProjectAction;
 use App\Models\ProjectChange;
 use App\Models\ProjectDecision;
+use App\Models\ProjectGate;
 use App\Models\ProjectIssue;
+use App\Models\ProjectMeeting;
 use App\Models\ProjectRisk;
 use App\Models\ProjectTask;
 use App\Models\User;
@@ -49,6 +52,10 @@ final class ActivityFeed
         $issues = ProjectIssue::query()->whereIn('id', $lines->where('subject_type', (new ProjectIssue)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($i) => [$i->id => $i->ref().' “'.$i->title.'”']);
         $changes = ProjectChange::query()->whereIn('id', $lines->where('subject_type', (new ProjectChange)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($c) => [$c->id => $c->ref().' “'.$c->title.'”']);
         $decisions = ProjectDecision::query()->whereIn('id', $lines->where('subject_type', (new ProjectDecision)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($d) => [$d->id => $d->ref().' “'.$d->title.'”']);
+        $refs = fn (string $class, array $cols) => $class::query()->whereIn('id', $lines->where('subject_type', (new $class)->getMorphClass())->pluck('subject_id'))->get($cols)->mapWithKeys(fn ($m) => [$m->id => $m->ref().' “'.$m->title.'”']);
+        $gates = $refs(ProjectGate::class, ['id', 'number', 'title']);
+        $meetings = $refs(ProjectMeeting::class, ['id', 'number', 'title']);
+        $actions = $refs(ProjectAction::class, ['id', 'number', 'title']);
         $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
@@ -111,6 +118,22 @@ final class ActivityFeed
                 'decision.decided' => 'decided '.($decisions->get($l->subject_id) ?? 'a decision'),
                 'decision.updated' => 'edited '.($decisions->get($l->subject_id) ?? 'a decision'),
                 'decision.superseded' => 'marked '.($decisions->get($l->subject_id) ?? 'a decision').' as superseded',
+                'gate.added' => 'added the gate '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.updated' => 'edited '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.check_added' => 'added a check to '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.check_ticked' => 'ticked a check on '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.check_unticked' => 'unticked a check on '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.check_removed' => 'removed a check from '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.passed' => 'passed '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.conditional' => 'passed '.($gates->get($l->subject_id) ?? 'a gate').' with conditions',
+                'gate.held' => 'held '.($gates->get($l->subject_id) ?? 'a gate'),
+                'gate.reopened' => 'put '.($gates->get($l->subject_id) ?? 'a gate').' forward again',
+                'meeting.added' => 'added the meeting '.($meetings->get($l->subject_id) ?? 'a meeting'),
+                'meeting.updated' => isset($c['fields']) && in_array('minutes', (array) $c['fields'], true) ? 'wrote the minutes of '.($meetings->get($l->subject_id) ?? 'a meeting') : 'edited '.($meetings->get($l->subject_id) ?? 'a meeting'),
+                'action.added' => 'added the action '.($actions->get($l->subject_id) ?? 'an action'),
+                'action.updated' => 'edited '.($actions->get($l->subject_id) ?? 'an action'),
+                'action.done' => 'completed '.($actions->get($l->subject_id) ?? 'an action'),
+                'action.reopened' => 'reopened '.($actions->get($l->subject_id) ?? 'an action'),
                 'matrix.changed' => 'set the risk matrix to '.($c['size']['to'] ?? '?').' by '.($c['size']['to'] ?? '?'),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
