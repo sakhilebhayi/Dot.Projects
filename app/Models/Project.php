@@ -21,6 +21,8 @@ use Illuminate\Support\Carbon;
  * @property string $status
  * @property Carbon|null $start_date
  * @property Carbon|null $due_date
+ * @property Carbon|null $archived_at
+ * @property int|null $archived_by
  * @property-read Team $team
  * @property-read User $owner
  */
@@ -36,6 +38,7 @@ class Project extends Model
     protected $casts = [
         'start_date' => 'date',
         'due_date' => 'date',
+        'archived_at' => 'datetime',
     ];
 
     /**
@@ -49,6 +52,21 @@ class Project extends Model
         }
 
         return static::withoutTeamScope(fn () => static::query()->with('team')->find($projectId)?->team);
+    }
+
+    /**
+     * Whether $user may change work inside the project $projectId: a member with the team's
+     * "update" permission, and the project not archived. Read without the team scope, like
+     * owningTeam(), because policies are the access check themselves.
+     */
+    public static function writableBy(User $user, ?int $projectId): bool
+    {
+        if ($projectId === null) {
+            return false;
+        }
+        $project = static::withoutTeamScope(fn () => static::query()->with('team')->find($projectId));
+
+        return $project !== null && ! $project->isArchived() && $user->hasTeamPermission($project->team, 'update');
     }
 
     /** @return BelongsTo<Team, $this> */
@@ -93,6 +111,11 @@ class Project extends Model
     public function aiPlanLogs(): HasMany
     {
         return $this->hasMany(AiPlanLog::class);
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 
     public function completionPercentage(): int

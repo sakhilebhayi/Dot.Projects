@@ -22,11 +22,11 @@ class ProjectTaskPolicy
 
     public function update(User $user, ProjectTask $task): bool
     {
-        return $user->hasTeamPermission(Project::owningTeam($task->project_id), 'update');
+        return Project::writableBy($user, $task->project_id);
     }
 
     public function delete(User $user, ProjectTask $task): bool
     {
-        return $user->hasTeamPermission(Project::owningTeam($task->project_id), 'update');
+        return Project::writableBy($user, $task->project_id);
     }
 }

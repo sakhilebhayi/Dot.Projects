@@ -38,10 +38,13 @@
                 @foreach ($statuses as $value => $label)
                     <option value="{{ $value }}" @selected($statusFilter === $value)>{{ $label }}</option>
                 @endforeach
+                <option value="archived" @selected($statusFilter === 'archived')>Archived</option>
             </select>
             <button type="submit" class="pg-btn pg-btn--secondary">Filter</button>
             @if ($search !== '' || $statusFilter !== '')
                 <a href="{{ route('dashboard') }}" class="pg-btn pg-btn--ghost">Clear</a>
+            @elseif ($archivedCount)
+                <a href="{{ route('dashboard', ['status' => 'archived']) }}" class="pg-btn pg-btn--ghost">{{ $archivedCount }} archived</a>
             @endif
         </form>
 
@@ -69,7 +72,7 @@
                             @endphp
                             <tr>
                                 <td class="pg-name"><a href="{{ route('projects.show', $project) }}">{{ $project->name }}</a>@if ($project->description)<span class="pg-sub">{{ $project->description }}</span>@endif</td>
-                                <td data-label="Status"><span class="pg-pill {{ $pill($project->status) }}">{{ $statuses[$project->status] ?? Str::headline($project->status) }}</span></td>
+                                <td data-label="Status"><span class="pg-pill {{ $pill($project->status) }}">{{ $project->archived_at ? 'Archived' : ($statuses[$project->status] ?? Str::headline($project->status)) }}</span></td>
                                 <td data-label="Next milestone">@if ($next){{ $next->title }}<span class="pg-sub {{ $next->due_date->lt($today) ? 'pg-neg' : '' }}">{{ $next->due_date->lt($today) ? 'Was due '.$next->due_date->format('j M') : $next->due_date->format('j M Y') }}</span>@else<span class="pg-muted">None dated</span>@endif</td>
                                 <td data-label="Tasks done">
                                     @if ($project->tasks_count)

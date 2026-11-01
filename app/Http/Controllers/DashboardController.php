@@ -22,7 +22,7 @@ class DashboardController extends Controller
         $today = Carbon::today()->toDateString();
 
         $projects = Project::query()
-            ->select(['id', 'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'created_at', 'updated_at'])
+            ->select(['id', 'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'archived_at', 'created_at', 'updated_at'])
             ->withCount([
                 'tasks',
                 'tasks as done_tasks_count' => fn ($q) => $q->where('status', 'done'),
@@ -30,6 +30,7 @@ class DashboardController extends Controller
             ])
             ->with(['milestones' => fn ($q) => $q->where('status', '!=', 'completed')->whereNotNull('due_date')->orderBy('due_date')])
             ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($statusFilter === 'archived', fn ($q) => $q->whereNotNull('archived_at'), fn ($q) => $q->whereNull('archived_at'))
             ->when($statusFilter !== '' && array_key_exists($statusFilter, self::STATUSES), fn ($q) => $q->where('status', $statusFilter))
             ->orderByRaw("case status when 'completed' then 1 else 0 end")
             ->latest()
@@ -40,6 +41,7 @@ class DashboardController extends Controller
             'search' => $search,
             'statusFilter' => $statusFilter,
             'statuses' => self::STATUSES,
+            'archivedCount' => $statusFilter === 'archived' ? null : Project::query()->whereNotNull('archived_at')->count(),
             'today' => Carbon::today(),
         ]);
     }

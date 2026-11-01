@@ -18,11 +18,11 @@ class MilestonePolicy
 
     public function update(User $user, Milestone $milestone): bool
     {
-        return $user->hasTeamPermission(Project::owningTeam($milestone->project_id), 'update');
+        return Project::writableBy($user, $milestone->project_id);
     }
 
     public function delete(User $user, Milestone $milestone): bool
     {
-        return $user->hasTeamPermission(Project::owningTeam($milestone->project_id), 'update');
+        return Project::writableBy($user, $milestone->project_id);
     }
 }

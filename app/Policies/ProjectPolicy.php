@@ -44,7 +44,24 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
-        return $user->hasTeamPermission($project->team, 'update');
+        // An archived project is read-only for everyone until it is restored.
+        return ! $project->isArchived() && $user->hasTeamPermission($project->team, 'update');
+    }
+
+    /**
+     * Archive or restore: the project's owner, or a team member allowed to delete (an admin).
+     * Archiving keeps everything; it only makes the project read-only and moves it off the list.
+     */
+    public function archive(User $user, Project $project): bool
+    {
+        return $user->belongsToTeam($project->team)
+            && ($user->id === $project->owner_id ? $user->hasTeamPermission($project->team, 'update') : $user->hasTeamPermission($project->team, 'delete'));
+    }
+
+    /** Duplicating makes a new project, so it needs the "create" permission. */
+    public function duplicate(User $user, Project $project): bool
+    {
+        return $user->belongsToTeam($project->team) && $user->hasTeamPermission($project->team, 'create');
     }
 
     /**
@@ -53,7 +70,7 @@ class ProjectPolicy
      */
     public function comment(User $user, Project $project): bool
     {
-        return $user->hasTeamPermission($project->team, 'create');
+        return ! $project->isArchived() && $user->hasTeamPermission($project->team, 'create');
     }
 
     /**

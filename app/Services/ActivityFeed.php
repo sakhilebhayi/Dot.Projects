@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Turns activity log lines into sentences a person reads ("Lerato moved “Survey” from To do to
@@ -41,6 +42,18 @@ final class ActivityFeed
                 'milestone.created' => 'added the milestone '.$q($milestones->get($l->subject_id)),
                 'milestone.status_changed' => 'Milestone '.$q($milestones->get($l->subject_id)).' is now '.str_replace('_', ' ', (string) ($c['status']['to'] ?? '')),
                 'comment.added' => 'commented',
+                'task.updated' => self::taskUpdate($q($tasks->get($l->subject_id)), $c, $status, $assignees),
+                'task.deleted' => 'deleted a task',
+                'checklist.added' => 'added a checklist step to '.$q($tasks->get($l->subject_id)),
+                'checklist.ticked' => 'ticked a step on '.$q($tasks->get($l->subject_id)),
+                'checklist.unticked' => 'unticked a step on '.$q($tasks->get($l->subject_id)),
+                'checklist.removed' => 'removed a checklist step from '.$q($tasks->get($l->subject_id)),
+                'milestone.updated' => 'changed the milestone '.$q($milestones->get($l->subject_id)),
+                'milestone.deleted' => 'deleted a milestone; its tasks were kept',
+                'project.updated' => isset($c['status']['to']) ? 'set the project to '.str_replace('_', ' ', (string) $c['status']['to']) : 'changed the project details',
+                'project.archived' => 'archived the project',
+                'project.restored' => 'restored the project',
+                'project.duplicated' => 'duplicated the project',
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
 
@@ -51,5 +64,22 @@ final class ActivityFeed
         }
 
         return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     * @param  array<string, string>  $status
+     * @param  Collection<int|string, mixed>  $assignees
+     */
+    private static function taskUpdate(string $title, array $c, array $status, $assignees): string
+    {
+        if (isset($c['status']['to'])) {
+            return 'moved '.$title.' from '.($status[$c['status']['from'] ?? ''] ?? '?').' to '.($status[$c['status']['to']] ?? '?');
+        }
+        if (array_key_exists('assignee_id', $c)) {
+            return 'reassigned '.$title;
+        }
+
+        return 'edited '.$title;
     }
 }
