@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GovernanceController;
 use App\Http\Controllers\GuardianHealthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
@@ -68,6 +69,10 @@ Route::middleware([
     Route::get('/projects/{project}/board', [ProjectController::class, 'board'])->name('projects.board');
     Route::get('/projects/{project}/work', [ProjectController::class, 'work'])->name('projects.work');
     Route::get('/projects/{project}/schedule', [ProjectController::class, 'schedule'])->name('projects.schedule');
+    Route::get('/projects/{project}/risks', [GovernanceController::class, 'risks'])->name('projects.risks');
+    Route::get('/projects/{project}/risks/{risk}', [GovernanceController::class, 'risk'])->scopeBindings()->name('projects.risks.show');
+    Route::get('/projects/{project}/issues', [GovernanceController::class, 'issues'])->name('projects.issues');
+    Route::get('/projects/{project}/issues/{issue}', [GovernanceController::class, 'issue'])->scopeBindings()->name('projects.issues.show');
     Route::get('/projects/{project}/settings', [ProjectController::class, 'settings'])->name('projects.settings');
     Route::get('/projects/{project}/tasks/{task}', [ProjectController::class, 'task'])->scopeBindings()->name('projects.tasks.show');
 });

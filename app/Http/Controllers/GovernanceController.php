@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Project;
+use App\Models\ProjectIssue;
+use App\Models\ProjectRisk;
+use App\Services\ProjectSummary;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+/** The Governance tab: the risk register and the issue log, and each risk's and issue's own page. */
+class GovernanceController extends Controller
+{
+    public function risks(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return $this->page($project, 'risks');
+    }
+
+    public function risk(Request $request, Project $project, ProjectRisk $risk): View
+    {
+        $this->authorize('view', $risk);
+
+        return $this->page($project, 'risks', ['risk' => $risk]);
+    }
+
+    public function issues(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return $this->page($project, 'issues');
+    }
+
+    public function issue(Request $request, Project $project, ProjectIssue $issue): View
+    {
+        $this->authorize('view', $issue);
+
+        return $this->page($project, 'issues', ['issue' => $issue]);
+    }
+
+    /** @param array<string, mixed> $extra */
+    private function page(Project $project, string $section, array $extra = []): View
+    {
+        return view('governance.page', [
+            'project' => $project->load('owner'),
+            'summary' => new ProjectSummary($project),
+            'section' => $section,
+            'liveRisks' => $project->risks()->whereIn('status', ProjectRisk::LIVE)->count(),
+            'openIssues' => $project->issues()->whereIn('status', ProjectIssue::OPEN)->count(),
+        ] + $extra);
+    }
+}

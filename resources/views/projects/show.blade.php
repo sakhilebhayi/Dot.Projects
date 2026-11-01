@@ -129,7 +129,29 @@
                 <livewire:projects.project-comments :project="$project" />
             </section>
 
-            <section class="pg-card pg-s5" aria-labelledby="act-h">
+            <div class="pg-s5" style="display:grid;gap:var(--pg-gap);align-content:start">
+            @php
+                $matrix = App\Services\RiskMatrix::forProject($project);
+                $pill = ['low' => '', 'medium' => 'pg-pill--warning', 'high' => 'pg-pill--negative', 'critical' => 'pg-pill--negative pg-pill--solid'];
+                $gov = collect()
+                    ->concat($openIssues->map(fn ($i) => ['ref' => $i->ref(), 'title' => $i->title, 'url' => route('projects.issues.show', [$project, $i]), 'band' => $i->severity, 'label' => ucfirst($i->severity).' issue', 'esc' => $i->escalated_at !== null, 'rank' => ($i->escalated_at ? 1000 : 0) + $i->weight() + 50]))
+                    ->concat($liveRisks->map(fn ($r) => ['ref' => $r->ref(), 'title' => $r->title, 'url' => route('projects.risks.show', [$project, $r]), 'band' => $r->band($matrix), 'label' => ucfirst($r->band($matrix)).' risk', 'esc' => $r->escalated_at !== null, 'rank' => ($r->escalated_at ? 1000 : 0) + ['low' => 0, 'medium' => 20, 'high' => 40, 'critical' => 60][$r->band($matrix)] + $r->currentScore()]))
+                    ->sortByDesc('rank')->take(5);
+            @endphp
+            <section class="pg-card" aria-labelledby="gov-h">
+                <div class="pg-card-head"><h2 id="gov-h">Risks and issues</h2><small>{{ $liveRisks->count() }} live {{ Str::plural('risk', $liveRisks->count()) }}, {{ $openIssues->count() }} open {{ Str::plural('issue', $openIssues->count()) }}</small></div>
+                @forelse ($gov as $g)
+                    <div class="pg-row">
+                        <div style="min-width:0"><span class="pg-id">{{ $g['ref'] }}</span> <a href="{{ $g['url'] }}">{{ $g['title'] }}</a>@if ($g['esc'])<div class="pg-sub pg-neg">Escalated</div>@endif</div>
+                        <span class="pg-pill {{ $pill[$g['band']] ?? '' }}">{{ $g['label'] }}</span>
+                    </div>
+                @empty
+                    <p class="pg-empty">No live risks or open issues. <a href="{{ route('projects.risks', $project) }}">Open the register</a> to record what could get in the way.</p>
+                @endforelse
+                @if ($liveRisks->count() + $openIssues->count() > $gov->count())<p class="pg-help" style="margin:8px 0 0"><a href="{{ route('projects.risks', $project) }}">View all</a></p>@endif
+            </section>
+
+            <section class="pg-card" aria-labelledby="act-h">
                 <div class="pg-card-head"><h2 id="act-h">Recent activity</h2></div>
                 @forelse ($activity as $line)
                     <div class="pg-act"><time datetime="{{ $line['at']->toIso8601String() }}">{{ $line['at']->format('j M, H:i') }}</time><span>@if ($line['who'])<b style="font-weight:500">{{ $line['who'] }}</b> @endif{{ $line['text'] }}</span></div>
@@ -137,6 +159,7 @@
                     <p class="pg-empty">Changes to this project appear here as people make them.</p>
                 @endforelse
             </section>
+            </div>
         </div>
     </div>
 </x-app-layout>

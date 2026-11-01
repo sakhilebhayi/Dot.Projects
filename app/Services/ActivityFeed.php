@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\Activity as ActivityLine;
 use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\ProjectIssue;
+use App\Models\ProjectRisk;
 use App\Models\ProjectTask;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -19,10 +22,31 @@ final class ActivityFeed
     /** @return list<array{at: Carbon, who: string|null, text: string}> */
     public static function forProject(Project $project, int $limit = 8): array
     {
-        $lines = ActivityLine::query()->where('project_id', $project->id)->with('user')->latest('id')->limit($limit)->get();
+        return self::render(ActivityLine::query()->where('project_id', $project->id)->with('user')->latest('id')->limit($limit)->get());
+    }
+
+    /**
+     * One record's own history, newest first: a risk's re-ratings, an issue's status changes.
+     *
+     * @return list<array{at: Carbon, who: string|null, text: string}>
+     */
+    public static function forSubject(Model $subject, int $limit = 30): array
+    {
+        return self::render(ActivityLine::query()->where('subject_type', $subject->getMorphClass())->where('subject_id', $subject->getKey())->with('user')->latest('id')->limit($limit)->get());
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Collection<int, ActivityLine>  $lines
+     * @return list<array{at: Carbon, who: string|null, text: string}>
+     */
+    private static function render($lines): array
+    {
         $tasks = ProjectTask::query()->whereIn('id', $lines->where('subject_type', (new ProjectTask)->getMorphClass())->pluck('subject_id'))->pluck('title', 'id');
         $milestones = Milestone::query()->whereIn('id', $lines->where('subject_type', (new Milestone)->getMorphClass())->pluck('subject_id'))->pluck('title', 'id');
-        $assignees = User::query()->whereIn('id', $lines->where('action', 'task.assigned')->map(fn ($l) => $l->changes['assignee_id']['to'] ?? null)->filter())->pluck('name', 'id');
+        $risks = ProjectRisk::query()->whereIn('id', $lines->where('subject_type', (new ProjectRisk)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($r) => [$r->id => $r->ref().' “'.$r->title.'”']);
+        $issues = ProjectIssue::query()->whereIn('id', $lines->where('subject_type', (new ProjectIssue)->getMorphClass())->pluck('subject_id'))->get(['id', 'number', 'title'])->mapWithKeys(fn ($i) => [$i->id => $i->ref().' “'.$i->title.'”']);
+        $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
+            ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
         $q = fn (?string $title) => $title === null ? 'a deleted item' : '“'.$title.'”';
 
@@ -61,6 +85,16 @@ final class ActivityFeed
                 'label.removed' => 'removed a label from '.$q($tasks->get($l->subject_id)),
                 'task.rescheduled' => 'rescheduled '.$q($tasks->get($l->subject_id)).(isset($c['due_date']['to']) ? ' to finish '.Carbon::parse($c['due_date']['to'])->format('j M') : ''),
                 'baseline.set' => 'set baseline '.($c['number'] ?? ''),
+                'risk.added' => 'added the risk '.($risks->get($l->subject_id) ?? 'a deleted risk'),
+                'risk.updated' => self::governanceUpdate($risks->get($l->subject_id) ?? 'a deleted risk', $c, ProjectRisk::STATUSES, $assignees),
+                'risk.occurred' => 'recorded that '.($risks->get($l->subject_id) ?? 'a risk').' happened; it is now an issue',
+                'risk.escalated' => 'escalated '.($risks->get($l->subject_id) ?? 'a risk').' to the project owner',
+                'risk.escalation_closed' => 'closed the escalation on '.($risks->get($l->subject_id) ?? 'a risk'),
+                'issue.added' => 'logged the issue '.($issues->get($l->subject_id) ?? 'a deleted issue'),
+                'issue.updated' => self::governanceUpdate($issues->get($l->subject_id) ?? 'a deleted issue', $c, ProjectIssue::STATUSES, $assignees),
+                'issue.escalated' => 'escalated '.($issues->get($l->subject_id) ?? 'an issue').' to the project owner',
+                'issue.escalation_closed' => 'closed the escalation on '.($issues->get($l->subject_id) ?? 'an issue'),
+                'matrix.changed' => 'set the risk matrix to '.($c['size']['to'] ?? '?').' by '.($c['size']['to'] ?? '?'),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
 
@@ -71,6 +105,40 @@ final class ActivityFeed
         }
 
         return $out;
+    }
+
+    /**
+     * The most telling change first: status, then rating, severity, owner, then any other edit.
+     *
+     * @param  array<string, mixed>  $c
+     * @param  array<string, string>  $statuses
+     * @param  Collection<int|string, mixed>  $people
+     */
+    private static function governanceUpdate(string $what, array $c, array $statuses, $people): string
+    {
+        if (isset($c['status']['to'])) {
+            return 'set '.$what.' to '.mb_strtolower($statuses[$c['status']['to']] ?? (string) $c['status']['to']);
+        }
+        if (isset($c['probability']) || isset($c['impact'])) {
+            return 're-rated '.$what;
+        }
+        if (isset($c['residual_probability']) || isset($c['residual_impact'])) {
+            return 'rated '.$what.' after mitigation';
+        }
+        if (isset($c['severity']['to'])) {
+            return 'made '.$what.' '.$c['severity']['to'].' severity';
+        }
+        if (array_key_exists('owner_id', $c)) {
+            return ($c['owner_id']['to'] ?? null) ? 'gave '.$what.' to '.($people->get($c['owner_id']['to']) ?? 'someone') : 'left '.$what.' without an owner';
+        }
+        if (isset($c['review_date'])) {
+            return 'set the next review of '.$what;
+        }
+        if (isset($c['target_date'])) {
+            return 'set the target date of '.$what;
+        }
+
+        return 'edited '.$what;
     }
 
     /**

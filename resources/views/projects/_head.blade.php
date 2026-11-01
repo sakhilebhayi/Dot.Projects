@@ -25,5 +25,6 @@
     <a href="{{ route('projects.work', $project) }}" @if ($view === 'work') aria-current="page" @endif>Work</a>
     <a href="{{ route('projects.schedule', $project) }}" @if ($view === 'schedule') aria-current="page" @endif>Schedule</a>
     <a href="{{ route('projects.board', $project) }}" @if ($view === 'board') aria-current="page" @endif>Board</a>
+    <a href="{{ route('projects.risks', $project) }}" @if ($view === 'governance') aria-current="page" @endif>Governance</a>
     <a href="{{ route('projects.settings', $project) }}" @if ($view === 'settings') aria-current="page" @endif>Settings</a>
 </nav>

@@ -227,6 +227,11 @@ most a 3px radius. Avatars are circles with the person's initials on a pale tint
   milestone a dot (filled when done, ink when on time, `critical` when on the critical path and late),
   dates under each. Baselines appear as hollow dots once baselines exist (P4); until then the line
   shows planned dates only and says so.
+- **Risk matrix** (P5a): probability rows (most likely at the top) by impact columns (worst on the
+  right), each cell tinted by its band from the state colours, never the critical-path blue: low is
+  `raised`, medium a 26% mix of `warning`, high a 42% mix of `negative`, critical solid `negative`.
+  Counts are ink; the band is always named in text (legend, pill, cell label). On phones the
+  impact labels turn vertical. Band pills follow the same steps (`pill-negative` solid for critical).
 - Blocked work is hatched, never just coloured. Load bars show capacity as a 1px tick.
 
 ## Do's and Don'ts
