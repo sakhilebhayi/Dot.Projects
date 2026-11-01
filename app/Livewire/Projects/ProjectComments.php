@@ -5,6 +5,7 @@ namespace App\Livewire\Projects;
 use App\Models\Project;
 use App\Models\ProjectComment;
 use App\Notifications\NewCommentNotification;
+use App\Services\Activity;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Validate;
@@ -41,6 +42,7 @@ class ProjectComments extends Component
             'user_id' => auth()->id(),
             'body' => $this->body,
         ]);
+        Activity::record('comment.added', $comment, [], $this->project);
 
         $this->body = '';
         unset($this->comments);

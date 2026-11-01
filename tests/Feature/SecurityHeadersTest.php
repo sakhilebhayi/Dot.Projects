@@ -39,7 +39,7 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString("object-src 'none'", $policy);
         $this->assertStringContainsString("base-uri 'self'", $policy);
         $this->assertStringContainsString('connect-src', $policy);
-        $this->assertStringContainsString('https://cdn.tailwindcss.com', $policy, 'the Tailwind CDN the app layout loads');
+        $this->assertStringNotContainsString('cdn.tailwindcss.com', $policy, 'the workspace stylesheet is built, not compiled from a CDN');
         $this->assertStringContainsString('https://fonts.googleapis.com', $policy);
         $this->assertStringContainsString('https://fonts.gstatic.com', $policy);
         // The switch turns the same policy into an enforced one, with no deploy.

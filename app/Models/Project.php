@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Events\ProjectClosed;
 use App\Models\Concerns\HasTeamScope;
+use App\Services\Activity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -23,6 +24,19 @@ class Project extends Model
         'start_date' => 'date',
         'due_date' => 'date',
     ];
+
+    /**
+     * The team a project belongs to, read without the team scope. Policies use it: they are the
+     * access check themselves, so they must not depend on who happens to be signed in.
+     */
+    public static function owningTeam(?int $projectId): ?Team
+    {
+        if ($projectId === null) {
+            return null;
+        }
+
+        return static::withoutTeamScope(fn () => static::query()->with('team')->find($projectId)?->team);
+    }
 
     public function team(): BelongsTo
     {
@@ -100,6 +114,7 @@ class Project extends Model
         }
 
         $this->update(['status' => 'pending_closure_approval']);
+        Activity::record('project.closure_proposed', $this, ['status' => 'pending_closure_approval']);
 
         return true;
     }
@@ -124,6 +139,7 @@ class Project extends Model
             'closure_reviewed_at' => now(),
         ]);
 
+        Activity::record('project.closed', $this, ['status' => 'completed']);
         ProjectClosed::dispatch($this);
 
         return true;
@@ -148,6 +164,7 @@ class Project extends Model
             'closure_reviewed_by' => $this->owner_id,
             'closure_reviewed_at' => now(),
         ]);
+        Activity::record('project.closure_rejected', $this, ['status' => 'active']); // the reason is text, so it stays on the project only
 
         return true;
     }

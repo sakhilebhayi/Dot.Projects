@@ -46,11 +46,9 @@ class ProjectCommentPolicy
 
     private function team(ProjectComment $comment): ?Team
     {
-        $commentable = $comment->commentable;
-
-        return match (true) {
-            $commentable instanceof Project => $commentable->team,
-            $commentable instanceof ProjectTask => $commentable->project->team,
+        return match ($comment->commentable_type) {
+            Project::class => Project::owningTeam($comment->commentable_id),
+            ProjectTask::class => Project::owningTeam(ProjectTask::query()->whereKey($comment->commentable_id)->value('project_id')),
             default => null,
         };
     }

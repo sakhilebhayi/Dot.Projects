@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\Project;
 use App\Models\ProjectTask;
 use Illuminate\Notifications\Notification;
 
@@ -27,7 +28,9 @@ class TaskAssignedNotification extends Notification
      */
     public function toDatabase(object $notifiable): array
     {
-        $project = $this->task->project;
+        // Read without the team scope: a notification may be built with nobody signed in (the
+        // scheduler), and the recipient was chosen from the project's own team.
+        $project = Project::withoutTeamScope(fn () => Project::query()->findOrFail($this->task->project_id));
 
         return [
             'type' => 'task_assigned',

@@ -6,8 +6,11 @@ use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\Team;
+use App\Services\Activity;
 use App\Services\AiProjectPlannerService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -65,7 +68,15 @@ class CreateProject extends Component
             'due_date' => $this->dueDate ?: null,
         ]);
 
+        Activity::record('project.created', $project, ['status' => $project->status]);
+
         $this->redirect(route('projects.show', $project));
+    }
+
+    /** Whether AI planning is set up here; without it the button offers a labelled example plan. */
+    public function aiReady(): bool
+    {
+        return app(AiProjectPlannerService::class)->isConfigured();
     }
 
     public function generatePlan(): void
@@ -77,6 +88,14 @@ class CreateProject extends Component
         if (! $team) {
             abort(403, 'No active team selected.');
         }
+
+        // Each plan costs an AI call: ten an hour per person is plenty for real use.
+        if (RateLimiter::tooManyAttempts('ai-plan:'.auth()->id(), 10)) {
+            $this->aiError = 'You have drafted several plans in the last hour. Create the project now and try again later.';
+
+            return;
+        }
+        RateLimiter::hit('ai-plan:'.auth()->id(), 3600);
 
         $this->generating = true;
         $this->aiError = null;
@@ -92,35 +111,45 @@ class CreateProject extends Component
         ]);
 
         $service = app(AiProjectPlannerService::class);
-        $plan = $service->generatePlan($project, auth()->id());
+        $example = ! $service->isConfigured();
+        $plan = $example ? $service->examplePlan($project) : $service->generatePlan($project, auth()->id());
 
         if ($plan === null) {
-            $this->aiError = 'AI planning failed. The project was created without a plan.';
             $this->generating = false;
+            session()->flash('flash.banner', 'The AI could not draft a plan, so the project has none yet.');
+            session()->flash('flash.bannerStyle', 'warning');
             $this->redirect(route('projects.show', $project));
 
             return;
         }
 
-        foreach ($plan['milestones'] ?? [] as $i => $ms) {
-            $milestone = Milestone::create([
-                'project_id' => $project->id,
-                'title' => $ms['title'],
-                'description' => $ms['description'] ?? null,
-                'sort_order' => $i,
-            ]);
-
-            foreach ($ms['tasks'] ?? [] as $j => $t) {
-                ProjectTask::create([
+        DB::transaction(function () use ($plan, $project) {
+            foreach ($plan['milestones'] ?? [] as $i => $ms) {
+                $milestone = Milestone::create([
                     'project_id' => $project->id,
-                    'milestone_id' => $milestone->id,
-                    'title' => $t['title'],
-                    'priority' => $t['priority'] ?? 'medium',
-                    'status' => 'backlog',
-                    'sort_order' => $j,
+                    'title' => $ms['title'],
+                    'description' => $ms['description'] ?? null,
+                    'sort_order' => $i,
                 ]);
+
+                foreach ($ms['tasks'] ?? [] as $j => $t) {
+                    ProjectTask::create([
+                        'project_id' => $project->id,
+                        'milestone_id' => $milestone->id,
+                        'title' => $t['title'],
+                        'priority' => in_array($t['priority'] ?? null, ['low', 'medium', 'high', 'urgent'], true) ? $t['priority'] : 'medium',
+                        'status' => 'backlog',
+                        'sort_order' => $j,
+                    ]);
+                }
             }
-        }
+        });
+
+        Activity::record($example ? 'project.example_plan_added' : 'project.ai_plan_added', $project);
+        session()->flash('flash.banner', $example
+            ? 'No AI here yet: a generic example plan was added. Edit it to fit.'
+            : 'AI drafted this plan. It is a proposal: check every task.');
+        session()->flash('flash.bannerStyle', $example ? 'warning' : 'success');
 
         $this->generating = false;
         $this->redirect(route('projects.show', $project));

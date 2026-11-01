@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
+use App\Services\Activity;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -66,11 +67,18 @@ class ProjectBoard extends Component
     public function moveTask(int $taskId, string $newStatus): void
     {
         $this->authorize('update', $this->project);
+        // Only the board's own columns: anything else from a tampered request is refused
+        // before it reaches the database constraint.
+        abort_unless(array_key_exists($newStatus, self::COLUMNS), 422, 'That is not a column on this board.');
 
         $task = ProjectTask::findOrFail($taskId);
         abort_unless($task->project_id === $this->project->id, 403);
 
+        $from = $task->status;
         $task->update(['status' => $newStatus]);
+        if ($from !== $newStatus) {
+            Activity::record('task.moved', $task, ['status' => ['from' => $from, 'to' => $newStatus]], $this->project);
+        }
 
         if ($task->milestone_id) {
             $milestone = $task->milestone;
@@ -135,7 +143,11 @@ class ProjectBoard extends Component
             abort_unless($assignee && $assignee->belongsToTeam($this->project->team), 403);
         }
 
+        $from = $task->assignee_id;
         $task->update(['assignee_id' => $assignee?->id]);
+        if ($from !== $assignee?->id) {
+            Activity::record('task.assigned', $task, ['assignee_id' => ['from' => $from, 'to' => $assignee?->id]], $this->project);
+        }
 
         if ($assignee) {
             $assignee->notify(new TaskAssignedNotification($task));

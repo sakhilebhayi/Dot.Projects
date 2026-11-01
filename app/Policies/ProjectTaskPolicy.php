@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -16,16 +17,16 @@ class ProjectTaskPolicy
      */
     public function view(User $user, ProjectTask $task): bool
     {
-        return $user->belongsToTeam($task->project->team);
+        return $user->belongsToTeam(Project::owningTeam($task->project_id));
     }
 
     public function update(User $user, ProjectTask $task): bool
     {
-        return $user->hasTeamPermission($task->project->team, 'update');
+        return $user->hasTeamPermission(Project::owningTeam($task->project_id), 'update');
     }
 
     public function delete(User $user, ProjectTask $task): bool
     {
-        return $user->hasTeamPermission($task->project->team, 'update');
+        return $user->hasTeamPermission(Project::owningTeam($task->project_id), 'update');
     }
 }
