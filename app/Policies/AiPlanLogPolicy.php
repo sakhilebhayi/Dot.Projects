@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\AiPlanLog;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -21,6 +22,6 @@ class AiPlanLogPolicy
 
     public function view(User $user, AiPlanLog $log): bool
     {
-        return $user->belongsToTeam($log->project->team);
+        return $user->belongsToTeam(Project::owningTeam($log->project_id));
     }
 }

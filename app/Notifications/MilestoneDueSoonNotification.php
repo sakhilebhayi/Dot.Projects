@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Milestone;
+use App\Models\Project;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -28,7 +29,9 @@ class MilestoneDueSoonNotification extends Notification
      */
     public function toDatabase(object $notifiable): array
     {
-        $project = $this->milestone->project;
+        // Read without the team scope: a notification may be built with nobody signed in (the
+        // scheduler), and the recipient was chosen from the project's own team.
+        $project = Project::withoutTeamScope(fn () => Project::query()->findOrFail($this->milestone->project_id));
 
         return [
             'type' => 'milestone_due_soon',

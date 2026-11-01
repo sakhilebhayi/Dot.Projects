@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Milestone;
+use App\Models\Project;
 use App\Notifications\MilestoneDueSoonNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -22,6 +23,13 @@ class CheckMilestonesDueSoon extends Command
     protected $description = 'Notify project owners and members about milestones due within the next two days.';
 
     public function handle(): int
+    {
+        // Runs from the scheduler with nobody signed in and covers every team, so it switches
+        // the (fail-closed) project team scope off explicitly.
+        return Project::withoutTeamScope(fn (): int => $this->remind());
+    }
+
+    private function remind(): int
     {
         $windowEnd = Carbon::today()->addDays(2)->toDateString();
         $windowStart = Carbon::today()->toDateString();

@@ -47,21 +47,25 @@
             </div>
         @endif
 
+        @unless ($this->aiReady())
+            <p style="margin:0;font-size:0.78rem;color:#8d90a2;">AI planning is not set up here. The example plan adds three generic milestones with tasks, not tailored to this project, for you to edit or delete.</p>
+        @endunless
+
         <div style="display:flex;gap:0.75rem;padding-top:0.5rem;">
             <button type="submit"
                     style="flex:1;display:flex;align-items:center;justify-content:center;gap:0.4rem;border-radius:9999px;border:1px solid rgba(124,58,237,0.4);background:transparent;padding:0.7rem 1rem;font-family:'Manrope',sans-serif;font-size:0.78rem;font-weight:700;color:#b6c4ff;cursor:pointer;transition:background 0.2s;"
                     onmouseover="this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.background='transparent'">
-                <span class="material-symbols-outlined" style="font-size:16px;">save</span>
+                <span class="material-symbols-rounded" style="font-size:16px;">save</span>
                 Create Project
             </button>
             <button type="button" wire:click="generatePlan" wire:loading.attr="disabled"
                     style="flex:1;display:flex;align-items:center;justify-content:center;gap:0.4rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:0.7rem 1rem;font-family:'Manrope',sans-serif;font-size:0.78rem;font-weight:700;color:#f7f5ff;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(124,58,237,0.3);transition:opacity 0.2s;"
                     onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                 <span wire:loading.remove wire:target="generatePlan" style="display:flex;align-items:center;gap:0.4rem;">
-                    <span class="material-symbols-outlined" style="font-size:16px;">auto_awesome</span>
-                    AI Generate Plan
+                    <span class="material-symbols-rounded" style="font-size:16px;">auto_awesome</span>
+                    {{ $this->aiReady() ? 'Create and draft a plan with AI' : 'Create with an example plan' }}
                 </span>
-                <span wire:loading wire:target="generatePlan">Generating...</span>
+                <span wire:loading wire:target="generatePlan">{{ $this->aiReady() ? 'Drafting the plan…' : 'Adding the example…' }}</span>
             </button>
         </div>
     </form>

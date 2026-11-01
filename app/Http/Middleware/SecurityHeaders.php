@@ -18,7 +18,8 @@ use Symfony\Component\HttpFoundation\Response;
  * /csp-report and blocks nothing, so the allow-list can be settled from real reports before anything is enforced.
  * Every origin below is one the views or the framework actually load:
  *
- * - https://cdn.tailwindcss.com (script-src): the Tailwind CDN script in layouts/app.blade.php.
+ * - No script CDN: the workspace stylesheet is built by Vite since R-34 P1, so the runtime Tailwind CDN
+ *   (https://cdn.tailwindcss.com) is no longer allowed.
  * - https://fonts.googleapis.com (style-src) and https://fonts.gstatic.com (font-src): Google Fonts and
  *   Material Symbols, linked from every layout and the error pages.
  * - https://images.unsplash.com (img-src): the welcome page and authentication-card backgrounds.
@@ -29,7 +30,7 @@ use Symfony\Component\HttpFoundation\Response;
 class SecurityHeaders
 {
     /** @var list<string> */
-    private const SCRIPT_ORIGINS = ['https://cdn.tailwindcss.com'];
+    private const SCRIPT_ORIGINS = [];
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -60,7 +61,7 @@ class SecurityHeaders
     {
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' ".implode(' ', self::SCRIPT_ORIGINS),
+            trim("script-src 'self' 'unsafe-inline' 'unsafe-eval' ".implode(' ', self::SCRIPT_ORIGINS)),
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' data: https://fonts.gstatic.com",
             "img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com",

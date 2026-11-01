@@ -11,8 +11,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class', corePlugins: { preflight: false } }</script>
+    {{-- Built by Vite (tailwind.workspace.config.js), not compiled in the browser from a CDN. --}}
+    @vite(['resources/css/workspace.css'])
     <script>
         // Dark mode: this dashboard's own markup is intentionally fixed-dark (inline styles,
         // not Tailwind dark: classes), so this toggle mainly affects Jetstream-rendered pages
@@ -94,7 +94,6 @@
          replaces window.Alpine and breaks every Livewire re-render ('Alpine.cloneNode is not a function'). --}}
 </head>
 <body>
-    <x-banner />
 
     <aside class="sidebar">
         <div class="sidebar-brand">
@@ -166,6 +165,8 @@
     @livewire('navigation-menu')
 
     <div class="content-wrap">
+        {{-- Inside the content area, below the fixed top bar, so a banner is never hidden behind it. --}}
+        <x-banner />
         <main>{{ $slot }}</main>
     </div>
 

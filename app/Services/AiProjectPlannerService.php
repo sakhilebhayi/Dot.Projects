@@ -33,11 +33,13 @@ class AiProjectPlannerService
      */
     public function generatePlan(Project $project, int $userId): ?array
     {
-        $prompt = $this->buildPrompt($project);
-
+        // No key, no AI plan. The example plan is offered to the user as an example (see
+        // examplePlan()); it is never returned here as if the AI had proposed it.
         if (! $this->isConfigured()) {
-            return $this->mockPlan($project);
+            return null;
         }
+
+        $prompt = $this->buildPrompt($project);
 
         $response = Http::withToken($this->apiKey)
             ->timeout(30)
@@ -111,14 +113,19 @@ PROMPT;
         return $data;
     }
 
-    /** @return array<string, mixed> */
-    private function mockPlan(Project $project): array
+    /**
+     * A generic example plan, for businesses where AI planning is not set up. The caller must
+     * present it as an example: every milestone description says so.
+     *
+     * @return array<string, mixed>
+     */
+    public function examplePlan(Project $project): array
     {
         return [
             'milestones' => [
                 [
                     'title' => 'Discovery & Planning',
-                    'description' => 'Define scope, requirements, and architecture.',
+                    'description' => 'Example plan, not tailored to this project: define scope, requirements and architecture.',
                     'tasks' => [
                         ['title' => 'Gather requirements', 'priority' => 'high'],
                         ['title' => 'Define technical architecture', 'priority' => 'high'],
@@ -127,7 +134,7 @@ PROMPT;
                 ],
                 [
                     'title' => 'Core Development',
-                    'description' => 'Build the main features of '.$project->name.'.',
+                    'description' => 'Example plan, not tailored to this project: build the main features of '.$project->name.'.',
                     'tasks' => [
                         ['title' => 'Set up development environment', 'priority' => 'high'],
                         ['title' => 'Implement core functionality', 'priority' => 'high'],
@@ -136,7 +143,7 @@ PROMPT;
                 ],
                 [
                     'title' => 'Testing & Launch',
-                    'description' => 'QA, bug fixes, and production deployment.',
+                    'description' => 'Example plan, not tailored to this project: testing, fixes and go-live.',
                     'tasks' => [
                         ['title' => 'Conduct QA testing', 'priority' => 'high'],
                         ['title' => 'Fix identified bugs', 'priority' => 'urgent'],

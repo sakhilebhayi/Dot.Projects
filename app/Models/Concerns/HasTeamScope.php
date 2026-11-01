@@ -23,15 +23,37 @@ use Illuminate\Support\Facades\Auth;
  * component can no longer leak another team's rows, because the model
  * itself never returns unscoped results while a user is authenticated with
  * a current team.
+ *
+ * It fails closed (since R-34 P1): with nobody signed in, no current team, or a current
+ * team the user does not belong to, a query returns no rows instead of every team's
+ * rows. Work with no user that genuinely spans teams says so explicitly with
+ * `Project::withoutTeamScope(fn () => ...)`.
  */
 trait HasTeamScope
 {
     protected static function bootHasTeamScope(): void
     {
         static::addGlobalScope('team', function (Builder $builder): void {
-            if (Auth::check() && Auth::user()->currentTeam) {
-                $builder->where($builder->getModel()->getTable().'.team_id', Auth::user()->currentTeam->id);
+            if (TeamScopeBypass::active()) {
+                return;
             }
+
+            $user = Auth::user();
+            $team = $user?->currentTeam;
+
+            if ($user && $team && $user->belongsToTeam($team)) {
+                $builder->where($builder->getModel()->getTable().'.team_id', $team->getKey());
+
+                return;
+            }
+
+            $builder->whereRaw('1 = 0');
         });
+    }
+
+    /** Run $callback with the team scope switched off, explicitly. */
+    public static function withoutTeamScope(callable $callback): mixed
+    {
+        return TeamScopeBypass::run($callback);
     }
 }

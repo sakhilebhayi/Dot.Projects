@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\MilestoneReached;
+use App\Services\Activity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,7 +62,9 @@ class Milestone extends Model
         }
 
         $wasCompleted = $this->status === 'completed';
+        $from = $this->status;
         $this->update(['status' => $newStatus]);
+        Activity::record('milestone.status_changed', $this, ['status' => ['from' => $from, 'to' => $newStatus]], Project::withoutTeamScope(fn () => $this->project()->first()));
 
         if ($newStatus === 'completed' && ! $wasCompleted) {
             MilestoneReached::dispatch($this);
