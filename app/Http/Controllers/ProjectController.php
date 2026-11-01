@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Services\ActivityFeed;
 use App\Services\ProjectSummary;
+use App\Services\Schedule;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -20,6 +21,9 @@ class ProjectController extends Controller
             'project' => $project->load('owner'),
             'summary' => new ProjectSummary($project),
             'activity' => ActivityFeed::forProject($project),
+            'schedule' => new Schedule($project),
+            'baseline' => $baseline = $project->baselines()->first(),
+            'base' => Schedule::baselineMap($baseline),
         ]);
     }
 
@@ -29,6 +33,14 @@ class ProjectController extends Controller
         $this->authorize('view', $project);
 
         return view('projects.work', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
+    }
+
+    /** The timeline: dates, critical path, baselines, conflicts. */
+    public function schedule(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return view('projects.schedule', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
     }
 
     /** One task: details, checklist and its own comments. */

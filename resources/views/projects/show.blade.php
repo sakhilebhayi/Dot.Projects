@@ -7,8 +7,11 @@
         $rows = $summary->milestoneRows();
         $dated = $rows->filter(fn ($r) => $r['milestone']->due_date);
         // The date line runs from the project's start (or first milestone) to its due date (or last milestone).
-        $from = collect([$project->start_date, $dated->min(fn ($r) => $r['milestone']->due_date), $summary->today])->filter()->min()->copy()->startOfMonth();
-        $to = collect([$project->due_date, $dated->max(fn ($r) => $r['milestone']->due_date), $summary->today])->filter()->max()->copy()->endOfMonth();
+        $baseDates = collect($base['milestone'] ?? [])->map(fn ($i) => $i->due_date)->filter();
+        $from = collect([$project->start_date, $dated->min(fn ($r) => $r['milestone']->due_date), $baseDates->min(), $summary->today])->filter()->min()->copy()->startOfMonth();
+        $to = collect([$project->due_date, $dated->max(fn ($r) => $r['milestone']->due_date), $baseDates->max(), $summary->today])->filter()->max()->copy()->endOfMonth();
+        $forecast = $schedule->forecastFinish();
+        $baseDue = isset($base['project'][$project->id]) ? $base['project'][$project->id]->due_date : null;
         $span = max(1, $from->diffInDays($to));
         $at = fn ($d) => round($from->diffInDays($d) / $span * 100, 3).'%';
         $days = $summary->daysToDue();
@@ -25,7 +28,7 @@
 
         <div class="pg-grid">
             <section class="pg-card pg-s12" aria-labelledby="land-h">
-                <div class="pg-card-head"><h2 id="land-h">When we land</h2><small>Milestones on their planned dates. Black dots are done; red ones are past due.</small></div>
+                <div class="pg-card-head"><h2 id="land-h">When we land</h2><small>Milestones on their planned dates. Black dots are done; red ones are past due.@if ($baseline) Dashed rings are baseline {{ $baseline->number }}.@endif</small></div>
                 <div class="pg-land">
                     @if ($dated->isEmpty())
                         <p class="pg-empty" style="align-self:center">No milestone has a date yet. @can('update', $project)<a href="{{ route('projects.board', $project) }}#add-milestone">Add a dated milestone</a> to draw this line.@endcan</p>
@@ -40,6 +43,8 @@
                                     $low = $prev && $prev->diffInDays($m->due_date) < 21;
                                     $prev = $low ? null : $m->due_date;
                                 @endphp
+                                @php $mb = isset($base['milestone'][$m->id]) ? $base['milestone'][$m->id]->due_date : null; @endphp
+                                @if ($mb && ! $mb->isSameDay($m->due_date))<span class="ms base" style="left:{{ $at($mb) }}" title="{{ $m->title }}, baseline {{ $baseline->number }}: {{ $mb->format('j M Y') }}"></span>@endif
                                 <span class="ms {{ $m->status === 'completed' ? 'done' : ($r['late'] ? 'late' : '') }}" style="left:{{ $at($m->due_date) }}" title="{{ $m->title }}, {{ $m->due_date->format('j M Y') }}"></span>
                                 <span class="lbl {{ $low ? 'low' : '' }} {{ $i % 2 ? 'odd' : '' }}" style="left:{{ $at($m->due_date) }}"><span class="t">{{ Str::limit($m->title, 28) }}</span><small class="{{ $r['late'] ? 'late' : '' }}">{{ $m->due_date->format('j M') }}</small></span>
                             @endforeach
@@ -55,6 +60,12 @@
                             <span class="d pg-muted">No due date set</span>
                         @endif
                         <span class="d pg-muted">{{ $summary->done() }} of {{ $total }} {{ Str::plural('task', $total) }} done</span>
+                        @if ($forecast)
+                            <span class="d">Tasks as dated finish <a href="{{ route('projects.schedule', $project) }}">{{ $forecast->format('j M') }}</a>@if ($project->due_date && $forecast->gt($project->due_date)), <span class="pg-neg">{{ (int) $project->due_date->diffInDays($forecast) }} {{ Str::plural('day', (int) $project->due_date->diffInDays($forecast)) }} late</span>@endif</span>
+                        @endif
+                        @if ($baseline && $baseDue)
+                            <span class="d pg-muted">Baseline {{ $baseline->number }} was due {{ $baseDue->format('j M') }}@if ($project->due_date && ! $baseDue->isSameDay($project->due_date))@php $moved = (int) $baseDue->diffInDays($project->due_date, false); @endphp, now {{ abs($moved) }} {{ Str::plural('day', abs($moved)) }} {{ $moved > 0 ? 'later' : 'earlier' }}@endif</span>
+                        @endif
                     </div>
                 </div>
             </section>

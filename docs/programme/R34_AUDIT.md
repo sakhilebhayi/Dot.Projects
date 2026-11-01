@@ -257,3 +257,16 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   of subtasks; text-only labels per project with a label filter; saved views of the work table per
   person; duplicate carries subtasks, labels and dependencies. Statuses as data per project are
   deferred to the methodology and template step, where Scrum and stage-gate need them.
+- **P4 schedule** (2026-11-01): a Schedule tab with a timeline of every dated task, grouped by
+  milestone, in weeks or months. Rules, in calendar days: a task runs from its start date (or its
+  due date) to its due date; the target is the project's due date (or the last task's); a backward
+  pass over finish-to-start dependencies gives each open task its float; float of zero or less is
+  the critical path, the only thing drawn in the one blue; a task that starts before something it
+  waits for finishes is a conflict, shown and named, never refused. Bars move by drag or arrow keys
+  and stretch by dragging their end or Shift with arrows; every move is checked and saved on the
+  server (due never before start, done work keeps its dates, viewers and archived projects
+  refused) and recorded in the activity log. Numbered baselines keep the project, milestone and
+  task dates as they were, with a note; the timeline draws the chosen baseline under each bar and
+  milestone, and the overview shows the forecast finish and how far the due date moved since the
+  latest baseline. Nothing is estimated: a task without a due date is listed as not on the
+  schedule. Calendar view, resource levelling and working-day calendars are later steps.

@@ -59,6 +59,8 @@ final class ActivityFeed
                 'subtask.added' => 'added the subtask '.$q($tasks->get($l->subject_id)),
                 'label.added' => 'labelled '.$q($tasks->get($l->subject_id)),
                 'label.removed' => 'removed a label from '.$q($tasks->get($l->subject_id)),
+                'task.rescheduled' => 'rescheduled '.$q($tasks->get($l->subject_id)).(isset($c['due_date']['to']) ? ' to finish '.Carbon::parse($c['due_date']['to'])->format('j M') : ''),
+                'baseline.set' => 'set baseline '.($c['number'] ?? ''),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
 
