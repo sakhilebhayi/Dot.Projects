@@ -2,15 +2,22 @@
 
 namespace App\Livewire\Projects;
 
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use App\Services\Activity;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
+/**
+ * @property-read Collection<int, Milestone> $milestones
+ */
 class ProjectBoard extends Component
 {
     public Project $project;
@@ -23,11 +30,22 @@ class ProjectBoard extends Component
 
     public string $closureRejectReason = '';
 
+    // Quick add (R-34 P2): a task straight into Backlog, and a milestone.
+    public string $newTaskTitle = '';
+
+    public string $newTaskMilestone = '';
+
+    public string $newTaskDue = '';
+
+    public string $newMilestoneTitle = '';
+
+    public string $newMilestoneDue = '';
+
     public const COLUMNS = [
         'backlog' => 'Backlog',
-        'todo' => 'To Do',
-        'in_progress' => 'In Progress',
-        'review' => 'Review',
+        'todo' => 'To do',
+        'in_progress' => 'In progress',
+        'review' => 'In review',
         'done' => 'Done',
     ];
 
@@ -154,6 +172,64 @@ class ProjectBoard extends Component
         }
 
         unset($this->tasksByStatus);
+    }
+
+    #[Computed]
+    public function milestones()
+    {
+        return $this->project->milestones()->get(['id', 'title', 'status', 'due_date']);
+    }
+
+    public function addTask(): void
+    {
+        $this->authorize('update', $this->project);
+        $data = $this->validate([
+            'newTaskTitle' => ['required', 'string', 'max:255'],
+            'newTaskMilestone' => ['nullable', Rule::in($this->milestones->pluck('id')->map(fn ($id) => (string) $id)->all())],
+            'newTaskDue' => ['nullable', 'date'],
+        ], [], ['newTaskTitle' => 'task', 'newTaskMilestone' => 'milestone', 'newTaskDue' => 'due date']);
+
+        $task = DB::transaction(function () use ($data) {
+            $task = ProjectTask::create([
+                'project_id' => $this->project->id,
+                'milestone_id' => $data['newTaskMilestone'] ?: null,
+                'title' => trim($data['newTaskTitle']),
+                'status' => 'backlog',
+                'priority' => 'medium',
+                'due_date' => $data['newTaskDue'] ?: null,
+                'sort_order' => (int) $this->project->tasks()->where('status', 'backlog')->max('sort_order') + 1,
+            ]);
+            Activity::record('task.created', $task, [], $this->project);
+            // A milestone that was complete is no longer complete with new work on it.
+            $task->milestone?->syncStatusFromTasks();
+
+            return $task;
+        });
+
+        $this->reset('newTaskTitle', 'newTaskDue');
+        unset($this->tasksByStatus);
+        $this->dispatch('task-added', id: $task->id);
+    }
+
+    public function addMilestone(): void
+    {
+        $this->authorize('update', $this->project);
+        $data = $this->validate([
+            'newMilestoneTitle' => ['required', 'string', 'max:255'],
+            'newMilestoneDue' => ['nullable', 'date'],
+        ], [], ['newMilestoneTitle' => 'milestone', 'newMilestoneDue' => 'due date']);
+
+        $milestone = Milestone::create([
+            'project_id' => $this->project->id,
+            'title' => trim($data['newMilestoneTitle']),
+            'due_date' => $data['newMilestoneDue'] ?: null,
+            'status' => 'pending',
+            'sort_order' => (int) $this->project->milestones()->max('sort_order') + 1,
+        ]);
+        Activity::record('milestone.created', $milestone, [], $this->project);
+
+        $this->reset('newMilestoneTitle', 'newMilestoneDue');
+        unset($this->milestones);
     }
 
     public function render(): View

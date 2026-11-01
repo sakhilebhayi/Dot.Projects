@@ -10,7 +10,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $team_id
+ * @property int $owner_id
+ * @property string $name
+ * @property string|null $description
+ * @property string $status
+ * @property Carbon|null $start_date
+ * @property Carbon|null $due_date
+ * @property-read Team $team
+ * @property-read User $owner
+ */
 class Project extends Model
 {
     use HasTeamScope;
@@ -38,16 +51,19 @@ class Project extends Model
         return static::withoutTeamScope(fn () => static::query()->with('team')->find($projectId)?->team);
     }
 
+    /** @return BelongsTo<Team, $this> */
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    /** @return BelongsToMany<User, $this> */
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'project_members')
@@ -55,21 +71,25 @@ class Project extends Model
             ->withTimestamps();
     }
 
+    /** @return HasMany<Milestone, $this> */
     public function milestones(): HasMany
     {
         return $this->hasMany(Milestone::class)->orderBy('sort_order');
     }
 
+    /** @return HasMany<ProjectTask, $this> */
     public function tasks(): HasMany
     {
         return $this->hasMany(ProjectTask::class);
     }
 
+    /** @return MorphMany<ProjectComment, $this> */
     public function comments(): MorphMany
     {
         return $this->morphMany(ProjectComment::class, 'commentable');
     }
 
+    /** @return HasMany<AiPlanLog, $this> */
     public function aiPlanLogs(): HasMany
     {
         return $this->hasMany(AiPlanLog::class);

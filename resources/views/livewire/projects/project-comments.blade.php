@@ -1,35 +1,23 @@
 <div>
-    <h2 style="font-family:'Manrope',sans-serif;font-size:0.72rem;font-weight:700;color:#8d90a2;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.85rem;">Comments</h2>
-
     @can('comment', $project)
-    <form wire:submit="addComment" style="margin-bottom:1.25rem;">
-        <textarea aria-label="Add a comment" wire:model="body" rows="2" placeholder="Add a comment…"
-                  style="width:100%;background:#0b1326;border:1px solid rgba(67,70,86,0.5);border-radius:0.5rem;padding:0.65rem 0.85rem;font-size:0.82rem;color:#dae2fd;font-family:'Inter',sans-serif;outline:none;resize:vertical;"></textarea>
-        @error('body')<p style="margin-top:0.35rem;font-size:0.72rem;color:#f87171;">{{ $message }}</p>@enderror
-        <div style="display:flex;justify-content:flex-end;margin-top:0.5rem;">
-            <button type="submit" wire:loading.attr="disabled"
-                    style="border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:0.5rem 1.1rem;font-family:'Manrope',sans-serif;font-size:0.75rem;font-weight:700;color:#f7f5ff;border:none;cursor:pointer;">
-                Post Comment
-            </button>
-        </div>
-    </form>
+        <form wire:submit="addComment" class="pg-form" style="margin-bottom:6px">
+            <div class="pg-field">
+                <label for="comment-body" class="pg-sr">Write to the team</label>
+                <textarea id="comment-body" wire:model="body" rows="2" class="pg-textarea" placeholder="Write to the team about this project"></textarea>
+                @error('body')<p class="pg-error">{{ $message }}</p>@enderror
+            </div>
+            <div style="display:flex;justify-content:flex-end"><button type="submit" class="pg-btn pg-btn--secondary pg-btn--sm" wire:loading.attr="disabled">Post comment</button></div>
+        </form>
     @else
-        <p style="margin-bottom:1.25rem;font-size:0.75rem;color:#8d90a2;">You have read-only access to this team, so you can read comments but not post.</p>
+        <p class="pg-help" style="margin:0 0 10px">You have read-only access to this business, so you can read the discussion but not post.</p>
     @endcan
 
-    @if($this->comments->isEmpty())
-        <p style="font-size:0.78rem;color:#52525b;">No comments yet.</p>
-    @else
-        <div style="display:flex;flex-direction:column;gap:0.75rem;">
-            @foreach($this->comments as $comment)
-                <div style="background:#131b2e;border:1px solid rgba(67,70,86,0.3);border-radius:0.65rem;padding:0.75rem 1rem;">
-                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
-                        <span style="font-size:0.78rem;font-weight:700;color:#dae2fd;">{{ $comment->user->name ?? 'Unknown' }}</span>
-                        <span style="font-size:0.65rem;color:#52525b;">{{ $comment->created_at->diffForHumans() }}</span>
-                    </div>
-                    <p style="font-size:0.8rem;color:#a1a1aa;margin:0;white-space:pre-line;">{{ $comment->body }}</p>
-                </div>
-            @endforeach
-        </div>
-    @endif
+    @forelse ($this->comments as $comment)
+        <article class="pg-comment">
+            <header><b>{{ $comment->user->name ?? 'Someone no longer here' }}</b><time datetime="{{ $comment->created_at->toIso8601String() }}" title="{{ $comment->created_at->format('j M Y, H:i') }}">{{ $comment->created_at->diffForHumans() }}</time></header>
+            <p>{{ $comment->body }}</p>
+        </article>
+    @empty
+        <p class="pg-empty">No comments yet.</p>
+    @endforelse
 </div>

@@ -4,8 +4,8 @@
             <x-authentication-card-logo />
         </x-slot>
 
-        <h1 class="font-display font-semibold text-2xl text-[var(--paper)] mb-1">Create your account</h1>
-        <p class="text-sm text-[var(--mist)] mb-6">Go from brief to milestone plan in seconds.</p>
+        <h1 class="pg-title" style="font-size:22px;margin-bottom:4px">Create your account</h1>
+        <p class="pg-help mb-6" style="margin:0 0 18px">Go from brief to milestone plan in seconds.</p>
 
         <x-validation-errors class="mb-4" />
 

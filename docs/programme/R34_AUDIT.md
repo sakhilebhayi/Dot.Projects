@@ -230,3 +230,17 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
    the host settles it).
 4. **Roles:** whether project-level roles (manager, member, external, client) replace "every team
    member sees every project" for existing businesses, or apply only to new private projects.
+
+## Progress
+
+- **P1 foundations** (2026-11-01, #38, live): fail-closed team scope, board status validation,
+  honest example plan, activity log, built stylesheet instead of the Tailwind CDN, icons, symfony/mime.
+- **P2 design system** (2026-11-01): the owner chose **A. The Programme** from three boards. Recorded
+  in `DESIGN.md` (linted clean) and `PRODUCT.md`; built in `resources/css/programme.css`. New shell
+  (icon rail with the original logo symbol, top bar with business switch, notifications, account),
+  projects ledger, project overview (finding sentence, "When we land", in the way, milestones, work,
+  people, discussion, activity), board view with working quick add for tasks and milestones (the
+  old "Add Task" and "Add Milestone" links were dead), restyled create, notifications, sign-in and
+  Jetstream form components; light and dark; phone layouts. Not yet redesigned: the public welcome
+  page (a Persuade surface, next) and the inside of Jetstream's profile and team pages beyond their
+  shared components.

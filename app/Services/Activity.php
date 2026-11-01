@@ -16,8 +16,10 @@ final class Activity
     /** @param array<string, mixed> $changes */
     public static function record(string $action, Model $subject, array $changes = [], ?Project $project = null): ActivityLine
     {
-        $project ??= $subject instanceof Project ? $subject : null;
-        $teamId = $project?->team_id ?? $subject->getAttribute('team_id');
+        if ($project === null && $subject instanceof Project) {
+            $project = $subject;
+        }
+        $teamId = $project !== null ? $project->team_id : $subject->getAttribute('team_id');
 
         $line = new ActivityLine;
         $line->forceFill([

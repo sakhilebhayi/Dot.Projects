@@ -45,10 +45,7 @@ class CheckMilestonesDueSoon extends Command
         $notified = 0;
 
         foreach ($milestones as $milestone) {
-            $project = $milestone->project;
-            if (! $project) {
-                continue;
-            }
+            $project = $milestone->project; // project_id is a required foreign key
 
             $recipients = collect([$project->owner])
                 ->merge($project->members)
