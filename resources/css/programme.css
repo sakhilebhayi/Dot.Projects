@@ -375,4 +375,54 @@ html.dark .pg-logo-night { display: block !important; }
 .pg-g-diamond.is-base { background: transparent; border: 1.5px solid var(--pg-muted); }
 .pg-g-diamond.is-late { background: var(--pg-negative); }
 .pg-g-flag { font-size: 11.5px; font-weight: 500; color: var(--pg-negative); background: var(--pg-negative-soft); border-radius: 999px; padding: 0 6px; flex: none; }
-@media (prefers-reduced-motion: no-preference) { .pg-g-bar { transition: left .15s ease-out, width .15s ease-out; } }
+
+/* ---------- Governance (risks, issues) ----------
+   Bands use the existing state roles, never the critical-path blue: low is neutral, medium is
+   warning, high is negative on its soft fill, critical is negative solid. The band is always named
+   in text beside the colour. */
+.pg-subnav { display: flex; gap: 6px; margin: -4px 0 16px; flex-wrap: wrap; }
+.pg-subnav a { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; color: var(--pg-muted); text-decoration: none; border: 1px solid var(--pg-border); background: var(--pg-surface); }
+.pg-subnav a:hover { color: var(--pg-ink); }
+.pg-subnav a[aria-current="page"] { color: var(--pg-on-primary); background: var(--pg-primary); border-color: var(--pg-primary); }
+.pg-subnav span { font-variant-numeric: tabular-nums; opacity: .75; }
+.pg-pill--solid { background: var(--pg-negative); color: var(--pg-surface); }
+.pg-seg { display: inline-flex; border: 1px solid var(--pg-border); border-radius: 6px; padding: 2px; gap: 2px; }
+.pg-seg button { border: 0; background: none; font: inherit; font-size: 12.5px; color: var(--pg-muted); padding: 3px 9px; border-radius: 4px; cursor: pointer; }
+.pg-seg button[aria-pressed="true"] { background: var(--pg-raised); color: var(--pg-ink); font-weight: 500; }
+.pg-seg button:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
+.pg-rm { display: grid; grid-template-columns: minmax(72px, auto) repeat(var(--n), minmax(0, 1fr)); gap: 3px; align-items: stretch; }
+.pg-rm-y { font-size: 12px; color: var(--pg-muted); display: flex; align-items: center; justify-content: flex-end; text-align: right; padding-right: 8px; line-height: 1.25; }
+.pg-rm-x { font-size: 11.5px; color: var(--pg-muted); text-align: center; line-height: 1.25; padding-top: 4px; display: flex; justify-content: center; white-space: normal; overflow-wrap: normal; min-width: 0; }
+.pg-rm-axis { font-size: 12px; font-weight: 500; color: var(--pg-ink); text-align: center; }
+.pg-rm-axis--y { grid-column: 1 / -1; text-align: left; margin-bottom: 2px; }
+.pg-rm-cell { position: relative; min-height: 44px; border: 0; border-radius: 3px; font: inherit; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--pg-ink); display: flex; align-items: center; justify-content: center; }
+button.pg-rm-cell { cursor: pointer; }
+button.pg-rm-cell:hover { box-shadow: inset 0 0 0 1px var(--pg-ink); }
+button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
+/* Tints mixed from the state colours so the four steps stay apart in both themes; counts are ink. */
+.b-low { background: var(--pg-raised); }
+.b-medium { background: color-mix(in srgb, var(--pg-warning) 26%, var(--pg-surface)); }
+.b-high { background: color-mix(in srgb, var(--pg-negative) 42%, var(--pg-surface)); }
+.b-critical { background: var(--pg-negative); color: var(--pg-surface); }
+.pg-rm-swatch { width: 10px !important; height: 10px !important; vertical-align: -1px; }
+.pg-rm--mini { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); max-width: 220px; margin-top: 12px; }
+.pg-rm--mini .pg-rm-cell { min-height: 0; aspect-ratio: 1; }
+.pg-rm-dot, .pg-rm-ring { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -2px; margin-right: 5px; }
+.pg-rm-dot { background: var(--pg-ink); }
+.pg-rm-ring { border: 2px solid var(--pg-ink); background: var(--pg-surface); }
+.pg-rm--mini .pg-rm-dot, .pg-rm--mini .pg-rm-ring { position: absolute; margin: 0; }
+.pg-rm--mini .pg-rm-dot + .pg-rm-ring { width: 18px; height: 18px; }
+.pg-kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 13.5px; align-items: baseline; }
+.pg-kv dt { color: var(--pg-muted); font-size: 12.5px; }
+.pg-kv dd { margin: 0; }
+.pg-fieldset { border: 1px solid var(--pg-rule); border-radius: 6px; padding: 10px 14px 14px; margin: 0; min-width: 0; }
+.pg-fieldset legend { font-size: 13px; font-weight: 600; padding: 0 6px; margin-left: -6px; }
+.pg-add > summary { list-style: none; }
+.pg-add > summary::-webkit-details-marker { display: none; }
+.pg-add:not([open]) { display: none; }
+.pg-table--risks td:nth-child(2), .pg-table--issues td:nth-child(4) { white-space: nowrap; }
+@media (max-width: 640px) {
+    .pg-rm-x { writing-mode: vertical-rl; transform: rotate(180deg); text-align: right; justify-content: flex-start; align-items: center; padding: 0 0 6px; max-height: 96px; }
+    .pg-rm-y { font-size: 11.5px; padding-right: 6px; }
+}
+.pg-key .pg-rm-dot, .pg-key .pg-rm-ring { width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; }

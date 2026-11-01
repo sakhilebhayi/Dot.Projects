@@ -270,3 +270,18 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   milestone, and the overview shows the forecast finish and how far the due date moved since the
   latest baseline. Nothing is estimated: a task without a due date is listed as not on the
   schedule. Calendar view, resource levelling and working-day calendars are later steps.
+- **P5a risks and issues** (2026-11-01): a Governance tab with a risk register and an issue log.
+  Risks are numbered per project (R-01), owned, categorised and rated by probability and impact on
+  the project's own matrix (3, 4 or 5 steps, named steps and band thresholds set in Settings; a
+  smaller matrix is refused while a risk sits above it). Each risk keeps a rating before and after
+  mitigation, mitigation and contingency plans, a review date (overdue reviews flagged) and a
+  status; the register shows the matrix as a heat grid of live risks (click a cell to filter), what
+  needs attention (escalations, overdue reviews, serious risks with no plan, no owner) and the
+  register by rating. Issues (I-01) carry severity, priority, owner, root cause, corrective action,
+  target date and a resolution, which is required before an issue is resolved or closed. Either
+  can be escalated to the project owner with a reason (in-app notice); a risk that happens is
+  recorded with one action that opens an issue linked to it. History is the activity log, holding
+  ratings, statuses, owners and dates, and the names of edited text fields but never their text.
+  Owners are notified when given a risk or issue. The overview gains a "Risks and issues" card.
+  Next, P5b: change requests with impact and approval, decisions, stage gates, meetings and
+  actions, status reports.

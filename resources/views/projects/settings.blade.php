@@ -4,5 +4,6 @@
     <div class="pg-page">
         @include('projects._head', ['view' => 'settings'])
         <livewire:projects.project-settings :project="$project" />
+        <livewire:governance.matrix-settings :project="$project" />
     </div>
 </x-app-layout>

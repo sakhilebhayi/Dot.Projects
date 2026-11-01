@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\ProjectIssue;
+use App\Models\ProjectRisk;
 use App\Models\ProjectTask;
 use App\Services\ActivityFeed;
 use App\Services\ProjectSummary;
@@ -24,6 +26,8 @@ class ProjectController extends Controller
             'schedule' => new Schedule($project),
             'baseline' => $baseline = $project->baselines()->first(),
             'base' => Schedule::baselineMap($baseline),
+            'liveRisks' => $project->risks()->whereIn('status', ProjectRisk::LIVE)->get(),
+            'openIssues' => $project->issues()->whereIn('status', ProjectIssue::OPEN)->get(),
         ]);
     }
 

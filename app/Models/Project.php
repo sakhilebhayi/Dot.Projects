@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $start_date
  * @property Carbon|null $due_date
  * @property Carbon|null $archived_at
+ * @property array<string, mixed>|null $risk_matrix
  * @property int|null $archived_by
  * @property-read Team $team
  * @property-read User $owner
@@ -39,6 +40,7 @@ class Project extends Model
         'start_date' => 'date',
         'due_date' => 'date',
         'archived_at' => 'datetime',
+        'risk_matrix' => 'array',
     ];
 
     /**
@@ -222,5 +224,17 @@ class Project extends Model
         Activity::record('project.closure_rejected', $this, ['status' => 'active']); // the reason is text, so it stays on the project only
 
         return true;
+    }
+
+    /** @return HasMany<ProjectRisk, $this> */
+    public function risks(): HasMany
+    {
+        return $this->hasMany(ProjectRisk::class);
+    }
+
+    /** @return HasMany<ProjectIssue, $this> */
+    public function issues(): HasMany
+    {
+        return $this->hasMany(ProjectIssue::class);
     }
 }
