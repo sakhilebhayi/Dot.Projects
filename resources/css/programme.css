@@ -654,3 +654,33 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
     .pg-rep-files { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .pg-rep-busy { transition: none; } }
+
+/* ---------- Dashboards ----------
+   Widgets on a two-column grid, each a plain card with its title and, when it covers one
+   portfolio, that portfolio's name; a widget can span the full width. Arranging is explicit
+   (earlier, later, width, remove) rather than drag, so it works by keyboard and on a phone. */
+.pg-dash { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pg-gap); align-items: start; }
+.pg-widget { min-width: 0; }
+.pg-widget.is-wide { grid-column: 1 / -1; }
+.pg-widget-tools { display: inline-flex; flex-wrap: wrap; gap: 2px; justify-content: flex-end; }
+.pg-widget-tools .pg-btn .material-symbols-rounded { font-size: 16px; }
+.pg-widget-lead { margin: 0 0 10px; font-size: 13.5px; }
+.pg-widget-foot { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 10px 0 0; font-size: 12.5px; }
+.pg-widget-table { overflow-x: auto; margin: 0 -16px; }
+.pg-table--widget { min-width: 0; }
+.pg-table--widget th:first-child, .pg-table--widget td:first-child { padding-left: 16px; }
+.pg-table--widget th:last-child, .pg-table--widget td:last-child { padding-right: 16px; }
+.pg-widget .pg-healthbar { margin-bottom: 10px; }
+.pg-dash-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin: 0 0 var(--pg-gap); }
+.pg-dash-none { grid-column: 1 / -1; }
+.pg-dash-empty { max-width: 640px; }
+.pg-dash-empty h2 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+.pg-dash-empty p { margin: 0 0 14px; font-size: 13.5px; color: var(--pg-muted); }
+.pg-dash-add { margin-top: var(--pg-gap); display: grid; gap: 14px; }
+.pg-dash-kinds { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 6px; }
+.pg-dash-kind { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--pg-border); border-radius: 6px; cursor: pointer; font-size: 12.5px; color: var(--pg-muted); }
+.pg-dash-kind b { display: block; font-size: 13.5px; font-weight: 500; color: var(--pg-ink); margin-bottom: 2px; }
+.pg-dash-kind input { margin: 2px 0 0; accent-color: var(--pg-primary); flex: none; }
+.pg-dash-kind:has(input:checked) { border-color: var(--pg-ink); }
+.pg-dash-kind:has(input:focus-visible) { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
+@media (max-width: 900px) { .pg-dash { grid-template-columns: minmax(0, 1fr); } }
