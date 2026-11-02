@@ -35,6 +35,15 @@ return [
         ],
     ],
 
+    // Dot.Notify event ingest (R-34 P11a). Blank URL or secret: nothing is sent, nothing breaks.
+    // The secret must equal NOTIFY_INGEST_SECRET_PROJECTS on the Notify server.
+    'notify' => [
+        'url' => env('NOTIFY_INGEST_URL'),
+        'secret' => env('NOTIFY_INGEST_SECRET'),
+        'platform' => env('NOTIFY_PLATFORM_KEY', 'projects'),
+        'timeout' => (int) env('NOTIFY_TIMEOUT', 5),
+    ],
+
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY', ''),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-4-6'),

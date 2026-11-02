@@ -43,6 +43,10 @@
             ['workload.index', 'workload.*', 'stacked_bar_chart', 'Workload'],
             ['notifications.index', 'notifications.*', 'notifications', 'Notifications'],
         ];
+        // Integrations is for the business owner and admins only.
+        if (Auth::user()?->currentTeam && App\Services\Workload::oversees(Auth::user(), Auth::user()->currentTeam)) {
+            $nav[] = ['integrations.index', 'integrations.*', 'hub', 'Integrations'];
+        }
     @endphp
     <nav class="pg-rail" aria-label="Dot.Projects">
         <a href="{{ route('dashboard') }}" class="pg-mark" aria-label="Dot.Projects home">

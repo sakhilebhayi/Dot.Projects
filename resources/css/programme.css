@@ -721,3 +721,17 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-auto-ask .pg-card-head h2 { font-size: 16px; }
 .pg-auto-why { margin: 0; font-size: 13.5px; }
 .pg-auto-next { font-size: 13px; }
+
+/* ---------- Integrations ----------
+   One ruled list per group: what each platform does for the business, a state named in words
+   beside its colour, and the detail that says why, never a claim the page cannot back. */
+.pg-int-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; padding: 14px 0; border-top: 1px solid var(--pg-rule); align-items: start; }
+.pg-int-row:first-of-type { border-top: 0; }
+.pg-int-what b { display: block; font-size: 14px; font-weight: 600; }
+.pg-int-what span { display: block; font-size: 13px; color: var(--pg-muted); }
+.pg-int-detail { grid-column: 1 / -1; margin: 0; font-size: 13px; max-width: 80ch; }
+.pg-int-detail p { margin: 0 0 8px; }
+.pg-int-detail .pg-kv { margin-top: 4px; }
+.pg-int-problems { margin-top: 12px; border-top: 1px solid var(--pg-rule); padding-top: 8px; }
+.pg-int-problems h3 { font-size: 13px; font-weight: 600; margin: 0; }
+.pg-int-problems .pg-sub { white-space: normal; }

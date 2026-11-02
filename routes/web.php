@@ -69,6 +69,7 @@ Route::middleware([
     Route::view('/reports', 'reporting.index')->name('reporting.index');
     Route::view('/dashboards', 'dashboards.index')->name('dashboards.index');
     Route::view('/automations', 'automations.index')->name('automations.index');
+    Route::view('/integrations', 'integrations.index')->name('integrations.index');
     Route::get('/reports/export.{format}', [ReportController::class, 'export'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->name('reporting.export');
     Route::get('/reports/saved/{saved}/export.{format}', [ReportController::class, 'saved'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->name('reporting.saved.export');
 
