@@ -5,6 +5,9 @@
     @endphp
 
     <aside class="pg-rep-side" aria-label="Rules">
+        @if ($mine->isNotEmpty() || $approvals)
+            <ul class="pg-rep-list pg-auto-mine"><li><button type="button" wire:click="showApprovals" @if ($approvals) aria-current="true" @endif>Waiting for you<span>{{ $mine->count() ? $mine->count().' '.Str::plural('approval', $mine->count()) : 'nothing to answer' }}</span></button></li></ul>
+        @endif
         <h2 class="pg-rep-h">Rules</h2>
         @if ($rules->isEmpty())
             <p class="pg-empty pg-rep-none">No rules yet. Start from a template, or make one.</p>
@@ -17,12 +20,32 @@
         @endif
         @if ($oversees || $scopes->isNotEmpty())
             <button type="button" class="pg-btn pg-btn--primary pg-btn--sm pg-auto-new" wire:click="startNew">New rule</button>
-            <ul class="pg-rep-list pg-auto-more"><li><button type="button" wire:click="showTemplates" @if (! $building && ! $selected) aria-current="true" @endif>Templates</button></li></ul>
+            <ul class="pg-rep-list pg-auto-more"><li><button type="button" wire:click="showTemplates" @if (! $building && ! $selected && ! $approvals) aria-current="true" @endif>Templates</button></li></ul>
         @endif
     </aside>
 
     <section class="pg-rep-main">
-        @if ($building)
+        @if ($approvals)
+            <div class="pg-titlerow"><div><h1 class="pg-title">Waiting for you</h1>
+                <p class="pg-finding">Rules that asked you to approve a step. Your answer decides which steps run next; anyone else who was asked sees that it is answered.</p></div></div>
+            @forelse ($mine as $a)
+                @php $act = $a->run->rule->actions[$a->step] ?? []; @endphp
+                <section class="pg-card pg-auto-ask" wire:key="ask-{{ $a->id }}" aria-labelledby="ask-h-{{ $a->id }}">
+                    <div class="pg-card-head"><h2 id="ask-h-{{ $a->id }}">{{ $act['question'] ?? 'Approve this step?' }}</h2><small>answer by {{ $a->expires_at->format('j M') }}</small></div>
+                    <p class="pg-auto-why">{{ $a->run->what }}<span class="pg-muted">, {{ $a->project_name }}. Rule “{{ $a->run->rule->name }}”, asked {{ $a->created_at->format('j M, H:i') }} UTC.</span></p>
+                    @php $next = collect($a->run->rule->actions)->slice($a->step + 1); $subj = $C::TRIGGERS[$a->run->rule->trigger]['subject'] ?? 'project'; @endphp
+                    <dl class="pg-kv pg-auto-next">
+                        <dt>If you approve</dt><dd>{{ ucfirst($next->filter(fn ($s) => in_array($s['when']['approval'] ?? 'approved', ['approved', 'any'], true))->map(fn ($s) => $C::describeAction($s, $subj))->join('; ') ?: 'nothing more happens') }}</dd>
+                        <dt>If not</dt><dd>{{ ucfirst($next->filter(fn ($s) => in_array($s['when']['approval'] ?? 'approved', ['rejected', 'any'], true))->map(fn ($s) => $C::describeAction($s, $subj))->join('; ') ?: 'nothing more happens') }}</dd>
+                    </dl>
+                    <div class="pg-field"><label for="why-{{ $a->id }}" class="pg-label">Reason <span class="pg-muted">(needed if you do not approve)</span></label><input id="why-{{ $a->id }}" type="text" wire:model="reasons.{{ $a->id }}" maxlength="500" class="pg-input"></div>
+                    @error('approval.'.$a->id)<p class="pg-error" role="alert">{{ $message }}</p>@enderror
+                    <div class="pg-actions"><button type="button" class="pg-btn pg-btn--primary" wire:click="decide({{ $a->id }}, true)">Approve</button><button type="button" class="pg-btn pg-btn--secondary" wire:click="decide({{ $a->id }}, false)">Do not approve</button></div>
+                </section>
+            @empty
+                <p class="pg-empty">Nothing is waiting for your approval.</p>
+            @endforelse
+        @elseif ($building)
             <div class="pg-titlerow"><div><h1 class="pg-title">{{ $editId ? 'Change the rule' : 'New rule' }}</h1>
                 <p class="pg-finding">{{ $draftSentence ?? 'Finish the rule to read what it will do.' }}</p></div></div>
             @if ($draftError)<p class="pg-auto-todo" role="status">{{ $draftError }}</p>@endif
@@ -82,9 +105,34 @@
                                         <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="removeAction({{ $i }})">Remove</button>
                                     </span>
                                 </div>
+                                @php $askedAt = collect($form['actions'])->search(fn ($x) => $x['type'] === 'approval'); @endphp
+                                @if ($askedAt !== false && $i > $askedAt)
+                                    <div class="pg-auto-row"><label for="a-br-{{ $i }}" class="pg-label" style="margin:0">Runs</label>
+                                        <select id="a-br-{{ $i }}" wire:model.live="form.actions.{{ $i }}.when.approval" class="pg-select">@foreach ($C::BRANCHES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select></div>
+                                @endif
+                                @if (($a['when']['field'] ?? '') !== '')
+                                    <fieldset class="pg-auto-cond">
+                                        <legend>Only if</legend>
+                                        <label for="a-gf-{{ $i }}" class="pg-sr">Which</label>
+                                        <select id="a-gf-{{ $i }}" wire:model.live="form.actions.{{ $i }}.when.field" class="pg-select" style="width:auto">@foreach ($C::CONDITIONS[$subject] ?? [] as $f => $c)@if ($f !== 'role')<option value="{{ $f }}">{{ $c[0] }}</option>@endif @endforeach</select>
+                                        <div class="pg-auto-checks">@foreach ($C::CONDITIONS[$subject][$a['when']['field']][1] ?? [] as $v => $l)<label class="pg-radio"><input type="checkbox" wire:model.live="form.actions.{{ $i }}.when.values" value="{{ $v }}"> {{ $l }}</label>@endforeach</div>
+                                        <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="removeStepCondition({{ $i }})">Remove</button>
+                                    </fieldset>
+                                @elseif (collect($C::CONDITIONS[$subject] ?? [])->keys()->reject(fn ($f) => $f === 'role')->isNotEmpty() && $a['type'] !== 'wait')
+                                    <div><button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="addStepCondition({{ $i }})">Only do this step if…</button></div>
+                                @endif
                                 @switch($a['type'])
+                                    @case('approval')
+                                        <div class="pg-form-row pg-form-row--3">
+                                            <div class="pg-field"><label for="a-ap-{{ $i }}" class="pg-label">Ask</label><select id="a-ap-{{ $i }}" wire:model.live="form.actions.{{ $i }}.approver" class="pg-select">@foreach ($C::APPROVERS as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select></div>
+                                            <div class="pg-field"><label for="a-ex-{{ $i }}" class="pg-label">Days to answer</label><input id="a-ex-{{ $i }}" type="number" min="1" max="30" wire:model.live.debounce.500ms="form.actions.{{ $i }}.expire_days" class="pg-input"></div>
+                                        </div>
+                                        <label for="a-q-{{ $i }}" class="pg-label">What are you asking them to approve?</label>
+                                        <input id="a-q-{{ $i }}" type="text" wire:model.live.debounce.500ms="form.actions.{{ $i }}.question" maxlength="300" class="pg-input" placeholder="Approve further commitments on this project?">
+                                        <p class="pg-help">The steps after this one wait for the answer. Choose for each whether it runs only if approved, only if not, or either way. No answer in time counts as not approved.</p>
+                                        @break
                                     @case('notify')
-                                        <div class="pg-auto-checks">@foreach ($C::RECIPIENTS as $v => $l)<label class="pg-radio"><input type="checkbox" wire:model.live="form.actions.{{ $i }}.to" value="{{ $v }}"> {{ $v === 'subject_person' ? $C::SUBJECT_PERSON[$subject] : $l }}</label>@endforeach</div>
+                                        <div class="pg-auto-checks">@foreach ($C::RECIPIENTS as $v => $l)@continue($v === 'subject_person' && $C::SUBJECT_PERSON[$subject] === 'nobody')<label class="pg-radio"><input type="checkbox" wire:model.live="form.actions.{{ $i }}.to" value="{{ $v }}"> {{ $v === 'subject_person' ? $C::SUBJECT_PERSON[$subject] : $l }}</label>@endforeach</div>
                                         <label for="a-note-{{ $i }}" class="pg-label">Note to add <span class="pg-muted">(optional)</span></label>
                                         <input id="a-note-{{ $i }}" type="text" wire:model.live.debounce.500ms="form.actions.{{ $i }}.note" maxlength="300" class="pg-input">
                                         @break
@@ -95,7 +143,7 @@
                                         <label for="a-titles-{{ $i }}" class="pg-label">Tasks, one per line</label>
                                         <textarea id="a-titles-{{ $i }}" wire:model.live.debounce.500ms="form.actions.{{ $i }}.titles" rows="3" class="pg-textarea"></textarea>
                                         <div class="pg-form-row pg-form-row--3">
-                                            <div class="pg-field"><label for="a-for-{{ $i }}" class="pg-label">For</label><select id="a-for-{{ $i }}" wire:model.live="form.actions.{{ $i }}.assign" class="pg-select">@foreach ($C::ASSIGNEES as $v => $l)<option value="{{ $v }}">{{ $v === 'subject_person' ? $C::SUBJECT_PERSON[$subject] : $l }}</option>@endforeach</select></div>
+                                            <div class="pg-field"><label for="a-for-{{ $i }}" class="pg-label">For</label><select id="a-for-{{ $i }}" wire:model.live="form.actions.{{ $i }}.assign" class="pg-select">@foreach ($C::ASSIGNEES as $v => $l)@continue($v === 'subject_person' && $C::SUBJECT_PERSON[$subject] === 'nobody')<option value="{{ $v }}">{{ $v === 'subject_person' ? $C::SUBJECT_PERSON[$subject] : $l }}</option>@endforeach</select></div>
                                             <div class="pg-field"><label for="a-due-{{ $i }}" class="pg-label">Due, days later</label><input id="a-due-{{ $i }}" type="number" min="0" max="365" wire:model.live.debounce.500ms="form.actions.{{ $i }}.due_days" class="pg-input" placeholder="No date"></div>
                                             <div class="pg-field"><label for="a-pri-{{ $i }}" class="pg-label">Priority</label><select id="a-pri-{{ $i }}" wire:model.live="form.actions.{{ $i }}.priority" class="pg-select">@foreach (App\Services\ProjectWork::PRIORITIES as $p)<option value="{{ $p }}">{{ ucfirst($p) }}</option>@endforeach</select></div>
                                         </div>

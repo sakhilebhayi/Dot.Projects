@@ -63,7 +63,7 @@ final class ActivityFeed
         $people = User::query()->whereIn('id', $lines->filter(fn ($l) => str_starts_with($l->action, 'member.'))->map(fn ($l) => $l->changes['user_id'] ?? null)->filter())->pluck('name', 'id');
         $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
-        $ruleNames = AutomationRule::query()->whereIn('id', $lines->map(fn ($l) => $l->changes['rule_id'] ?? null)->filter())->pluck('name', 'id');
+        $ruleNames = AutomationRule::query()->whereIn('id', $lines->map(fn ($l) => $l->changes['rule_id'] ?? $l->changes['automation_rule'] ?? null)->filter())->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
         $q = fn (?string $title) => $title === null ? 'a deleted item' : '“'.$title.'”';
 
@@ -97,6 +97,8 @@ final class ActivityFeed
                 'project.duplicated' => 'duplicated the project',
                 'dependency.added' => 'made '.$q($tasks->get($l->subject_id)).' wait for another task',
                 'dependency.removed' => 'removed a dependency from '.$q($tasks->get($l->subject_id)),
+                'automation.approved' => 'approved a step of the rule “'.($ruleNames->get($c['automation_rule'] ?? 0) ?? 'deleted rule').'”',
+                'automation.rejected' => 'did not approve a step of the rule “'.($ruleNames->get($c['automation_rule'] ?? 0) ?? 'deleted rule').'”',
                 'dependency.external' => 'made a task in another project wait for '.$q($tasks->get($l->subject_id)),
                 'subtask.added' => 'added the subtask '.$q($tasks->get($l->subject_id)),
                 'label.added' => 'labelled '.$q($tasks->get($l->subject_id)),
