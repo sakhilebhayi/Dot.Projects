@@ -48,12 +48,28 @@
                 @endif
             </div>
         </div>
+
+        <div class="pg-int-row">
+            <div class="pg-int-what"><b>Dot.Files</b><span>Project and task documents, filed in the business's Dot.Files workspace.</span></div>
+            @php [$c, $t] = explode('|', ! $filesOn ? $pill('off', 'Not set up on this server') : (! $linked ? $pill('warn', 'Business not linked to InfoDot') : (($filesLast && ! $filesLast['ok']) ? $pill('warn', 'Last call failed') : $pill('live', 'Set up')))); @endphp
+            <span class="pg-pill {{ $c }}">{{ $t }}</span>
+            <div class="pg-int-detail">
+                @if (! $filesOn)
+                    <p>Documents are switched off. To switch them on, the server needs FILES_PLATFORM_SECRET, and Dot.Files needs the same secret as DOT_SERVICE_SECRET_PROJECTS.</p>
+                @else
+                    <p>Documents are filed one folder per project, “Dot.Projects - &lt;project&gt;”. People open them through Dot.Projects, which checks the project first.</p>
+                    <dl class="pg-kv">
+                        <dt>Documents</dt><dd>{{ $documents }} filed by this business's projects</dd>
+                        <dt>Last call</dt><dd>{{ $filesLast ? Illuminate\Support\Carbon::parse($filesLast['at'])->format('j M Y, H:i').' UTC, '.($filesLast['ok'] ? 'it worked' : $filesLast['message']) : 'None yet' }}</dd>
+                    </dl>
+                @endif
+            </div>
+        </div>
     </section>
 
     <section class="pg-card pg-int" aria-labelledby="int-next" style="margin-top:var(--pg-gap)">
         <div class="pg-card-head"><h2 id="int-next">Not connected yet</h2></div>
         @foreach ([
-            ['Dot.Files', 'Project and task documents, kept in Dot.Files.', 'Next', 'Dot.Files has a platform API for storing and fetching a business\'s files; project documents will use it next.'],
             ['Dot.Analytics', 'Project and portfolio numbers in the business\'s analytics.', 'Waiting on Dot.Analytics', 'Dot.Analytics accepts daily numbers only from platforms in its catalogue, and Dot.Projects is not in it yet.'],
             ['Dot.Memory and Dot.Brain', 'Lessons learned and decisions as organisational knowledge.', 'Later', 'Both have APIs; what Dot.Projects should share with them is still to be agreed.'],
             ['Dot.HR, Dot.Finance, Dot.Tasks', 'Leave-aware capacity, finance workflows, shared tasks.', 'No API yet', 'These apps have no API Dot.Projects can call. Until they do, capacity, costs and tasks are kept here.'],

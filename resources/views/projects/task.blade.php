@@ -7,5 +7,9 @@
             <div class="pg-notice" role="status"><span><b>This project is archived.</b> Its work is read-only.</span></div>
         @endif
         <livewire:projects.task-panel :project="$project" :task="$task" />
+        <section class="pg-card pg-docs-task" aria-labelledby="task-docs-h">
+            <div class="pg-card-head"><h2 id="task-docs-h">Documents</h2><small>kept in Dot.Files</small></div>
+            <livewire:projects.project-documents :project="$project" :task="$task" />
+        </section>
     </div>
 </x-app-layout>

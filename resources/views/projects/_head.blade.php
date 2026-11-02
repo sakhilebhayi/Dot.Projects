@@ -28,5 +28,6 @@
     <a href="{{ route('projects.time', $project) }}" @if ($view === 'time') aria-current="page" @endif>Time</a>
     @can('seeMoney', $project)<a href="{{ route('projects.money', $project) }}" @if ($view === 'money') aria-current="page" @endif>Money</a>@endcan
     <a href="{{ route('projects.risks', $project) }}" @if ($view === 'governance') aria-current="page" @endif>Governance</a>
+    <a href="{{ route('projects.documents', $project) }}" @if ($view === 'documents') aria-current="page" @endif>Documents</a>
     <a href="{{ route('projects.settings', $project) }}" @if ($view === 'settings') aria-current="page" @endif>Settings</a>
 </nav>

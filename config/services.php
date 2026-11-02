@@ -44,6 +44,15 @@ return [
         'timeout' => (int) env('NOTIFY_TIMEOUT', 5),
     ],
 
+    // Dot.Files platform file API (R-34 P11b): project documents are filed in the business's
+    // Dot.Files workspace. The secret must equal DOT_SERVICE_SECRET_PROJECTS on Dot.Files.
+    'files' => [
+        'url' => env('FILES_API_URL', 'https://files.infodot.co.za'),
+        'secret' => env('FILES_PLATFORM_SECRET'),
+        'platform' => env('FILES_PLATFORM_KEY', 'projects'),
+        'timeout' => (int) env('FILES_TIMEOUT', 20),
+    ],
+
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY', ''),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-4-6'),

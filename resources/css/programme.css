@@ -735,3 +735,16 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-int-problems { margin-top: 12px; border-top: 1px solid var(--pg-rule); padding-top: 8px; }
 .pg-int-problems h3 { font-size: 13px; font-weight: 600; margin: 0; }
 .pg-int-problems .pg-sub { white-space: normal; }
+
+/* ---------- Documents ----------
+   A ruled list of what the project keeps in Dot.Files: the name links to a download through
+   Dot.Projects, Dot.Files is one click away, and adding is a single row under the list. */
+.pg-doc .pg-sub { white-space: normal; }
+.pg-doc-acts { flex: none; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.pg-docs-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--pg-rule); }
+.pg-docs-ack { flex-basis: 100%; font-size: 13px; }
+.pg-docs-replace { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.pg-docs-replace .pg-input { width: auto; max-width: 100%; }
+.pg-docs-off { margin: 0 0 10px; }
+.pg-docs-task { margin-top: var(--pg-gap); }
+@media (max-width: 640px) { .pg-doc { flex-wrap: wrap; } .pg-doc-acts { justify-content: flex-start; } }

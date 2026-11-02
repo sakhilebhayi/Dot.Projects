@@ -3,8 +3,11 @@
 namespace App\Livewire\Integrations;
 
 use App\Models\IntegrationDelivery;
+use App\Models\Project;
+use App\Models\ProjectDocument;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Integrations\FilesClient;
 use App\Services\Integrations\NotifyClient;
 use App\Services\Integrations\Outbox;
 use App\Services\Workload;
@@ -63,6 +66,9 @@ class Status extends Component
             'notifyOn' => $notify->enabled(),
             'counts' => ['sent' => (int) ($counts['sent'] ?? 0), 'pending' => (int) ($counts['pending'] ?? 0), 'given_up' => (int) ($counts['given_up'] ?? 0)],
             'lastSent' => (clone $rows)->where('status', 'sent')->max('sent_at'),
+            'filesOn' => app(FilesClient::class)->enabled(),
+            'filesLast' => FilesClient::last(),
+            'documents' => ProjectDocument::query()->whereIn('project_id', Project::withoutTeamScope(fn () => Project::query()->where('team_id', $team->id)->pluck('id')))->count(),
             'problems' => (clone $rows)->where(fn ($q) => $q->where('status', 'given_up')->orWhere(fn ($r) => $r->where('status', 'pending')->where('attempts', '>', 0)))->latest('id')->limit(10)->get(),
         ]);
     }

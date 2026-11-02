@@ -375,6 +375,12 @@ class Project extends Model
         return $this->hasMany(CostItem::class);
     }
 
+    /** Documents filed in Dot.Files for this project (R-34 P11b). @return HasMany<ProjectDocument, $this> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ProjectDocument::class);
+    }
+
     /**
      * Who may see the project's money: its owner and managers, and the business owner and admins.
      * Everyone else working on the project sees no amounts.
