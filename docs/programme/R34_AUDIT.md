@@ -596,3 +596,30 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   - each business switches the `projects.*` events on in Notify.
 
   Live end-to-end delivery is verified only after those steps.
+- **P11b project documents in Dot.Files** (2026-11-02): every project has a Documents tab, and
+  every task page a Documents section. Documents are filed in the business's Dot.Files workspace
+  through its signed platform file API (v1). Dot.Files already lists the `projects` platform.
+  - **Filing:** one folder per project, "Dot.Projects - <project>"; Dot.Files v1 has one folder
+    level. Up to 25 MB, in the formats Dot.Files accepts.
+  - **What is kept here:** a reference only (Dot.Files id, name, size, version, task). Nothing is
+    stored twice.
+  - **Downloads:** always through Dot.Projects, which checks the project first. A private project
+    the person cannot see is a 404.
+  - **New versions:** sent with `base_version`. A 409 from Dot.Files ("someone saved a newer
+    version") is refused without overwriting anything.
+  - **Removing:** moves the file to the business's Dot.Files trash (30 days, owners restore it
+    there); nothing is deleted for good from here.
+  - **Private projects:** uploading needs an explicit acknowledgement, because Dot.Files shows
+    documents to whoever may open the project's folder there.
+  - **Who can do what:** people who can change the project add, replace and remove; everyone
+    who can see it downloads.
+  - **Activity:** the log records each change by document id only.
+  - **Integrations page:** shows whether Dot.Files is set up, how many documents are filed, and
+    the last call's outcome.
+
+  Owner steps to go live:
+  - one shared secret: FILES_PLATFORM_SECRET here, and DOT_SERVICE_SECRET_PROJECTS on Dot.Files;
+  - the business linked to InfoDot;
+  - the Projects host's PHP upload limits at 25 MB or more.
+
+  Live end-to-end filing is verified only after those steps.

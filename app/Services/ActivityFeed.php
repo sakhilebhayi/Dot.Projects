@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\ProjectAction;
 use App\Models\ProjectChange;
 use App\Models\ProjectDecision;
+use App\Models\ProjectDocument;
 use App\Models\ProjectGate;
 use App\Models\ProjectIssue;
 use App\Models\ProjectMeeting;
@@ -64,6 +65,7 @@ final class ActivityFeed
         $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
         $ruleNames = AutomationRule::query()->whereIn('id', $lines->map(fn ($l) => $l->changes['rule_id'] ?? $l->changes['automation_rule'] ?? null)->filter())->pluck('name', 'id');
+        $documents = ProjectDocument::query()->whereIn('id', $lines->where('subject_type', (new ProjectDocument)->getMorphClass())->pluck('subject_id'))->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
         $q = fn (?string $title) => $title === null ? 'a deleted item' : '“'.$title.'”';
 
@@ -99,6 +101,9 @@ final class ActivityFeed
                 'dependency.removed' => 'removed a dependency from '.$q($tasks->get($l->subject_id)),
                 'automation.approved' => 'approved a step of the rule “'.($ruleNames->get($c['automation_rule'] ?? 0) ?? 'deleted rule').'”',
                 'automation.rejected' => 'did not approve a step of the rule “'.($ruleNames->get($c['automation_rule'] ?? 0) ?? 'deleted rule').'”',
+                'document.added' => 'added the document '.$q($documents->get($l->subject_id)),
+                'document.updated' => 'saved version '.($c['version'] ?? '?').' of '.$q($documents->get($l->subject_id)),
+                'document.removed' => 'removed a document',
                 'dependency.external' => 'made a task in another project wait for '.$q($tasks->get($l->subject_id)),
                 'subtask.added' => 'added the subtask '.$q($tasks->get($l->subject_id)),
                 'label.added' => 'labelled '.$q($tasks->get($l->subject_id)),

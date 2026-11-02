@@ -7,6 +7,7 @@ use App\Http\Controllers\GovernanceController;
 use App\Http\Controllers\GuardianHealthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectDocumentController;
 use App\Http\Controllers\ProjectTimeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SchedulerProbeController;
@@ -83,6 +84,8 @@ Route::middleware([
     Route::get('/projects/{project}/time', [ProjectTimeController::class, 'show'])->name('projects.time');
     Route::get('/projects/{project}/money', [ProjectController::class, 'money'])->name('projects.money');
     Route::get('/projects/{project}/time.csv', [ProjectTimeController::class, 'csv'])->name('projects.time.csv');
+    Route::get('/projects/{project}/documents', [ProjectDocumentController::class, 'index'])->name('projects.documents');
+    Route::get('/projects/{project}/documents/{document}', [ProjectDocumentController::class, 'download'])->scopeBindings()->name('projects.documents.download');
     Route::get('/projects/{project}/risks', [GovernanceController::class, 'risks'])->name('projects.risks');
     Route::get('/projects/{project}/risks/{risk}', [GovernanceController::class, 'risk'])->scopeBindings()->name('projects.risks.show');
     Route::get('/projects/{project}/issues', [GovernanceController::class, 'issues'])->name('projects.issues');
