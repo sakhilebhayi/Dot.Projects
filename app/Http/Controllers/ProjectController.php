@@ -7,6 +7,7 @@ use App\Models\ProjectIssue;
 use App\Models\ProjectRisk;
 use App\Models\ProjectTask;
 use App\Services\ActivityFeed;
+use App\Services\CostLedger;
 use App\Services\ProjectSummary;
 use App\Services\Schedule;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ class ProjectController extends Controller
             'openIssues' => $project->issues()->whereIn('status', ProjectIssue::OPEN)->get(),
             'waitingChanges' => $project->changes()->where('status', 'submitted')->with('approver:id,name')->get(),
             'openDecisions' => $project->decisions()->where('status', 'proposed')->with('owner:id,name')->get(),
+            'money' => $request->user()->can('seeMoney', $project) && $project->budgetLines()->exists() ? app(CostLedger::class)->ledger($project)['total'] : null,
             'latestReport' => $project->reports()->where('status', 'published')->orderByDesc('number')->first(),
             'openGates' => $project->gates()->whereIn('status', ['pending', 'held'])->get(),
             'lateActions' => $project->actions()->where('status', 'open')->whereNotNull('due_date')->whereDate('due_date', '<', today())->count(),
@@ -42,6 +44,14 @@ class ProjectController extends Controller
         $this->authorize('view', $project);
 
         return view('projects.work', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
+    }
+
+    /** The budget, costs and forecast, for those who may see the project's money. */
+    public function money(Request $request, Project $project): View
+    {
+        $this->authorize('seeMoney', $project);
+
+        return view('projects.money', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
     }
 
     /** The timeline: dates, critical path, baselines, conflicts. */

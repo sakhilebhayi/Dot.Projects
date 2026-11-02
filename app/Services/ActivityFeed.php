@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Activity as ActivityLine;
+use App\Models\BudgetLine;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectAction;
@@ -145,6 +146,13 @@ final class ActivityFeed
                 'member.role_changed' => 'made '.($people->get($c['user_id'] ?? 0) ?? 'someone').' a '.mb_strtolower(Project::ROLES[$c['role']['to'] ?? ''] ?? 'member').' of the project',
                 'member.removed' => 'took '.($people->get($c['user_id'] ?? 0) ?? 'someone').' off the project',
                 'project.visibility_changed' => ($c['visibility']['to'] ?? '') === 'private' ? 'made the project private' : 'opened the project to the business',
+                'budget.line_added' => 'added a '.mb_strtolower(BudgetLine::CATEGORIES[$c['category'] ?? ''] ?? 'budget').' line to the budget',
+                'budget.revised' => ($c['change_id'] ?? null) ? 'revised the budget for an approved change' : 'revised the budget',
+                'budget.forecast_set' => 'updated the cost still to come on a budget line',
+                'cost.commitment_added' => 'recorded a commitment',
+                'cost.actual_added' => 'recorded an actual cost',
+                'cost.commitment_removed' => 'removed a commitment',
+                'cost.actual_removed' => 'removed an actual cost',
                 'matrix.changed' => 'set the risk matrix to '.($c['size']['to'] ?? '?').' by '.($c['size']['to'] ?? '?'),
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
