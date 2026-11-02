@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Automations;
 
+use App\Models\AutomationApproval;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\Project;
@@ -34,6 +35,12 @@ class Board extends Component
     public array $form = ['name' => '', 'project_id' => '', 'trigger' => 'task_status', 'param' => 'done', 'conditions' => [], 'actions' => []];
 
     public string $newAction = 'notify';
+
+    #[Url(as: 'approvals')]
+    public bool $approvals = false;
+
+    /** @var array<int, string> reasons typed against approval requests, by request id */
+    public array $reasons = [];
 
     private function me(): User
     {
@@ -86,6 +93,7 @@ class Board extends Component
 
     public function select(int $id): void
     {
+        $this->approvals = false;
         abort_if($this->rules()->firstWhere('id', $id) === null, 404);
         $this->ruleId = (string) $id;
         $this->building = false;
@@ -94,7 +102,43 @@ class Board extends Component
 
     public function showTemplates(): void
     {
+        $this->reset('ruleId', 'building', 'editId', 'approvals');
+    }
+
+    public function showApprovals(): void
+    {
         $this->reset('ruleId', 'building', 'editId');
+        $this->approvals = true;
+    }
+
+    public function decide(int $id, bool $approve, Automations $automations): void
+    {
+        $request = AutomationApproval::query()->where('user_id', $this->me()->id)->find($id);
+        abort_if($request === null, 404);
+        $this->resetErrorBag();
+        try {
+            $automations->decide($request, $this->me(), $approve, $this->reasons[$id] ?? null);
+            unset($this->reasons[$id]);
+        } catch (ValidationException $e) {
+            $this->addError('approval.'.$id, (string) collect($e->errors())->flatten()->first());
+        }
+    }
+
+    /** A step's own condition, added in the builder. */
+    public function addStepCondition(int $i): void
+    {
+        $subject = AutomationCatalog::TRIGGERS[$this->form['trigger']]['subject'] ?? '';
+        $field = collect(AutomationCatalog::CONDITIONS[$subject] ?? [])->keys()->reject(fn ($f) => $f === 'role')->first();
+        abort_if($field === null || ! isset($this->form['actions'][$i]), 404);
+        $this->form['actions'][$i]['when'] = ['field' => $field, 'values' => []] + ($this->form['actions'][$i]['when'] ?? []);
+    }
+
+    public function removeStepCondition(int $i): void
+    {
+        if (isset($this->form['actions'][$i]['when'])) {
+            $this->form['actions'][$i]['when']['field'] = '';
+            $this->form['actions'][$i]['when']['values'] = [];
+        }
     }
 
     public function startNew(?string $template = null): void
@@ -114,6 +158,7 @@ class Board extends Component
         ];
         $this->editId = null;
         $this->building = true;
+        $this->approvals = false;
         $this->resetErrorBag();
     }
 
@@ -127,7 +172,12 @@ class Board extends Component
             'trigger' => $rule->trigger,
             'param' => $param ? (string) ($rule->params[$param] ?? '') : '',
             'conditions' => $rule->conditions,
-            'actions' => array_map(fn ($a) => $a['type'] === 'create_tasks' ? ['titles' => implode("\n", $a['titles'])] + $a : $a, $rule->actions),
+            'actions' => array_map(function ($a) {
+                $a = $a['type'] === 'create_tasks' ? ['titles' => implode("\n", $a['titles'])] + $a : $a;
+                $guard = $a['when']['field'] ?? null;
+
+                return ['when' => ['approval' => $a['when']['approval'] ?? 'approved', 'field' => $guard['field'] ?? '', 'values' => $guard['values'] ?? []]] + $a;
+            }, $rule->actions),
         ];
         $this->editId = $rule->id;
         $this->building = true;
@@ -172,6 +222,7 @@ class Board extends Component
             'add_label' => ['type' => 'add_label', 'label' => ''],
             'assign' => ['type' => 'assign', 'to' => 'project_owner'],
             'wait' => ['type' => 'wait', 'days' => 2, 'recheck' => true],
+            'approval' => ['type' => 'approval', 'approver' => 'project_owner', 'question' => '', 'expire_days' => 7],
             default => ['type' => $this->newAction],
         };
     }
@@ -242,7 +293,7 @@ class Board extends Component
                 $draftError = (string) collect($e->errors())->flatten()->first();
             }
         }
-        $selected = $this->building ? null : $this->selected();
+        $selected = $this->building || $this->approvals ? null : $this->selected();
         $scopeName = fn (?AutomationRule $r) => $r?->project_id ? ($r->getAttribute('project_name') ?? Project::withoutTeamScope(fn () => Project::query()->whereKey($r->project_id)->value('name'))) : null;
 
         return view('livewire.automations.board', [
@@ -259,6 +310,8 @@ class Board extends Component
             'scopes' => $this->scopes(),
             'oversees' => Workload::oversees($me, $team),
             'subject' => AutomationCatalog::TRIGGERS[$this->form['trigger']]['subject'] ?? 'task',
+            'mine' => AutomationApproval::query()->where('user_id', $me->id)->where('status', 'pending')->with('run.rule')->latest('id')->get()
+                ->each(fn (AutomationApproval $a) => $a->setAttribute('project_name', Project::withoutTeamScope(fn () => Project::query()->whereKey($a->run->project_id)->value('name')))),
             'templates' => collect(AutomationCatalog::TEMPLATES)->map(fn ($t) => AutomationCatalog::describe($this->templateRule($t), 'the project you choose'))->all(),
         ]);
     }

@@ -537,3 +537,20 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   two weeks before the due date. Actions run outside the scopes, because the sweep has nobody
   signed in; the engine checks who may change the project and who may see it itself. Next,
   P9c: approval steps and conditional branches.
+- **P9c approvals and branches** (2026-11-02): a rule can have one approval step. It asks the
+  project owner, the project managers or the business owner, with a question and 1 to 30 days to
+  answer. The run then waits for the answer.
+  - Any one of the people asked answers for all. Not approving needs a reason.
+  - An unanswered request expires as not approved, through the hourly sweep.
+  - Each answer is recorded in the project's activity log under the person who gave it.
+  - Their "Waiting for you" list says what happens if they approve and what happens if they do
+    not.
+
+  Every step after the approval runs only if approved (the default), only if not approved, or
+  either way. Any step can also carry its own condition (for example "only if its priority is
+  Urgent"), read from the record when the step runs. A new template covers the brief's budget
+  example: when spending reaches 90%, ask the business owner to approve further commitments,
+  then tell the project; if not approved, also add a budget review task. The engine now catches
+  anything unexpected around every rule, so a broken rule can never undo or break the change
+  that set it off; the run stays failed, to be retried. **P9 automation is complete.**
+  Visual flow editing stays the sentence builder, which works by keyboard and on a phone.

@@ -715,3 +715,9 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-auto-run .pg-actions { flex: none; }
 .pg-auto-tname { font-weight: 500; font-size: 13.5px; }
 .pg-auto .pg-row .pg-sub { white-space: normal; }
+.pg-auto-mine { margin-bottom: 18px; }
+.pg-auto-ask { margin-bottom: var(--pg-gap); display: grid; gap: 12px; max-width: 760px; }
+.pg-auto-ask .pg-card-head { margin: 0; }
+.pg-auto-ask .pg-card-head h2 { font-size: 16px; }
+.pg-auto-why { margin: 0; font-size: 13.5px; }
+.pg-auto-next { font-size: 13px; }

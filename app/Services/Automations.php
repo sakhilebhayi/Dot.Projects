@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Activity as ActivityLine;
+use App\Models\AutomationApproval;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\Milestone;
@@ -70,9 +71,15 @@ final class Automations
         $rules = AutomationRule::query()->where('team_id', $line->team_id)->where('active', true)
             ->where(fn ($q) => $q->whereNull('project_id')->orWhere('project_id', $line->project_id))->orderBy('id')->get();
         foreach ($rules as $rule) {
-            $ctx = $this->match($rule, $line);
-            if ($ctx !== null) {
-                $this->fire($rule, $ctx, $line->id);
+            // A rule must never break the change that set it off: anything unexpected is reported
+            // and the run (if one was written) stays failed, to be retried.
+            try {
+                $ctx = $this->match($rule, $line);
+                if ($ctx !== null) {
+                    $this->fire($rule, $ctx, $line->id);
+                }
+            } catch (Throwable $e) {
+                report($e);
             }
         }
     }
@@ -215,10 +222,29 @@ final class Automations
         $previous = self::$running;
         self::$running = $rule->id;
         $waitUntil = null;
+        $awaiting = false;
         try {
             foreach ($rule->actions as $i => $action) {
                 if (($steps[$i]['ok'] ?? false) === true) {
                     continue;
+                }
+                $skip = $this->guard($rule, $i, $action, $steps, $ctx);
+                if ($skip !== null) {
+                    $steps[$i] = ['action' => $action['type'], 'ok' => true, 'did' => false, 'summary' => $skip];
+
+                    continue;
+                }
+                if ($action['type'] === 'approval') {
+                    try {
+                        $steps[$i] = ['action' => 'approval', 'ok' => true, 'did' => true, 'pending' => true, 'summary' => $this->askApproval($action, $rule, $ctx, $run, $i)];
+                        $awaiting = true;
+                    } catch (Throwable $e) {
+                        $steps[$i] = ['action' => 'approval', 'ok' => false, 'did' => false, 'summary' => $e instanceof ValidationException ? (string) collect($e->errors())->flatten()->first() : 'Something went wrong; the step can be retried.'];
+                        if (! $e instanceof ValidationException) {
+                            report($e);
+                        }
+                    }
+                    break;
                 }
                 if ($action['type'] === 'wait') {
                     $waitUntil = Carbon::now()->addDays((int) $action['days']);
@@ -245,7 +271,7 @@ final class Automations
         $failed = collect($steps)->first(fn ($s) => ! $s['ok']);
         $run->forceFill([
             'steps' => array_values($steps),
-            'status' => $failed ? 'failed' : ($waitUntil ? 'waiting' : (collect($steps)->contains('did', true) ? 'done' : 'skipped')),
+            'status' => $failed ? 'failed' : ($awaiting ? 'awaiting' : ($waitUntil ? 'waiting' : (collect($steps)->contains('did', true) ? 'done' : 'skipped'))),
             'error' => $failed ? mb_substr($failed['summary'], 0, 500) : null,
             'resume_at' => $failed ? null : $waitUntil,
         ])->save();
@@ -277,6 +303,126 @@ final class Automations
         /** @var array{project: Project, subject: Model, person: User|null, key: string, what: string} $ctx */
         $run->forceFill(['resume_at' => null])->save();
         $this->execute($rule, $run, $ctx);
+    }
+
+    /**
+     * Why a step is skipped, or null when it runs: its branch after the rule's approval (only if
+     * approved, by default) and its own condition, read from the record as it is now.
+     *
+     * @param  array<string, mixed>  $action
+     * @param  array<int, array<string, mixed>>  $steps
+     * @param  array{project: Project, subject: Model, person: User|null, key: string, what: string}  $ctx
+     */
+    private function guard(AutomationRule $rule, int $i, array $action, array $steps, array $ctx): ?string
+    {
+        $when = $action['when'] ?? [];
+        $asked = collect($rule->actions)->search(fn ($a) => $a['type'] === 'approval');
+        if ($asked !== false && $i > $asked) {
+            $want = $when['approval'] ?? 'approved';
+            $decision = $steps[$asked]['decision'] ?? null;
+            if ($want !== 'any' && $decision !== $want) {
+                return $decision === 'approved' ? 'Skipped: it was approved' : 'Skipped: it was not approved';
+            }
+        }
+        if (! empty($when['field'])) {
+            $subject = Project::withoutTeamScope(fn () => $ctx['subject']->fresh()) ?? $ctx['subject'];
+            $value = (string) $subject->getAttribute($when['field']['field']);
+            if (! in_array($value, $when['field']['values'], true)) {
+                $subjectKind = AutomationCatalog::TRIGGERS[$rule->trigger]['subject'] ?? '';
+                $label = AutomationCatalog::CONDITIONS[$subjectKind][$when['field']['field']][0] ?? $when['field']['field'];
+
+                return 'Skipped: '.$label.' '.(AutomationCatalog::CONDITIONS[$subjectKind][$when['field']['field']][1][$value] ?? $value);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Writes the approval requests for a step and tells the people asked. Throws when nobody who
+     * can see the project could answer.
+     *
+     * @param  array<string, mixed>  $action
+     * @param  array{project: Project, subject: Model, person: User|null, key: string, what: string}  $ctx
+     */
+    private function askApproval(array $action, AutomationRule $rule, array $ctx, AutomationRun $run, int $step): string
+    {
+        $project = $ctx['project'];
+        $ids = match ($action['approver']) {
+            'project_owner' => [$project->owner_id],
+            'project_managers' => DB::table('project_members')->where('project_id', $project->id)->where('role', 'manager')->pluck('user_id')->all(),
+            default => [$project->team->user_id],
+        };
+        $people = User::query()->whereIn('id', array_filter($ids))->orderBy('name')->get()->filter(fn (User $u) => $project->canBeSeenBy($u))->values()->all();
+        if ($people === []) {
+            throw ValidationException::withMessages(['step' => 'Nobody could answer the approval: '.AutomationCatalog::APPROVERS[$action['approver']].' is not set or cannot see the project.']);
+        }
+        $expires = Carbon::now()->addDays((int) $action['expire_days']);
+        foreach ($people as $u) {
+            AutomationApproval::query()->firstOrCreate(['run_id' => $run->id, 'step' => $step, 'user_id' => $u->id], ['status' => 'pending', 'expires_at' => $expires]);
+            $u->notify(new GovernanceNotification('automation_approval', 'Approval needed: '.$rule->name, $ctx['what'].' on “'.$project->name.'”. '.$action['question'], $project->id, route('automations.index', ['approvals' => 1])));
+        }
+
+        return 'Asked '.self::names($people).' to approve, by '.$expires->format('j M');
+    }
+
+    /** Answers an approval step for everyone asked, and carries the run on down the chosen branch. */
+    public function decide(AutomationApproval $request, User $by, bool $approve, ?string $reason): void
+    {
+        $reason = trim((string) $reason);
+        $all = AutomationApproval::query()->where('run_id', $request->run_id)->where('step', $request->step)->get();
+        if (! $all->contains('user_id', $by->id)) {
+            throw ValidationException::withMessages(['approval' => 'You were not asked to approve this.']);
+        }
+        if ($all->contains(fn ($a) => $a->status !== 'pending')) {
+            throw ValidationException::withMessages(['approval' => 'This has already been answered.']);
+        }
+        if (! $approve && $reason === '') {
+            throw ValidationException::withMessages(['approval' => 'Say why you are not approving it, so the project knows what to do next.']);
+        }
+        if (mb_strlen($reason) > 500) {
+            throw ValidationException::withMessages(['approval' => 'Keep the reason under 500 characters.']);
+        }
+        $run = $request->run;
+        DB::transaction(function () use ($request, $by, $approve, $reason, $run) {
+            AutomationApproval::query()->where('run_id', $request->run_id)->where('step', $request->step)
+                ->update(['status' => $approve ? 'approved' : 'rejected', 'decided_by' => $by->id, 'decided_at' => Carbon::now(), 'reason' => $reason !== '' ? $reason : null]);
+            $project = Project::withoutTeamScope(fn () => Project::query()->find($run->project_id));
+            if ($project !== null) {
+                Activity::record('automation.'.($approve ? 'approved' : 'rejected'), $run, ['automation_rule' => $run->rule_id], $project);
+            }
+        });
+        $this->carryOn($run, $request->step, $approve ? 'approved' : 'rejected', ($approve ? 'approved' : 'not approved').' by '.$by->name.($reason !== '' ? ': '.$reason : ''));
+    }
+
+    /** Records the answer on the run and runs the steps after the approval. */
+    private function carryOn(AutomationRun $run, int $step, string $decision, string $note): void
+    {
+        $run->refresh();
+        $steps = $run->steps;
+        $steps[$step] = ['decision' => $decision, 'pending' => false, 'summary' => ($steps[$step]['summary'] ?? 'Asked for approval').'; '.$note] + ($steps[$step] ?? []);
+        $run->forceFill(['steps' => $steps])->save();
+        $rule = $run->rule;
+        $ctx = $rule->active ? $this->rebuild($run) : null;
+        if ($ctx === null) {
+            $steps[] = ['action' => 'stop', 'ok' => true, 'did' => false, 'summary' => $rule->active ? 'Stopped: what it was about has been deleted.' : 'Stopped: the rule was switched off.'];
+            $run->forceFill(['steps' => $steps, 'status' => 'done'])->save();
+
+            return;
+        }
+        $this->execute($rule, $run, $ctx);
+    }
+
+    /** Approval requests nobody answered in time count as not approved; the run carries on. */
+    private function expireApprovals(Carbon $now): int
+    {
+        $due = AutomationApproval::query()->where('status', 'pending')->where('expires_at', '<=', $now)->get()->unique(fn ($a) => $a->run_id.':'.$a->step);
+        foreach ($due as $a) {
+            AutomationApproval::query()->where('run_id', $a->run_id)->where('step', $a->step)->update(['status' => 'expired', 'decided_at' => $now]);
+            $this->carryOn($a->run, $a->step, 'rejected', 'no answer by '.$a->expires_at->format('j M').', so treated as not approved');
+        }
+
+        return $due->count();
     }
 
     /** Whether what set the rule off is still so, for a wait that stops when it is not. */
@@ -317,14 +463,19 @@ final class Automations
             return $out;
         }
         foreach (AutomationRule::query()->where('active', true)->whereIn('trigger', AutomationCatalog::DATED)->orderBy('id')->get() as $rule) {
-            foreach ($this->candidates($rule, $now->copy()->startOfDay()) as $ctx) {
-                $out['fired'] += $this->fire($rule, $ctx, null) ? 1 : 0;
+            try {
+                foreach ($this->candidates($rule, $now->copy()->startOfDay()) as $ctx) {
+                    $out['fired'] += $this->fire($rule, $ctx, null) ? 1 : 0;
+                }
+            } catch (Throwable $e) {
+                report($e); // one broken rule does not stop the others
             }
         }
         foreach (AutomationRun::query()->where('status', 'waiting')->where('resume_at', '<=', $now)->with('rule')->orderBy('id')->get() as $run) {
             $this->resume($run);
             $out['resumed']++;
         }
+        $out['resumed'] += $this->expireApprovals($now);
 
         return $out;
     }
@@ -595,7 +746,7 @@ final class Automations
             $found = $this->candidates($rule, Carbon::today());
             $items = array_map(fn ($ctx) => [
                 'at' => Carbon::today(), 'what' => $ctx['what'], 'project' => $ctx['project']->name,
-                'steps' => array_map(fn ($a) => AutomationCatalog::describeAction($a, $subject), $rule->actions),
+                'steps' => array_map(fn ($a) => AutomationCatalog::describeStep($a, $subject), $rule->actions),
                 'done' => $rule->exists && AutomationRun::query()->where('rule_id', $rule->id)->where('key', $ctx['key'])->exists(),
             ], array_slice($found, 0, $limit));
 
@@ -619,7 +770,7 @@ final class Automations
                     'at' => Carbon::parse($line->created_at),
                     'what' => $ctx['what'],
                     'project' => $ctx['project']->name,
-                    'steps' => array_map(fn ($a) => AutomationCatalog::describeAction($a, $subject), $rule->actions),
+                    'steps' => array_map(fn ($a) => AutomationCatalog::describeStep($a, $subject), $rule->actions),
                     'done' => $rule->exists && AutomationRun::query()->where('rule_id', $rule->id)->where('key', $ctx['key'])->exists(),
                 ];
             }

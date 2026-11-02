@@ -32,7 +32,7 @@ use Illuminate\Support\Carbon;
  */
 class AutomationRun extends Model
 {
-    public const STATUSES = ['done' => 'Done', 'failed' => 'Failed', 'skipped' => 'Nothing to do', 'waiting' => 'Waiting'];
+    public const STATUSES = ['done' => 'Done', 'failed' => 'Failed', 'skipped' => 'Nothing to do', 'waiting' => 'Waiting', 'awaiting' => 'Waiting for approval'];
 
     protected $casts = ['steps' => 'array', 'attempts' => 'integer', 'resume_at' => 'datetime'];
 

@@ -84,7 +84,14 @@ final class AutomationCatalog
         'assign' => ['label' => 'Give the task to', 'subjects' => ['task']],
         'start_report' => ['label' => 'Start a progress review', 'subjects' => null],
         'wait' => ['label' => 'Wait', 'subjects' => null],
+        'approval' => ['label' => 'Ask for approval', 'subjects' => null],
     ];
+
+    /** Who an approval step asks; any one of them can answer. @var array<string, string> */
+    public const APPROVERS = ['project_owner' => 'the project owner', 'project_managers' => 'a project manager', 'business_owner' => 'the business owner'];
+
+    /** Which way a step after an approval runs. @var array<string, string> */
+    public const BRANCHES = ['approved' => 'only if approved', 'rejected' => 'only if not approved', 'any' => 'either way'];
 
     /** Who a notice can go to. @var array<string, string> */
     public const RECIPIENTS = [
@@ -122,6 +129,13 @@ final class AutomationCatalog
             'actions' => [['type' => 'notify', 'to' => ['subject_person'], 'note' => 'Finish it or agree a new date.'], ['type' => 'wait', 'days' => 2, 'recheck' => true], ['type' => 'escalate']]],
         'deadline_review' => ['name' => 'Start a progress review two weeks before the due date', 'trigger' => 'project_deadline', 'param' => '14', 'conditions' => [],
             'actions' => [['type' => 'start_report'], ['type' => 'notify', 'to' => ['project_owner', 'project_managers'], 'note' => 'A status report draft is ready to finish.']]],
+        'budget_approval' => ['name' => 'Ask approval to keep spending past 90% of the budget', 'trigger' => 'budget_threshold', 'param' => '90', 'conditions' => [],
+            'actions' => [
+                ['type' => 'approval', 'approver' => 'business_owner', 'question' => 'Spending is near the budget. Approve further commitments on this project?', 'expire_days' => 5],
+                ['type' => 'notify', 'to' => ['project_owner', 'project_managers'], 'note' => 'Further commitments are approved.', 'when' => ['approval' => 'approved']],
+                ['type' => 'notify', 'to' => ['project_owner', 'project_managers'], 'note' => 'Hold new commitments: further spending was not approved.', 'when' => ['approval' => 'rejected']],
+                ['type' => 'create_tasks', 'titles' => 'Review the budget with the business owner', 'due_days' => 2, 'assign' => 'project_owner', 'priority' => 'high', 'when' => ['approval' => 'rejected']],
+            ]],
         'budget_90' => ['name' => 'Warn when spending reaches 90% of the budget', 'trigger' => 'budget_threshold', 'param' => '90', 'conditions' => [],
             'actions' => [['type' => 'notify', 'to' => ['project_owner', 'project_managers'], 'note' => 'Review the cost report before more is committed.']]],
     ];
@@ -183,14 +197,23 @@ final class AutomationCatalog
         }
 
         $actions = [];
+        $asked = false;
         foreach (array_values((array) ($in['actions'] ?? [])) as $i => $a) {
-            $actions[] = self::cleanAction((array) $a, $subject, $i + 1);
+            $clean = self::cleanAction((array) $a, $subject, $i + 1);
+            $clean['when'] = self::cleanWhen((array) ($a['when'] ?? []), $subject, $asked, $i + 1);
+            if ($clean['type'] === 'approval') {
+                if ($asked) {
+                    throw ValidationException::withMessages(['actions' => 'A rule asks for approval once.']);
+                }
+                $asked = true;
+            }
+            $actions[] = $clean;
         }
         if ($actions === []) {
             throw ValidationException::withMessages(['actions' => 'Add at least one thing for the rule to do.']);
         }
-        if (end($actions)['type'] === 'wait') {
-            throw ValidationException::withMessages(['actions' => 'A wait needs a step after it.']);
+        if (in_array(end($actions)['type'], ['wait', 'approval'], true)) {
+            throw ValidationException::withMessages(['actions' => end($actions)['type'] === 'wait' ? 'A wait needs a step after it.' : 'An approval needs a step after it, for when it is answered.']);
         }
         if (count($actions) > self::MAX_ACTIONS) {
             throw ValidationException::withMessages(['actions' => 'A rule does at most '.self::MAX_ACTIONS.' things.']);
@@ -251,6 +274,22 @@ final class AutomationCatalog
             })(),
             'assign' => ($a['to'] ?? '') === 'project_owner' ? ['type' => 'assign', 'to' => 'project_owner'] : $fail('choose who gets the task.'),
             'start_report' => ['type' => 'start_report'],
+            'approval' => (function () use ($a, $fail) {
+                $who = (string) ($a['approver'] ?? '');
+                $question = trim((string) ($a['question'] ?? ''));
+                $days = (int) ($a['expire_days'] ?? 7);
+                if (! isset(self::APPROVERS[$who])) {
+                    $fail('choose who approves.');
+                }
+                if ($question === '' || mb_strlen($question) > 300) {
+                    $fail('write what you are asking them to approve, in up to 300 characters.');
+                }
+                if ($days < 1 || $days > 30) {
+                    $fail('give them 1 to 30 days to answer.');
+                }
+
+                return ['type' => 'approval', 'approver' => $who, 'question' => $question, 'expire_days' => $days];
+            })(),
             'wait' => (function () use ($a, $fail) {
                 $days = (int) ($a['days'] ?? 0);
 
@@ -258,6 +297,30 @@ final class AutomationCatalog
             })(),
             default => $fail('choose something this trigger can do.'),
         };
+    }
+
+    /**
+     * A step's branch and its own condition. The branch matters only after an approval step
+     * (default: only if approved); the condition is checked when the step runs.
+     *
+     * @param  array<string, mixed>  $w
+     * @return array{approval: string|null, field: array{field: string, values: list<string>}|null}
+     */
+    private static function cleanWhen(array $w, string $subject, bool $afterApproval, int $n): array
+    {
+        $branch = (string) ($w['approval'] ?? 'approved');
+        $field = (string) ($w['field'] ?? '');
+        $guard = null;
+        if ($field !== '') {
+            $choices = $field === 'role' ? null : (self::CONDITIONS[$subject][$field][1] ?? null);
+            $values = array_values(array_intersect(array_map('strval', (array) ($w['values'] ?? [])), array_keys($choices ?? [])));
+            if ($choices === null || $values === []) {
+                throw ValidationException::withMessages(['actions' => 'Step '.$n.': choose at least one value for its condition.']);
+            }
+            $guard = ['field' => $field, 'values' => $values];
+        }
+
+        return ['approval' => $afterApproval ? (isset(self::BRANCHES[$branch]) ? $branch : 'approved') : null, 'field' => $guard];
     }
 
     /** The rule as a sentence: "When a task moves to Done in Kiln reline, if …, then …". */
@@ -275,9 +338,27 @@ final class AutomationCatalog
         $when .= $rule->project_id === null ? ' in any project' : ' in '.($projectName ?? 'its project');
         $subject = $def['subject'];
         $if = array_map(fn ($c) => (self::CONDITIONS[$subject][$c['field']][0] ?? $c['field']).' '.self::orList(array_map(fn ($v) => self::CONDITIONS[$subject][$c['field']][1][$v] ?? $v, $c['values'])), $rule->conditions);
-        $then = array_map(fn ($a) => self::describeAction($a, $subject), $rule->actions);
+        $then = array_map(fn ($a) => self::describeStep($a, $subject), $rule->actions);
 
-        return $when.($if ? ', if '.implode(' and ', $if) : '').', then '.implode(', then ', $then).'.';
+        // A step with its own branch or condition reads "then, if approved, …".
+        $then = array_map(fn ($t) => (str_starts_with($t, 'if ') || str_starts_with($t, 'either way') ? 'then, ' : 'then ').$t, $then);
+
+        return $when.($if ? ', if '.implode(' and ', $if) : '').', '.implode(', ', $then).'.';
+    }
+
+    /** @param  array<string, mixed>  $a  a step with its branch and condition */
+    public static function describeStep(array $a, string $subject): string
+    {
+        $when = $a['when'] ?? [];
+        $prefix = match ($when['approval'] ?? null) {
+            'approved' => 'if approved, ', 'rejected' => 'if not approved, ', 'any' => 'either way, ', default => '',
+        };
+        if (! empty($when['field'])) {
+            $f = $when['field'];
+            $prefix .= 'if '.(self::CONDITIONS[$subject][$f['field']][0] ?? $f['field']).' '.self::orList(array_map(fn ($v) => self::CONDITIONS[$subject][$f['field']][1][$v] ?? $v, $f['values'])).', ';
+        }
+
+        return $prefix.self::describeAction($a, $subject);
     }
 
     /** @param  array<string, mixed>  $a */
@@ -292,7 +373,7 @@ final class AutomationCatalog
                 default => 'escalate it to the project owner',
             },
             'create_tasks' => 'add '.(count($a['titles']) === 1 ? 'the task “'.$a['titles'][0].'”' : count($a['titles']).' tasks (“'.implode('”, “', $a['titles']).'”)')
-                .($a['assign'] !== 'none' ? ' for '.self::ASSIGNEES[$a['assign']] : '')
+                .($a['assign'] !== 'none' ? ' for '.($a['assign'] === 'subject_person' ? self::SUBJECT_PERSON[$subject] : self::ASSIGNEES[$a['assign']]) : '')
                 .($a['due_days'] !== null ? ', due '.($a['due_days'] === 0 ? 'the same day' : $a['due_days'].' '.str('day')->plural($a['due_days']).' later') : '')
                 .($a['priority'] !== 'medium' ? ', '.$a['priority'].' priority' : ''),
             'set_priority' => 'set the task\'s priority to '.$a['priority'],
@@ -300,6 +381,7 @@ final class AutomationCatalog
             'assign' => 'give the task to the project owner',
             'start_report' => 'start a progress review (a status report draft for the project)',
             'wait' => 'wait '.($a['days'] === 1 ? 'a day' : $a['days'].' days').($a['recheck'] ? ' and stop if it no longer applies' : ''),
+            'approval' => 'ask '.self::APPROVERS[$a['approver']].' to approve (“'.$a['question'].'”), waiting up to '.($a['expire_days'] === 1 ? 'a day' : $a['expire_days'].' days'),
             default => $a['type'],
         };
     }
