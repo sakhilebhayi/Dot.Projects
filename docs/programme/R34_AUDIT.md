@@ -476,3 +476,41 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   leaves behind widgets the copier cannot use. The roadmap, major-risks and project-links
   markup is now one partial each, shared by the Portfolio page and the dashboards. **P8 portfolio
   and reporting is complete.** Dot.Analytics integration waits for P11 (ecosystem).
+- **P9a automation engine** (2026-11-02): an Automations page in the rail. P9 is split: P9a is
+  the engine and event rules; P9b adds rules that act on dates (overdue work, an approaching
+  deadline, review dates) and delays; P9c adds approval steps and conditional branches.
+
+  A rule reads "When … only if … then …" and covers one project (made by the people who manage
+  it) or every project in the business (made by the business owner or an admin).
+
+  Triggers, from the activity log:
+  - a task is added, moves to a status, is given to someone, or starts waiting on unfinished work;
+  - a milestone is completed;
+  - a risk is rated high or critical;
+  - an issue is logged;
+  - someone is added to the project;
+  - a stage gate is passed;
+  - the project's status changes;
+  - a change request is submitted;
+  - spending and commitments reach a share of the budget.
+
+  Conditions narrow by priority, severity, category or role. Up to six ordered actions: notify
+  (the project owner, its managers, the person it concerns, the business owner, with an optional
+  note), escalate, add tasks (who for, due how many days later, priority), set the task's
+  priority, label it, give it to the project owner. Seven templates come from the brief's
+  examples.
+
+  Before switching a rule on:
+  - it reads as a sentence;
+  - a dry run shows what it would have done over the last 30 days, without doing it;
+  - rules are saved switched off.
+
+  How it runs:
+  - Rules run after the change commits, as the person who made or last changed the rule.
+  - They are idempotent: a run's key is unique per rule, by event, or once per risk, milestone,
+    person or share of the budget.
+  - What a rule does is logged with no person and names the rule, and never sets off another rule.
+  - Notices go only to people who can see the project, never to the person whose action set it
+    off, and name the rule.
+  - Each run records its steps. A failing step records why and the others still run. A retry
+    repeats only the unfinished steps.

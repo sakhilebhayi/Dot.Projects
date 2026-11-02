@@ -684,3 +684,34 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-dash-kind:has(input:checked) { border-color: var(--pg-ink); }
 .pg-dash-kind:has(input:focus-visible) { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
 @media (max-width: 900px) { .pg-dash { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Automations ----------
+   A rule is built as the sentence it reads as: When, Only if, Then, three ruled steps down one
+   line, each action a numbered step. The sentence above the form updates as it is built, and the
+   dry run under it shows what the rule would have done. */
+.pg-auto-new { margin: 12px 0 0 10px; }
+.pg-auto-more { margin-top: 16px; }
+.pg-auto .pg-rep-side .pg-rep-h { margin-top: 20px; }
+.pg-auto .pg-rep-side .pg-rep-h:first-child { margin-top: 0; }
+.pg-auto-todo { margin: 0 0 12px; font-size: 13px; color: var(--pg-warning); }
+.pg-auto-form { display: grid; gap: 18px; }
+.pg-auto-flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; min-width: 0; }
+.pg-auto-step { position: relative; min-width: 0; padding: 4px 0 18px 22px; border-left: 1px solid var(--pg-border); margin-left: 6px; display: grid; gap: 10px; }
+.pg-auto-step:last-child { padding-bottom: 4px; }
+.pg-auto-step::before { content: ""; position: absolute; left: -5px; top: 8px; width: 9px; height: 9px; border-radius: 50%; background: var(--pg-surface); border: 1px solid var(--pg-ink); }
+.pg-auto-step h2 { font-size: 13.5px; font-weight: 600; margin: 0; }
+.pg-auto-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pg-auto-row { min-width: 0; }
+.pg-auto-row .pg-select { width: auto; max-width: 100%; min-width: 0; flex: 0 1 auto; }
+.pg-auto-step > *, .pg-auto-action > * { min-width: 0; }
+.pg-auto-cond { border: 1px solid var(--pg-rule); border-radius: 6px; padding: 8px 12px 10px; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-width: 0; }
+.pg-auto-cond legend { font-size: 12.5px; color: var(--pg-muted); padding: 0 4px; }
+.pg-auto-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; flex: 1 1 auto; }
+.pg-auto-action { border: 1px solid var(--pg-rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.pg-auto-action-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+.pg-auto-action-head b { font-weight: 500; }
+.pg-auto-steps { margin: 4px 0 0; padding: 0 0 0 16px; font-size: 12.5px; color: var(--pg-muted); display: grid; gap: 1px; }
+.pg-auto-steps .pg-neg { color: var(--pg-negative); }
+.pg-auto-run .pg-actions { flex: none; }
+.pg-auto-tname { font-weight: 500; font-size: 13.5px; }
+.pg-auto .pg-row .pg-sub { white-space: normal; }

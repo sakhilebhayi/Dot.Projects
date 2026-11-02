@@ -38,6 +38,7 @@
             ['dashboards.index', 'dashboards.*', 'space_dashboard', 'Dashboards'],
             ['portfolio.index', 'portfolio.*', 'account_tree', 'Portfolio'],
             ['reporting.index', 'reporting.*', 'table_chart', 'Reports'],
+            ['automations.index', 'automations.*', 'bolt', 'Automations'],
             ['time.index', 'time.*', 'timer', 'Time'],
             ['workload.index', 'workload.*', 'stacked_bar_chart', 'Workload'],
             ['notifications.index', 'notifications.*', 'notifications', 'Notifications'],

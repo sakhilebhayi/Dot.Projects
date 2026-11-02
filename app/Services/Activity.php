@@ -20,17 +20,23 @@ final class Activity
             $project = $subject;
         }
         $teamId = $project !== null ? $project->team_id : $subject->getAttribute('team_id');
+        // What an automation does is the rule's doing, not the person whose action set it off.
+        $rule = Automations::running();
+        if ($rule !== null) {
+            $changes['rule_id'] = $rule;
+        }
 
         $line = new ActivityLine;
         $line->forceFill([
             'team_id' => $teamId,
             'project_id' => $project?->id,
-            'user_id' => Auth::id(),
+            'user_id' => $rule === null ? Auth::id() : null,
             'action' => $action,
             'subject_type' => $subject->getMorphClass(),
             'subject_id' => $subject->getKey(),
             'changes' => $changes === [] ? null : $changes,
         ])->save();
+        Automations::queue($line);
 
         return $line;
     }
