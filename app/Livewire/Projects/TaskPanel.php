@@ -5,9 +5,14 @@ namespace App\Livewire\Projects;
 use App\Models\ChecklistItem;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\TimeEntry;
 use App\Services\ProjectWork;
+use App\Services\TimeTracking;
+use App\Support\Duration;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -52,6 +57,12 @@ class TaskPanel extends Component
     public string $newSubtask = '';
 
     public string $newLabel = '';
+
+    public string $logHours = '';
+
+    public string $logNote = '';
+
+    public bool $logBillable = false;
 
     public function mount(Project $project, ProjectTask $task): void
     {
@@ -235,8 +246,54 @@ class TaskPanel extends Component
         return ChecklistItem::query()->where('project_task_id', $this->task->id)->findOrFail($id);
     }
 
+    /**
+     * Time on this task: everyone's total against the estimate, your own share, and the split by
+     * person only for those who run the project (or own the business).
+     *
+     * @return array{total: int, mine: int, people: \Illuminate\Support\Collection<int, array{name: string, minutes: int}>|null}
+     */
+    #[Computed]
+    public function time(): array
+    {
+        $entries = TimeEntry::query()->where('task_id', $this->task->id)->with('user:id,name')->get();
+        $me = auth()->user();
+        $seesPeople = $this->project->canBeManagedBy($me) || $me->ownsTeam($this->project->team);
+
+        return [
+            'total' => (int) $entries->sum(fn ($e) => $e->elapsed()),
+            'mine' => (int) $entries->where('user_id', $me->id)->sum(fn ($e) => $e->elapsed()),
+            'people' => $seesPeople ? $entries->groupBy('user_id')->map(fn ($g) => ['name' => (string) $g->first()->user->name, 'minutes' => (int) $g->sum(fn ($e) => $e->elapsed())])->sortByDesc('minutes')->values() : null,
+        ];
+    }
+
+    public function logTime(TimeTracking $time): void
+    {
+        $this->resetErrorBag();
+        $minutes = Duration::parse($this->logHours);
+        if ($minutes === null) {
+            throw ValidationException::withMessages(['minutes' => 'Give the time as hours and minutes, such as 1:30, 1.5 or 45m.']);
+        }
+        $time->log(auth()->user(), $this->project, ['task_id' => $this->task->id, 'work_date' => Carbon::today()->toDateString(), 'minutes' => $minutes, 'note' => $this->logNote, 'billable' => $this->logBillable]);
+        $this->reset('logHours', 'logNote');
+        unset($this->time);
+    }
+
+    public function startTimer(TimeTracking $time): void
+    {
+        $this->resetErrorBag();
+        $time->start(auth()->user(), $this->project, $this->task->id, $this->logNote, $this->logBillable);
+        $this->reset('logNote');
+        unset($this->time);
+    }
+
+    public function stopTimer(TimeTracking $time): void
+    {
+        $time->stop(auth()->user());
+        unset($this->time);
+    }
+
     public function render(): View
     {
-        return view('livewire.projects.task-panel');
+        return view('livewire.projects.task-panel', ['running' => app(TimeTracking::class)->running(auth()->user())]);
     }
 }

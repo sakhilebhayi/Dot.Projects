@@ -1,6 +1,6 @@
 <div class="pg-grid">
-    @php($canEdit = auth()->user()->can('update', $task))
-    @php($done = $this->checklist->whereNotNull('done_at')->count())
+    @php $canEdit = auth()->user()->can('update', $task); @endphp
+    @php $done = $this->checklist->whereNotNull('done_at')->count(); @endphp
     <section class="pg-card pg-s8" aria-labelledby="task-h">
         <h2 id="task-h" class="pg-sr">Task details</h2>
         <form wire:submit="save" class="pg-form">
@@ -78,6 +78,44 @@
     </section>
 
     <aside class="pg-s4" style="display:grid;gap:var(--pg-gap);align-content:start">
+        @php
+            $t = $this->time;
+            $est = $task->estimate_minutes;
+            $fmt = fn (int $m) => App\Support\Duration::format($m);
+            $mineRunning = $running && $running->task_id === $task->id;
+        @endphp
+        <section class="pg-card" aria-labelledby="time-h">
+            <div class="pg-card-head"><h2 id="time-h">Time</h2><small>{{ $est ? $fmt($t['total']).' of '.$fmt($est).' estimated' : $fmt($t['total']).' logged' }}</small></div>
+            @if ($est)
+                <div class="pg-meter" role="img" aria-label="{{ $fmt($t['total']) }} logged against {{ $fmt($est) }} estimated"><i style="width:{{ min(100, (int) round($t['total'] / max(1, $est) * 100)) }}%" class="{{ $t['total'] > $est ? 'is-over' : '' }}"></i></div>
+                @if ($t['total'] > $est)<p class="pg-help pg-neg" style="margin:6px 0 0">{{ $fmt($t['total'] - $est) }} over the estimate.</p>@endif
+            @endif
+            <p class="pg-help" style="margin:6px 0 0">You: {{ $fmt($t['mine']) }}.</p>
+            @if ($t['people'] && $t['people']->count() > 1)
+                <dl class="pg-kv" style="margin-top:8px">@foreach ($t['people'] as $p)<dt>{{ $p['name'] }}</dt><dd>{{ $fmt($p['minutes']) }}</dd>@endforeach</dl>
+            @endif
+            @if ($mineRunning)
+                <div class="pg-notice pg-timer" style="margin:10px 0 0" wire:poll.60s><span>Timer running since {{ $running->running_since->format('H:i') }}: {{ $fmt($running->elapsed()) }}</span><button type="button" class="pg-btn pg-btn--primary pg-btn--sm" wire:click="stopTimer">Stop</button></div>
+            @elseif ($canEdit)
+                <form wire:submit="logTime" class="pg-form" style="gap:8px;margin-top:10px">
+                    <div style="display:flex;gap:8px">
+                        <label for="tt-hours" class="pg-sr">Time spent today</label>
+                        <input id="tt-hours" type="text" inputmode="decimal" wire:model="logHours" class="pg-input" placeholder="1:30 today" style="flex:1">
+                        <button type="submit" class="pg-btn pg-btn--secondary">Log</button>
+                    </div>
+                    <label for="tt-note" class="pg-sr">What it was for</label>
+                    <input id="tt-note" type="text" wire:model="logNote" maxlength="500" class="pg-input" placeholder="What it was for (optional)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+                        <label class="pg-radio"><input type="checkbox" wire:model="logBillable"> Billable</label>
+                        <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="startTimer">{{ $running ? 'Switch the timer here' : 'Start the timer' }}</button>
+                    </div>
+                    @error('minutes')<p class="pg-error">{{ $message }}</p>@enderror
+                    @error('work_date')<p class="pg-error">{{ $message }}</p>@enderror
+                    @error('project')<p class="pg-error">{{ $message }}</p>@enderror
+                    <p class="pg-help" style="margin:0">Other days and the week's timesheet are on <a href="{{ route('time.index') }}">your time</a>.</p>
+                </form>
+            @endif
+        </section>
         <section class="pg-card" aria-labelledby="check-h">
             <div class="pg-card-head"><h2 id="check-h">Checklist</h2><small>{{ $this->checklist->count() ? $done.' of '.$this->checklist->count().' done' : '' }}</small></div>
             @forelse ($this->checklist as $item)
