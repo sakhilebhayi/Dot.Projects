@@ -13,7 +13,7 @@
     {{-- The Programme (DESIGN.md): Schibsted Grotesk for everything, DM Mono for identifiers only. --}}
     <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <script>
+    <script nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}">
         // Theme before first paint: a stored choice wins, otherwise the system preference.
         (function () {
             try {

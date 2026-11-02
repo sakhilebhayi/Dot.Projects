@@ -2,14 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Models\Project;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
-/** Baseline browser protections are on every response; the CSP only reports; a route's own header is kept. */
+/** Baseline browser protections are on every response; the CSP is enforced with a nonce; a route's own header is kept. */
 class SecurityHeadersTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_every_response_carries_the_enforced_baseline_headers(): void
     {
         $r = $this->get('/');
@@ -27,26 +32,50 @@ class SecurityHeadersTest extends TestCase
         $this->get('/does-not-exist')->assertNotFound()->assertHeader('X-Frame-Options', 'SAMEORIGIN');
     }
 
-    public function test_the_csp_is_report_only_and_reports_to_the_csp_report_endpoint(): void
+    public function test_the_csp_is_enforced_with_a_nonce_and_has_a_kill_switch(): void
     {
         $r = $this->get('/');
 
-        $policy = (string) $r->headers->get('Content-Security-Policy-Report-Only');
-        $this->assertFalse($r->headers->has('Content-Security-Policy'), 'nothing is enforced yet');
-        $this->assertStringContainsString("default-src 'self'", $policy);
-        $this->assertStringContainsString('report-uri /csp-report', $policy);
-        $this->assertStringContainsString("frame-ancestors 'self'", $policy);
-        $this->assertStringContainsString("object-src 'none'", $policy);
-        $this->assertStringContainsString("base-uri 'self'", $policy);
-        $this->assertStringContainsString('connect-src', $policy);
+        $policy = (string) $r->headers->get('Content-Security-Policy');
+        $this->assertFalse($r->headers->has('Content-Security-Policy-Report-Only'));
+        preg_match('/script-src ([^;]+)/', $policy, $script);
+        $this->assertMatchesRegularExpression("/'nonce-[A-Za-z0-9+\/=]{16,}'/", $script[1]);
+        $this->assertStringNotContainsString("'unsafe-inline'", $script[1], 'no inline script runs without the nonce');
+        foreach (["script-src-attr 'none'", "default-src 'self'", "frame-ancestors 'self'", "object-src 'none'", "base-uri 'self'", 'report-uri /csp-report', 'report-to csp', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'] as $part) {
+            $this->assertStringContainsString($part, $policy);
+        }
         $this->assertStringNotContainsString('cdn.tailwindcss.com', $policy, 'the workspace stylesheet is built, not compiled from a CDN');
-        $this->assertStringContainsString('https://fonts.googleapis.com', $policy);
-        $this->assertStringContainsString('https://fonts.gstatic.com', $policy);
-        // The switch turns the same policy into an enforced one, with no deploy.
-        config(['security.csp_report_only' => false]);
-        $enforced = $this->get('/');
-        $this->assertStringContainsString("default-src 'self'", (string) $enforced->headers->get('Content-Security-Policy'));
-        $this->assertFalse($enforced->headers->has('Content-Security-Policy-Report-Only'));
+        $this->assertStringContainsString('csp="', (string) $r->headers->get('Reporting-Endpoints'));
+        $this->assertNotSame($policy, (string) $this->get('/')->headers->get('Content-Security-Policy'), 'a fresh nonce for every response');
+
+        // The kill-switch turns the same policy back into a report-only one, with no deploy.
+        config(['security.csp_report_only' => true]);
+        $reported = $this->get('/');
+        $this->assertStringContainsString("script-src-attr 'none'", (string) $reported->headers->get('Content-Security-Policy-Report-Only'));
+        $this->assertFalse($reported->headers->has('Content-Security-Policy'));
+    }
+
+    public function test_every_script_on_real_pages_carries_the_nonce_and_no_inline_handlers_exist(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $project = Project::create(['team_id' => $user->currentTeam->id, 'owner_id' => $user->id, 'name' => 'Kiln reline', 'status' => 'active']);
+        $task = $project->tasks()->create(['title' => 'Reline', 'status' => 'todo', 'priority' => 'high']);
+        $pages = ['/', '/login', route('dashboard'), route('projects.show', $project), route('projects.board', $project), route('projects.tasks.show', [$project, $task]),
+            route('reporting.index'), route('automations.index'), route('dashboards.index'), route('portfolio.index'), route('projects.documents', $project)];
+        foreach ($pages as $i => $url) {
+            $r = $i < 2 ? $this->get($url) : $this->actingAs($user)->get($url);
+            $r->assertOk();
+            preg_match("/'nonce-([^']+)'/", (string) $r->headers->get('Content-Security-Policy'), $m);
+            $html = (string) $r->getContent();
+            preg_match_all('/<script\b[^>]*>/i', $html, $tags);
+            $this->assertNotEmpty($tags[0], $url.' has scripts to check');
+            foreach ($tags[0] as $tag) {
+                $ok = str_contains($tag, 'nonce="'.$m[1].'"') || (preg_match('/src="([^"]+)"/', $tag, $src) && (str_starts_with($src[1], '/') || str_starts_with($src[1], url('/'))));
+                $this->assertTrue($ok, $url.': a script the policy would block: '.$tag);
+            }
+            $this->assertDoesNotMatchRegularExpression('/\son(click|submit|change|input|load|error|key\w+|mouse\w+|focus|blur)="/i', $html, $url.' uses an inline handler, which script-src-attr blocks');
+            $this->assertStringNotContainsString('javascript:', $html, $url);
+        }
     }
 
     public function test_hsts_is_sent_on_https_only_and_can_be_switched_off(): void

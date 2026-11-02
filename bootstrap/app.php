@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Baseline browser protections (enforced headers plus a report-only CSP) on every response.
+        // Baseline browser protections (enforced headers and a nonce-based CSP) on every response.
         $middleware->append(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

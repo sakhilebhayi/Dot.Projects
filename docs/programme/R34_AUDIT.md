@@ -623,3 +623,37 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   - the Projects host's PHP upload limits at 25 MB or more.
 
   Live end-to-end filing is verified only after those steps.
+- **P12a enforced CSP, rate limits and a tenant-isolation sweep** (2026-11-02). P12 is split:
+  P12a is the browser and request protections; P12b is data-retention controls and monitoring
+  (`/ready`, outbox and automation health); P12c is the restore drill, a load test with
+  published numbers, and the final readiness report.
+
+  **Enforced, nonce-based CSP**, the shape InfoDot (R-19) and Dot.HR run:
+  - a fresh nonce per request, registered with Vite, so @vite and Livewire's assets carry it;
+  - the three inline scripts declare it;
+  - no 'unsafe-inline' for scripts, and `script-src-attr 'none'`;
+  - 'unsafe-eval' stays, because Livewire 3's bundled Alpine needs it;
+  - style-src keeps 'unsafe-inline' for the style attributes the views use;
+  - Reporting-Endpoints plus report-to;
+  - `SECURITY_CSP_REPORT_ONLY=true` is the kill-switch back to report-only without a deploy.
+
+  A test scans 11 real pages: every `<script>` must carry the header's nonce or load from this
+  origin, and no on*= handlers or javascript: links may appear.
+
+  **Rate limits** per signed-in person (per address for guests), answered with 429 and
+  Retry-After:
+  - the app, 300 a minute;
+  - Livewire round trips, 600 a minute;
+  - report files, 20 a minute;
+  - document downloads, 60 a minute;
+  - uploads, 30 a minute, as before;
+  - sign-in and two-factor, as before.
+
+  **Tenant-isolation sweep:** every GET route that takes a record is filled with one business's
+  records and requested three ways:
+  - by someone from another business;
+  - by a colleague outside a private project;
+  - with two businesses' records mixed in one address.
+
+  Each must answer 403 or 404: 28 record routes, 151 assertions. A route added later without a
+  record in the sweep fails the test until it is covered.
