@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $start_date
  * @property Carbon|null $due_date
  * @property Carbon|null $archived_at
+ * @property int|null $labour_line_id the budget line approved time is charged to
  * @property string $visibility team (everyone in the business) or private (its members only)
  * @property array<string, mixed>|null $risk_matrix
  * @property int|null $archived_by

@@ -3,8 +3,11 @@
 namespace App\Livewire\Workload;
 
 use App\Models\Team;
+use App\Services\LabourCost;
 use App\Services\Workload;
 use App\Support\Duration;
+use App\Support\Money;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Url;
@@ -25,6 +28,12 @@ class Board extends Component
     public string $hours = '';
 
     public string $note = '';
+
+    public ?int $rating = null;
+
+    public string $rate = '';
+
+    public string $rateFrom = '';
 
     private function team(): Team
     {
@@ -62,6 +71,24 @@ class Board extends Component
         $this->reset('editing', 'hours', 'note');
     }
 
+    public function editRate(int $userId): void
+    {
+        abort_unless(Workload::oversees(auth()->user(), $this->team()), 403);
+        $current = LabourCost::rateOn(app(LabourCost::class)->rates($this->team()), $userId, Carbon::today());
+        $this->rating = $userId;
+        $this->rate = $current === null ? '' : rtrim(rtrim(number_format($current / 100, 2, '.', ''), '0'), '.');
+        $this->rateFrom = Carbon::today()->toDateString();
+        $this->resetErrorBag();
+    }
+
+    public function saveRate(LabourCost $labour): void
+    {
+        abort_unless(Workload::oversees(auth()->user(), $this->team()) && $this->rating !== null, 403);
+        $this->resetErrorBag();
+        $labour->setRate($this->team(), auth()->user(), $this->rating, Money::parse($this->rate), $this->rateFrom);
+        $this->reset('rating', 'rate', 'rateFrom');
+    }
+
     public function render(): View
     {
         $team = $this->team();
@@ -75,6 +102,8 @@ class Board extends Component
         return view('livewire.workload.board', [
             'rows' => $rows,
             'oversees' => $oversees,
+            // Rates are only read for those allowed to see them.
+            'rates' => $oversees ? app(LabourCost::class)->rates($team) : [],
             'focused' => $focused && $fWeek !== null && isset($focused['weeks'][$fWeek]) ? ['row' => $focused, 'week' => $fWeek] : null,
         ]);
     }

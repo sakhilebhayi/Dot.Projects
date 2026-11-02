@@ -6,6 +6,9 @@ use App\Models\BudgetLine;
 use App\Models\CostItem;
 use App\Models\Project;
 use App\Services\CostLedger;
+use App\Services\EarnedValue;
+use App\Services\LabourCost;
+use App\Services\Workload;
 use App\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -27,6 +30,9 @@ class ProjectMoney extends Component
 
     #[Url(as: 'kind', except: '')]
     public string $kindFilter = '';
+
+    #[Url(as: 'asof', except: '')]
+    public string $asOf = '';
 
     public string $newCategory = 'materials';
 
@@ -154,6 +160,14 @@ class ProjectMoney extends Component
         $this->reset('description', 'supplier', 'reference', 'amount', 'settles');
     }
 
+    public function chargeTime(string $lineId, CostLedger $ledger): void
+    {
+        $this->authorize('editMoney', $this->project);
+        $this->resetErrorBag();
+        $ledger->chargeTimeTo($this->project, $lineId === '' ? null : (int) $lineId);
+        $this->project->refresh();
+    }
+
     public function removeCost(int $id, CostLedger $ledger): void
     {
         $this->authorize('editMoney', $this->project);
@@ -172,8 +186,17 @@ class ProjectMoney extends Component
             ->when($this->openLine !== '', fn ($q) => $q->where('budget_line_id', (int) $this->openLine))
             ->orderByDesc('dated')->orderByDesc('id')->get();
 
+        try {
+            $asOf = $this->asOf === '' ? Carbon::today() : Carbon::parse($this->asOf);
+        } catch (\Throwable) {
+            $asOf = Carbon::today();
+        }
+
         return view('livewire.projects.project-money', [
             'data' => $data,
+            'ev' => app(EarnedValue::class)->compute($this->project, $asOf),
+            'labour' => app(LabourCost::class)->forProject($this->project),
+            'seesRates' => Workload::oversees(auth()->user(), $this->project->team),
             'risks' => $ledger->risks($this->project, $data),
             'items' => $items,
             'openCommitments' => $this->costLine === '' ? collect() : CostItem::query()->where('budget_line_id', (int) $this->costLine)->where('kind', 'commitment')->orderByDesc('dated')->get(['id', 'description', 'reference', 'amount_cents']),

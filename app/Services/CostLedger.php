@@ -18,7 +18,8 @@ use Illuminate\Validation\ValidationException;
  * The project's budget and costs, and the figures worked out from them. Formulas, per line and in
  * total (amounts in cents):
  *
- *   actual           = sum of actual costs
+ *   actual           = sum of actual costs, plus approved time at rates on the line the project
+ *                      charges its labour to (App\Services\LabourCost)
  *   open commitments = for each commitment, its amount less the actuals that settle it (never < 0)
  *   cost to complete = the figure someone set, or else budget - actual - open commitments (never < 0)
  *   forecast         = actual + open commitments + cost to complete  (forecast at completion)
@@ -66,6 +67,16 @@ final class CostLedger
         }
         DB::transaction(fn () => $this->writeRevision($line, $by, $toCents, $reason, $changeId));
         Activity::record('budget.revised', $line->project, ['change_id' => $changeId]);
+    }
+
+    /** Chooses the budget line approved time is charged to (or none). */
+    public function chargeTimeTo(Project $project, ?int $lineId): void
+    {
+        if ($lineId !== null && ! $project->budgetLines()->whereKey($lineId)->exists()) {
+            throw ValidationException::withMessages(['labour_line_id' => 'Choose a line of this budget.']);
+        }
+        $project->forceFill(['labour_line_id' => $lineId])->save();
+        Activity::record('budget.labour_line_set', $project, []);
     }
 
     public function rename(BudgetLine $line, string $category, string $name): void
@@ -149,7 +160,7 @@ final class CostLedger
     /**
      * The ledger: one row per line and the totals, with the formulas in the class docblock.
      *
-     * @return array{lines: list<array{line: BudgetLine, budget: int, actual: int, open: int, toComplete: int, toCompleteSet: bool, forecast: int, variance: int, used: int|null}>, total: array{budget: int, actual: int, open: int, toComplete: int, forecast: int, variance: int, used: int|null}, revised: int}
+     * @return array{lines: list<array{line: BudgetLine, budget: int, actual: int, fromTime: int, open: int, toComplete: int, toCompleteSet: bool, forecast: int, variance: int, used: int|null}>, total: array{budget: int, actual: int, open: int, toComplete: int, forecast: int, variance: int, used: int|null}, revised: int}
      */
     public function ledger(Project $project): array
     {
@@ -157,16 +168,18 @@ final class CostLedger
         $items = $project->costItems()->get();
         $actualByLine = $items->where('kind', 'actual')->groupBy('budget_line_id')->map(fn (Collection $g) => (int) $g->sum('amount_cents'));
         $settled = $items->where('kind', 'actual')->whereNotNull('settles_id')->groupBy('settles_id')->map(fn (Collection $g) => (int) $g->sum('amount_cents'));
+        $labour = $project->labour_line_id ? app(LabourCost::class)->forProject($project)['cents'] : 0;
         $openByLine = $items->where('kind', 'commitment')->groupBy('budget_line_id')
             ->map(fn (Collection $g) => (int) $g->sum(fn (CostItem $c) => max(0, $c->amount_cents - (int) ($settled[$c->id] ?? 0))));
 
         $rows = [];
         foreach ($lines as $line) {
-            $actual = (int) ($actualByLine[$line->id] ?? 0);
+            $fromTime = $line->id === $project->labour_line_id ? $labour : 0;
+            $actual = (int) ($actualByLine[$line->id] ?? 0) + $fromTime;
             $open = (int) ($openByLine[$line->id] ?? 0);
             $toComplete = $line->to_complete_cents ?? max(0, $line->budget_cents - $actual - $open);
             $forecast = $actual + $open + $toComplete;
-            $rows[] = ['line' => $line, 'budget' => $line->budget_cents, 'actual' => $actual, 'open' => $open, 'toComplete' => $toComplete, 'toCompleteSet' => $line->to_complete_cents !== null,
+            $rows[] = ['line' => $line, 'budget' => $line->budget_cents, 'actual' => $actual, 'fromTime' => $fromTime, 'open' => $open, 'toComplete' => $toComplete, 'toCompleteSet' => $line->to_complete_cents !== null,
                 'forecast' => $forecast, 'variance' => $line->budget_cents - $forecast, 'used' => $line->budget_cents > 0 ? (int) round(($actual + $open) / $line->budget_cents * 100) : null];
         }
         $sum = fn (string $k) => (int) array_sum(array_column($rows, $k));

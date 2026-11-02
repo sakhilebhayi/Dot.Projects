@@ -379,3 +379,14 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   the formulas printed on the page. Budget risk indicators: forecast over budget, lines over,
   spending ahead of progress, contingency drawn, approved changes the budget does not show. Costs
   are entered here until Dot.Finance can share actuals. Next, P7b: earned value and labour cost.
+- **P7b earned value and labour cost** (2026-11-02): hourly rates per person, dated (time is costed
+  at the rate in force on the day worked), seen and set only by the business owner and admins on
+  the Workload page. Labour cost is approved time at those rates; hours from someone without a rate
+  are shown as not costed. A project chooses the budget line its labour is charged to, and that
+  line's actual includes it. The Money tab adds earned value as of any date, by a stated method:
+  work measured over leaf tasks weighted by estimate (unestimated tasks weigh the average); PV from
+  the latest baseline's dates (current dates if none), planned evenly from start to due; EV by the
+  0/50/100 rule; AC from the ledger; then SV, SPI, CV, CPI, EAC (BAC divided by CPI), ETC, VAC and
+  TCPI, each with how it is worked out, a plain-language reading, and the share of the work that
+  had dates to plan against. Derived amounts are whole rand; an index with nothing to divide by
+  shows as a dash. **P7 money is complete.**
