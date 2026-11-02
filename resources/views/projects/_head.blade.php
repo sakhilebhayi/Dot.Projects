@@ -7,7 +7,7 @@
 <p class="pg-crumb"><a href="{{ route('dashboard') }}">{{ $project->team?->name ?? 'Projects' }}</a> <span aria-hidden="true">/</span> <a href="{{ route('dashboard') }}">Projects</a> <span aria-hidden="true">/</span> <span class="pg-id">P-{{ str_pad((string) $project->id, 4, '0', STR_PAD_LEFT) }}</span></p>
 <div class="pg-titlerow">
     <div>
-        <h1 class="pg-title">{{ $project->name }}<span class="pg-pill {{ $statusPill }}">{{ $statusLabel }}</span>@if ($project->isPrivate())<span class="pg-pill" title="Only the people on this project can see it">Private</span>@endif</h1>
+        <h1 class="pg-title">{{ $project->name }}<span class="pg-pill {{ $statusPill }}">{{ $statusLabel }}</span>@if ($project->isPrivate())<span class="pg-pill" title="Only the people on this project can see it">Private</span>@endif@if ($m = App\Support\Methodologies::ALL[$project->methodology ?? ''] ?? null)<span class="pg-pill" title="{{ $m[1] }}">{{ $m[0] }}</span>@endif</h1>
         <p class="pg-finding">{{ $finding }}</p>
     </div>
     @php $canAct = ! $project->isArchived() && ($actionLabel === 'Open the board' || auth()->user()->can('update', $project)); @endphp

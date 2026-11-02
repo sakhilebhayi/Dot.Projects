@@ -39,7 +39,7 @@ class Project extends Model
     use HasTeamScope;
 
     protected $fillable = [
-        'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'visibility',
+        'team_id', 'owner_id', 'name', 'description', 'status', 'start_date', 'due_date', 'visibility', 'methodology',
         'closure_reviewed_by', 'closure_reviewed_at', 'closure_rejected_reason',
     ];
 
