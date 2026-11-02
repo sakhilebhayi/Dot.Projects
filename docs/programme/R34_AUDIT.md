@@ -355,3 +355,15 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   spreadsheet formulas neutralised) are for those who run the project and the business owner, the
   same line as P6b. Running timers count once stopped. Next, P6d: workload, capacity and
   utilisation across projects.
+- **P6d workload and capacity** (2026-11-02): a Workload page in the rail. For the next six weeks,
+  each person's planned load against their capacity: open tasks given to them with an estimate
+  contribute what is left of it (estimate less time logged), spread evenly over the working days
+  from today (or the task's start) to its due date; work past its due date counts in this week and
+  is flagged. Tasks with no estimate and estimated work with no date are counted as unknowns, never
+  placed by guesswork, so the page says when its picture is partial. Capacity is project hours a
+  week per person (40 unless set; set with a reason by the business owner or an admin). Only
+  over-capacity weeks take colour, and each says so in words; choosing a week lists the tasks
+  behind it. The business owner and admins see everyone; others see their own row. Private work
+  counts toward load but its names show only to people who can see the project. Nothing is moved
+  automatically. Deferred: leave-aware capacity and skills shortages, which need Dot.HR to share
+  leave and skills. **P6 is complete** (roles and private projects, time, reports, workload).

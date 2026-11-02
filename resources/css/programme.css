@@ -496,3 +496,25 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-weekbar span { color: var(--pg-muted); }
 .pg-weekbar b { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
 .pg-weekbar .pg-meter { margin: 0; }
+
+/* ---------- Workload ----------
+   Each cell is the week's planned hours over a thin capacity bar; only over-capacity cells take
+   colour (negative), and they also say so in their label. */
+.pg-table--load { min-width: 980px; }
+.pg-table--load td { vertical-align: middle; }
+.pg-load { width: 100%; min-width: 72px; display: grid; gap: 4px; justify-items: end; border: 1px solid transparent; background: none; border-radius: 6px; padding: 4px 6px; font: inherit; font-variant-numeric: tabular-nums; color: inherit; cursor: pointer; position: relative; z-index: 1; }
+.pg-load i { display: block; justify-self: stretch; height: 4px; border-radius: 2px; background: var(--pg-bar-active); max-width: 100%; }
+.pg-load:hover { border-color: var(--pg-border); }
+.pg-load.is-on { border-color: var(--pg-ink); }
+.pg-load.is-over { background: var(--pg-negative-soft); color: var(--pg-negative); font-weight: 600; }
+.pg-load.is-over i { background: var(--pg-negative); }
+.pg-load:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
+.pg-linkbtn { border: 0; background: none; padding: 0; margin-left: 4px; font: inherit; color: var(--pg-ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; position: relative; z-index: 1; }
+.pg-cap-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; position: relative; z-index: 1; }
+@media (max-width: 640px) { .pg-table--load { min-width: 0; } .pg-load { justify-items: start; } }
+@media (max-width: 640px) {
+    .pg-table.pg-table--load tr { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .pg-table.pg-table--load td.pg-name { grid-column: 1 / -1; }
+    .pg-table.pg-table--load td[data-label]:not([data-label="Last week"]):not([data-label="Not placed"]) { grid-column: auto; }
+    .pg-table.pg-table--load td[data-label]:not([data-label="Last week"]):not([data-label="Not placed"])::before { display: block; font-size: 12px; }
+}
