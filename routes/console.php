@@ -15,6 +15,9 @@ Artisan::command('inspire', function () {
 Schedule::command('projects:check-milestones-due')->dailyAt('07:00');
 // Dated automation rules and waits (R-34 P9b); the sweep itself only acts 07:00 to 19:00 SAST.
 Schedule::command('automations:sweep')->hourlyAt(5)->withoutOverlapping()->onOneServer();
+// Calls to other Dot platforms (R-34 P11a): the outbox is sent every minute and pruned nightly.
+Schedule::command('integrations:deliver')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command('integrations:deliver --prune')->dailyAt('03:15')->onOneServer();
 
 // Liveness of the platform itself. /up/scheduler reports this heartbeat's
 // age and answers 503 once it is older than

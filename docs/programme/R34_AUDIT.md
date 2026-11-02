@@ -554,3 +554,45 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   anything unexpected around every rule, so a broken rule can never undo or break the change
   that set it off; the run stays failed, to be retried. **P9 automation is complete.**
   Visual flow editing stays the sentence builder, which works by keyboard and on a phone.
+- **P11a integration foundation and Dot.Notify** (2026-11-02): P11 is split. P11a is the
+  foundation and Dot.Notify; P11b is Dot.Files project documents; P11c is Dot.Analytics (which
+  first needs Dot.Projects in its metrics catalogue) and Dot.Memory.
+
+  Survey of the other apps' `main` branches, 2026-11-02:
+  - **Dot.Notify:** signed event ingest. Live at notify.infodot.co.za; an unsigned call answers
+    401.
+  - **Dot.Files:** a signed platform files API (store, update, fetch, meta, list, trash).
+  - **Dot.Analytics:** signed snapshot ingest, but only for platforms in its catalogue, and
+    Dot.Projects is not in it.
+  - **Dot.Memory:** token-authenticated intelligence events.
+  - **Dot.HR, Dot.Finance and Dot.Tasks:** no API.
+
+  The host runs only `schedule:run`, so there is no queue worker. Calls to other platforms
+  therefore go through an outbox table (`integration_deliveries`), sent by
+  `integrations:deliver` every minute:
+  - Keyed per integration, so nothing is sent twice.
+  - Unreachable, 429 and 5xx answers are retried after 1, 5, 15, 60 and 240 minutes, then
+    given up.
+  - Refusals that a retry cannot fix (401/403/404/422) are given up at once, with a reason a
+    person can act on.
+  - A circuit breaker pauses after 5 failures in a row.
+  - Payloads are encrypted at rest and pruned 30 days after sending.
+
+  Every in-app notice is offered to Dot.Notify as an email event `projects.<type>`. It carries
+  only the business, the project, the notice's title and a link; the notice's text stays here.
+  It is signed exactly as Notify verifies (HMAC-SHA256 over "{timestamp}.{body}",
+  X-InfoDot-Signature and X-InfoDot-Timestamp, made at send time). Nothing is queued without
+  NOTIFY_INGEST_URL and NOTIFY_INGEST_SECRET, without an InfoDot company on the business, or
+  without an email address.
+
+  An Integrations page (business owner and admins) shows, per integration, whether it is set up
+  on the server and for the business, what was sent, what is waiting and what was not sent with
+  the reason, with "Send again". Integrations not yet connected are listed with the honest
+  reason.
+
+  Owner steps to go live:
+  - one shared secret: NOTIFY_INGEST_URL and NOTIFY_INGEST_SECRET here, and
+    NOTIFY_INGEST_SECRET_PROJECTS on Notify;
+  - each business switches the `projects.*` events on in Notify.
+
+  Live end-to-end delivery is verified only after those steps.
