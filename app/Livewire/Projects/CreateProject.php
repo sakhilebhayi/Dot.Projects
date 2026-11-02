@@ -8,9 +8,14 @@ use App\Models\ProjectTask;
 use App\Models\Team;
 use App\Services\Activity;
 use App\Services\AiProjectPlannerService;
+use App\Services\ProjectTemplates;
+use App\Support\Methodologies;
+use App\Support\StarterTemplates;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -36,6 +41,12 @@ class CreateProject extends Component
     #[Validate('required|in:team,private')]
     public string $visibility = 'team';
 
+    /** How the project starts: '' blank, "team:{id}" one of the business's templates, "starter:{key}" a starter. */
+    public string $source = '';
+
+    /** How the project is run (Methodologies::ALL), or '' for not said. */
+    public string $methodology = '';
+
     public bool $generating = false;
 
     public ?string $aiError = null;
@@ -52,14 +63,53 @@ class CreateProject extends Component
         return Auth::user()?->currentTeam;
     }
 
+    public function mount(): void
+    {
+        // The Templates page links here with ?template=… to start from one.
+        $ref = (string) request()->query('template', '');
+        if ($ref !== '' && ($team = $this->resolveCurrentTeam()) && app(ProjectTemplates::class)->find($team, $ref)) {
+            $this->source = $ref;
+            $this->updatedSource();
+        }
+    }
+
+    /** Choosing a template brings its methodology, and a start date to lay its plan out from. */
+    public function updatedSource(): void
+    {
+        $team = $this->resolveCurrentTeam();
+        $template = $team && $this->source !== '' ? app(ProjectTemplates::class)->find($team, $this->source) : null;
+        if ($template === null) {
+            $this->source = '';
+
+            return;
+        }
+        $this->methodology = (string) ($template['methodology'] ?? '');
+        if ($this->startDate === '') {
+            $this->startDate = Carbon::today()->toDateString();
+        }
+    }
+
     public function save(): void
     {
         $this->authorize('create', Project::class);
         $this->validate();
+        $this->validate(['methodology' => ['nullable', Rule::in(array_keys(Methodologies::ALL))]]);
 
         $team = $this->resolveCurrentTeam();
         if (! $team) {
             abort(403, 'No active team selected.');
+        }
+
+        if ($this->source !== '') {
+            $this->validate(['startDate' => ['required', 'date']], ['startDate.required' => 'Choose when it starts: the template\'s plan is laid out from that day.']);
+            $project = app(ProjectTemplates::class)->create($team, auth()->user(), $this->source, [
+                'name' => trim($this->name), 'description' => trim($this->description) ?: null, 'visibility' => $this->visibility,
+                'methodology' => $this->methodology ?: null, 'start' => Carbon::parse($this->startDate), 'due' => $this->dueDate !== '' ? Carbon::parse($this->dueDate) : null,
+            ]);
+            session()->flash('flash.banner', 'Made from the template. Every task is not started yet, with no one assigned: change anything to fit.');
+            $this->redirect(route('projects.show', $project));
+
+            return;
         }
 
         $project = Project::create([
@@ -69,6 +119,7 @@ class CreateProject extends Component
             'description' => $this->description ?: null,
             'status' => $this->status,
             'visibility' => $this->visibility,
+            'methodology' => $this->methodology ?: null,
             'start_date' => $this->startDate ?: null,
             'due_date' => $this->dueDate ?: null,
         ]);
@@ -112,6 +163,7 @@ class CreateProject extends Component
             'description' => $this->description ?: null,
             'status' => $this->status,
             'visibility' => $this->visibility,
+            'methodology' => $this->methodology ?: null,
             'start_date' => $this->startDate ?: null,
             'due_date' => $this->dueDate ?: null,
         ]);
@@ -163,6 +215,13 @@ class CreateProject extends Component
 
     public function render(): View
     {
-        return view('livewire.projects.create-project');
+        $team = $this->resolveCurrentTeam();
+        $templates = app(ProjectTemplates::class);
+
+        return view('livewire.projects.create-project', [
+            'own' => $team ? $templates->forTeam($team) : collect(),
+            'starters' => collect(StarterTemplates::all())->groupBy('industry', true),
+            'chosen' => $team && $this->source !== '' ? $templates->find($team, $this->source) : null,
+        ]);
     }
 }

@@ -36,6 +36,15 @@
                         @error('dueDate')<p class="pg-error">{{ $message }}</p>@enderror
                     </div>
                 </div>
+                <div class="pg-field">
+                    <label for="p-method" class="pg-label">How it is run</label>
+                    <select id="p-method" wire:model.live="methodology" class="pg-select">
+                        <option value="">Not said</option>
+                        @foreach (App\Support\Methodologies::ALL as $key => [$label])<option value="{{ $key }}">{{ $label }}</option>@endforeach
+                    </select>
+                    <p class="pg-help">{{ $methodology !== '' ? App\Support\Methodologies::ALL[$methodology][1] ?? '' : 'Every view works whichever you choose; this says how the project is run and where to follow it.' }}</p>
+                    @error('methodology')<p class="pg-error">{{ $message }}</p>@enderror
+                </div>
             </fieldset>
             @if ($canEdit)
                 <div class="pg-actions" style="justify-content:flex-end;align-items:center;border-top:1px solid var(--pg-rule);padding-top:14px">
@@ -61,6 +70,21 @@
                 </form>
             </section>
         @endcan
+
+        @if ($canTemplate)
+            <section class="pg-card" aria-labelledby="tpl-h">
+                <div class="pg-card-head"><h2 id="tpl-h">Save as a template</h2></div>
+                <p class="pg-help" style="margin:0 0 10px">Anyone in the business can then start a project shaped like this one. It keeps the milestones, tasks, subtasks, checklists, dependencies, labels, gates, open risks and budget line names, with dates counted from the start. It leaves out people, progress, time, costs and amounts.</p>
+                <form wire:submit="saveTemplate" class="pg-form" style="gap:8px">
+                    <label for="p-tname" class="pg-label" style="margin:0">Template name</label>
+                    <input id="p-tname" type="text" wire:model="templateName" maxlength="120" class="pg-input" required>
+                    <label for="p-tdesc" class="pg-label" style="margin:4px 0 0">What it is for <span class="pg-muted">(optional)</span></label>
+                    <input id="p-tdesc" type="text" wire:model="templateDescription" maxlength="500" class="pg-input">
+                    @error('templateName')<p class="pg-error" role="alert">{{ $message }}</p>@enderror
+                    <div><button type="submit" class="pg-btn pg-btn--secondary">Save as template</button></div>
+                </form>
+            </section>
+        @endif
 
         @can('archive', $project)
             <section class="pg-card" aria-labelledby="arc-h">

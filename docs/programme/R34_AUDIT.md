@@ -702,3 +702,34 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   - `PerformanceBudgetTest` keeps it fixed and holds the portfolio to 36 queries per project,
     independent of task count.
   - The owner runs the host drill; the report has the commands.
+- **P13a project templates and methodologies** (2026-11-02; brief §5.1, §5.2, §15).
+
+  **New project page.** Choose how to start:
+  - a blank project;
+  - one of the business's own templates;
+  - one of nine starters across the six industries the brief names.
+
+  A chosen template is previewed before anything is created: its phases drawn to scale in days, the
+  first tasks of each, and its gates, risks, budget lines and labels.
+
+  **What a template brings.** The project is dated from the start you choose and keeps:
+  - milestones, tasks, subtasks, checklists, dependencies and labels;
+  - gates with their checks, starting risks, and budget lines by name.
+
+  It never brings people, progress, time or amounts.
+
+  **Saving a project as a template.** Any project can be saved as a template from its settings, by
+  people who can change it and create projects. The Templates page lists them; whoever saved one,
+  and the owner and admins, rename or remove it. Projects made from a template are never touched.
+
+  **Methodology.** Each project has one of ten methodologies:
+  - it is shown as a pill in the project header;
+  - it can be chosen at creation or in settings;
+  - it says how the project is run and where to follow it (board, schedule, gates or overview);
+  - every view still works whatever is chosen.
+
+  **Safety.** Structures are cleaned before use: bounded, references checked, and subtask and
+  dependency loops broken. Starters live in code and are checked by a test.
+
+  **Not built:** sprints as their own object (a starter models them as milestones), import of
+  plans from other tools, and creating a project from a business objective or workflow.
