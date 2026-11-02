@@ -35,6 +35,7 @@
     @php
         $nav = [
             ['dashboard', 'dashboard', 'folder_open', 'Projects'],
+            ['portfolio.index', 'portfolio.*', 'account_tree', 'Portfolio'],
             ['time.index', 'time.*', 'timer', 'Time'],
             ['workload.index', 'workload.*', 'stacked_bar_chart', 'Workload'],
             ['notifications.index', 'notifications.*', 'notifications', 'Notifications'],
