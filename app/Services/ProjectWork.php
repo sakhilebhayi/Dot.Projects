@@ -186,6 +186,27 @@ final class ProjectWork
         Activity::record('project.restored', $project);
     }
 
+    /** A new task at the end of the backlog, from the board or the command palette. */
+    public function addTask(Project $project, string $title, ?int $milestoneId = null, ?string $due = null): ProjectTask
+    {
+        return DB::transaction(function () use ($project, $title, $milestoneId, $due) {
+            $task = ProjectTask::create([
+                'project_id' => $project->id,
+                'milestone_id' => $milestoneId,
+                'title' => trim($title),
+                'status' => 'backlog',
+                'priority' => 'medium',
+                'due_date' => $due,
+                'sort_order' => (int) $project->tasks()->where('status', 'backlog')->max('sort_order') + 1,
+            ]);
+            Activity::record('task.created', $task, [], $project);
+            // A milestone that was complete is no longer complete with new work on it.
+            $task->milestone?->syncStatusFromTasks();
+
+            return $task;
+        });
+    }
+
     /**
      * A new project with the same milestones, tasks, subtasks, checklists, labels and dependencies,
      * all reset to not started. Dates, people, priorities and estimates are kept; comments,

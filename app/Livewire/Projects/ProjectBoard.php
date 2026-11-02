@@ -10,7 +10,6 @@ use App\Notifications\TaskAssignedNotification;
 use App\Services\Activity;
 use App\Services\ProjectWork;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -190,22 +189,7 @@ class ProjectBoard extends Component
             'newTaskDue' => ['nullable', 'date'],
         ], [], ['newTaskTitle' => 'task', 'newTaskMilestone' => 'milestone', 'newTaskDue' => 'due date']);
 
-        $task = DB::transaction(function () use ($data) {
-            $task = ProjectTask::create([
-                'project_id' => $this->project->id,
-                'milestone_id' => $data['newTaskMilestone'] ?: null,
-                'title' => trim($data['newTaskTitle']),
-                'status' => 'backlog',
-                'priority' => 'medium',
-                'due_date' => $data['newTaskDue'] ?: null,
-                'sort_order' => (int) $this->project->tasks()->where('status', 'backlog')->max('sort_order') + 1,
-            ]);
-            Activity::record('task.created', $task, [], $this->project);
-            // A milestone that was complete is no longer complete with new work on it.
-            $task->milestone?->syncStatusFromTasks();
-
-            return $task;
-        });
+        $task = app(ProjectWork::class)->addTask($this->project, $data['newTaskTitle'], $data['newTaskMilestone'] ? (int) $data['newTaskMilestone'] : null, $data['newTaskDue'] ?: null);
 
         $this->reset('newTaskTitle', 'newTaskDue');
         unset($this->tasksByStatus);

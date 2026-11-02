@@ -62,6 +62,14 @@ class ProjectController extends Controller
         return view('projects.schedule', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
     }
 
+    /** The month of dated events (R-34 P13b). */
+    public function calendar(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return view('projects.calendar', ['project' => $project->load('owner'), 'summary' => new ProjectSummary($project)]);
+    }
+
     /** One task: details, checklist and its own comments. */
     public function task(Request $request, Project $project, ProjectTask $task): View
     {
