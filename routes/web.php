@@ -85,6 +85,7 @@ Route::middleware([
     Route::get('/projects/{project}/board', [ProjectController::class, 'board'])->name('projects.board');
     Route::get('/projects/{project}/work', [ProjectController::class, 'work'])->name('projects.work');
     Route::get('/projects/{project}/schedule', [ProjectController::class, 'schedule'])->name('projects.schedule');
+    Route::get('/projects/{project}/calendar', [ProjectController::class, 'calendar'])->name('projects.calendar');
     Route::get('/projects/{project}/time', [ProjectTimeController::class, 'show'])->name('projects.time');
     Route::get('/projects/{project}/money', [ProjectController::class, 'money'])->name('projects.money');
     Route::get('/projects/{project}/time.csv', [ProjectTimeController::class, 'csv'])->name('projects.time.csv');

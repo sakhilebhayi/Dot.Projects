@@ -733,3 +733,33 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
 
   **Not built:** sprints as their own object (a starter models them as milestones), import of
   plans from other tools, and creating a project from a business objective or workflow.
+- **P13b calendar view and command palette** (2026-11-02; brief §6 and §17).
+
+  **Calendar tab** (`projects.calendar`). A month of one project's dated events, all read from the
+  existing records, so it always agrees with the other views:
+  - the project's start and due date;
+  - milestones;
+  - task due dates, with critical-path work in the system's one blue and late work in red;
+  - meetings with their times;
+  - gates, actions, and decisions waiting on a date.
+
+  Filter by kind, or show only your own items. To move an open task, drag it to another day, or
+  focus it and use the arrow keys (a day left or right, a week up or down). The move keeps the
+  task's length, goes through the schedule's reschedule path and is recorded. Done work does not
+  move, and viewers cannot move anything. On phones the month shows marks only, with the chosen day
+  listed below.
+
+  **Command palette** (Ctrl or ⌘ and K, or the search button in the top bar). It finds:
+  - projects, through the same team and private-project scopes as everywhere;
+  - tasks and documents in those projects;
+  - the person's own and shared saved reports, and the standard reports;
+  - the pages they may open.
+
+  It searches case-insensitively, with wildcards matched as text. It can start a new project, and
+  add what was typed as a task in the project on screen, for those who may change that project.
+  Enter opens the best match: the write action sits after the results, so it is never chosen by
+  default after a search. The palette finds nothing until it is opened, so pages carry no results
+  or queries for it.
+
+  **Not in this step:** a business-wide calendar across projects, assigning work from the palette,
+  and recently viewed items.

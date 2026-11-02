@@ -70,3 +70,106 @@ window.pgBar = ({ id, start, due, ppd, width, editable }) => ({
         };
     },
 });
+
+// Calendar (projects/calendar): drag an open task to another day, or focus it and use the arrow keys (a day left or
+// right, a week up or down). The component moves it with its length kept; the server checks and saves.
+const calendarComponent = (el) => window.Livewire?.find(el.closest('[wire\\:id]')?.getAttribute('wire:id'));
+const moveCalendarTask = (chip, date) => {
+    const id = chip.dataset.calTask;
+    calendarComponent(chip)?.call('moveTask', Number(id), date).then(() => {
+        requestAnimationFrame(() => document.querySelector(`[data-cal-task="${id}"]`)?.focus());
+    });
+};
+document.addEventListener('dragstart', (event) => {
+    const chip = event.target.closest?.('[data-cal-task]');
+    if (!chip) return;
+    event.dataTransfer.setData('text/plain', chip.dataset.calTask);
+    event.dataTransfer.effectAllowed = 'move';
+    chip.classList.add('dragging');
+});
+document.addEventListener('dragend', (event) => {
+    event.target.closest?.('[data-cal-task]')?.classList.remove('dragging');
+    document.querySelectorAll('[data-cal-day].drop').forEach((d) => d.classList.remove('drop'));
+});
+document.addEventListener('dragover', (event) => {
+    const day = event.target.closest?.('[data-cal-day]');
+    if (!day || !document.querySelector('[data-cal-task].dragging')) return;
+    event.preventDefault();
+    document.querySelectorAll('[data-cal-day].drop').forEach((d) => d !== day && d.classList.remove('drop'));
+    day.classList.add('drop');
+});
+document.addEventListener('drop', (event) => {
+    const day = event.target.closest?.('[data-cal-day]');
+    const chip = document.querySelector('[data-cal-task].dragging');
+    if (!day || !chip) return;
+    event.preventDefault();
+    day.classList.remove('drop');
+    if (day.dataset.calDay !== chip.dataset.due) moveCalendarTask(chip, day.dataset.calDay);
+});
+document.addEventListener('keydown', (event) => {
+    const chip = event.target.closest?.('[data-cal-task]');
+    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
+    if (!chip || step === undefined || event.altKey || event.metaKey || event.ctrlKey) return;
+    event.preventDefault();
+    moveCalendarTask(chip, addDays(chip.dataset.due, step));
+});
+
+// Command palette (layouts/app): Ctrl or Cmd and K, or the search button. Arrow keys move through the results, Enter
+// opens the one marked; the native dialog keeps focus inside and closes on Escape.
+const palette = () => document.querySelector('dialog[data-cmd]');
+const paletteItems = () => [...(palette()?.querySelectorAll('[data-cmd-item]') ?? [])];
+let paletteActive = 0;
+const markPaletteItem = (index) => {
+    const items = paletteItems();
+    const input = palette()?.querySelector('[data-cmd-input]');
+    paletteActive = items.length ? (index + items.length) % items.length : 0;
+    items.forEach((item, i) => {
+        item.id = `cmd-opt-${i}`;
+        item.setAttribute('aria-selected', i === paletteActive ? 'true' : 'false');
+    });
+    if (input) items.length ? input.setAttribute('aria-activedescendant', `cmd-opt-${paletteActive}`) : input.removeAttribute('aria-activedescendant');
+    items[paletteActive]?.scrollIntoView({ block: 'nearest' });
+};
+const openPalette = () => {
+    const dialog = palette();
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    // The first opening asks the component for its results; until then pages carry none.
+    const id = dialog.querySelector('[wire\\:id]')?.getAttribute('wire:id');
+    const component = id ? window.Livewire?.find(id) : null;
+    if (component && !component.get('open')) component.set('open', true);
+    const input = dialog.querySelector('[data-cmd-input]');
+    input?.focus();
+    input?.select();
+    markPaletteItem(0);
+};
+if (/Mac|iPhone|iPad/.test(navigator.platform)) {
+    document.querySelectorAll('[data-cmd-key]').forEach((k) => { k.textContent = '⌘ K'; });
+}
+document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-cmd-open]')) openPalette();
+    // A click on the backdrop (the dialog itself, outside its body) closes it.
+    if (event.target === palette()) palette().close();
+});
+document.addEventListener('keydown', (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        palette()?.open ? palette().close() : openPalette();
+        return;
+    }
+    if (!palette()?.open) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        markPaletteItem(paletteActive + (event.key === 'ArrowDown' ? 1 : -1));
+    } else if (event.key === 'Enter' && event.target.matches('[data-cmd-input]')) {
+        event.preventDefault();
+        paletteItems()[paletteActive]?.click();
+    }
+});
+// New results after each round trip: mark the first again.
+// Livewire may already be loaded when this module runs, or start after it: hook in either way.
+const hookPalette = () => window.Livewire.hook('commit', ({ component, succeed }) => {
+    if (component.name !== 'command-palette') return;
+    succeed(() => requestAnimationFrame(() => markPaletteItem(0)));
+});
+if (window.Livewire) hookPalette(); else document.addEventListener('livewire:init', hookPalette);

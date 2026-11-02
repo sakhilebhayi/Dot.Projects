@@ -799,7 +799,7 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-tpl-more { grid-column: 1 / -1; }
 .pg-tpl-more summary { cursor: pointer; font-size: 13px; width: max-content; display: flex; align-items: center; gap: 4px; list-style: none; }
 .pg-tpl-more summary::-webkit-details-marker { display: none; }
-.pg-tpl-more summary .material-symbols-rounded { font-size: 18px; transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
+.pg-tpl-more summary .material-symbols-rounded { font-size: 20px; transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
 .pg-tpl-more[open] summary .material-symbols-rounded { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .pg-tpl-more summary .material-symbols-rounded { transition: none; } }
 .pg-tpl-more summary:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 2px; border-radius: 4px; }
@@ -813,4 +813,91 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
     .pg-tpl { grid-template-columns: minmax(0, 1fr); }
     .pg-tadds { grid-template-columns: minmax(0, 1fr); }
     .pg-src { padding-left: 16px; padding-right: 16px; margin: 0 -16px; }
+}
+
+/* ---------- Calendar (R-34 P13b) ----------
+   A ruled month: hairline cells, the day number top left, at most three items, then "n more". Items carry a
+   kind icon and their state in words for screen readers; blue only for critical-path work, red for late, done
+   recedes. On phones the cells show marks only and the chosen day is listed underneath. */
+.pg-btn--icon { width: 30px; padding: 0; justify-content: center; }
+.pg-btn--icon .material-symbols-rounded { font-size: 20px; }
+.pg-select--sm { height: 30px; font-size: 13px; padding-top: 0; padding-bottom: 0; }
+.pg-cal-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.pg-cal-nav { display: flex; align-items: center; gap: 6px; }
+.pg-cal-nav h2 { margin: 0 6px; font-size: 16px; font-weight: 600; min-width: 9.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.pg-cal-finding { margin: 0 0 12px; font-size: 13px; color: var(--pg-muted); max-width: 95ch; }
+.pg-cal-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.pg-cal-grid th { font-weight: 400; font-size: 12px; color: var(--pg-muted); text-align: left; padding: 0 8px 6px; }
+.pg-cal-day { vertical-align: top; height: 112px; padding: 4px 6px 6px; border: 1px solid var(--pg-rule); position: relative; }
+.pg-cal-day.wknd { background: color-mix(in srgb, var(--pg-ground) 55%, var(--pg-surface)); }
+.pg-cal-day.out { background: var(--pg-ground); }
+.pg-cal-day.out .pg-cal-num { color: var(--pg-muted); }
+.pg-cal-day.picked { box-shadow: inset 0 0 0 1px var(--pg-ink); }
+.pg-cal-day.drop { background: var(--pg-raised); box-shadow: inset 0 0 0 1px var(--pg-ink); }
+.pg-cal-num { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px; border: 0; border-radius: 999px; background: none; font: inherit; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--pg-ink); cursor: pointer; }
+.pg-cal-num:hover { background: var(--pg-raised); }
+.pg-cal-num:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
+.pg-cal-day.today .pg-cal-num { background: var(--pg-primary); color: var(--pg-on-primary); font-weight: 600; }
+.pg-cal-items { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+.pg-cal-chip { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 4px; border-radius: 4px; font-size: 12px; line-height: 1.35; color: var(--pg-ink); text-decoration: none; }
+.pg-cal-chip:hover { background: var(--pg-raised); }
+.pg-cal-chip:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 0; }
+.pg-cal-chip .material-symbols-rounded { font-size: 14px; flex: none; color: var(--pg-muted); }
+.pg-cal-chip .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-cal-chip.critical { background: var(--pg-critical-soft); color: var(--pg-critical); }
+.pg-cal-chip.critical .material-symbols-rounded { color: var(--pg-critical); }
+.pg-cal-chip.late { color: var(--pg-negative); }
+.pg-cal-chip.late .material-symbols-rounded { color: var(--pg-negative); }
+.pg-cal-chip.done { color: var(--pg-muted); }
+.pg-cal-chip[draggable="true"] { cursor: grab; }
+.pg-cal-chip.dragging { opacity: .45; }
+.pg-cal-more { border: 0; background: none; padding: 2px 4px; font: inherit; font-size: 12px; color: var(--pg-muted); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.pg-cal-more:focus-visible { outline: 2px solid var(--pg-ink); border-radius: 4px; }
+.pg-cal-marks { display: none; }
+@media (max-width: 760px) {
+    .pg-cal-grid th { padding: 0 0 4px; text-align: center; }
+    .pg-cal-day { height: 52px; padding: 3px 2px; text-align: center; }
+    .pg-cal-items, .pg-cal-more { display: none; }
+    .pg-cal-marks { display: flex; justify-content: center; gap: 3px; margin-top: 3px; }
+    .pg-cal-marks i { width: 5px; height: 5px; border-radius: 999px; background: var(--pg-ink); }
+    .pg-cal-marks i.critical { background: var(--pg-critical); }
+    .pg-cal-marks i.late { background: var(--pg-negative); }
+    .pg-cal-marks i.done { background: var(--pg-muted); opacity: .5; }
+    .pg-cal-nav h2 { min-width: 0; }
+}
+
+/* ---------- Command palette (R-34 P13b) ----------
+   The one floating surface besides menus, so it takes the system's one soft shadow. Results are ruled rows like
+   every list; the marked one takes a tone step, never a colour. */
+.pg-kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 5px; border: 1px solid var(--pg-border); border-radius: 4px; background: var(--pg-surface); font: inherit; font-size: 11px; color: var(--pg-muted); font-variant-numeric: tabular-nums; }
+.pg-cmd-open { gap: 6px; color: var(--pg-muted); }
+.pg-cmd-open:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 2px; }
+.pg-cmd { width: min(640px, calc(100vw - 32px)); max-height: min(70vh, 640px); margin: 12vh auto auto; padding: 0; border: 1px solid var(--pg-border); border-radius: 8px; background: var(--pg-surface); color: var(--pg-ink); box-shadow: var(--pg-float); overflow: hidden; }
+.pg-cmd[open] { display: flex; flex-direction: column; }
+.pg-cmd::backdrop { background: rgba(13, 15, 18, .32); }
+.pg-cmd-body { display: flex; flex-direction: column; min-height: 0; max-height: inherit; }
+.pg-cmd-input { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--pg-border); }
+.pg-cmd-input .material-symbols-rounded { color: var(--pg-muted); }
+.pg-cmd-input input { flex: 1; min-width: 0; height: 52px; border: 0; background: none; font: inherit; font-size: 16px; color: var(--pg-ink); outline: none; }
+.pg-cmd-input input::placeholder { color: var(--pg-muted); }
+/* Focus shows as the search bar's rule turning ink, not a box inside the box. */
+.pg-cmd-input input:focus, .pg-cmd-input input:focus-visible { outline: none; box-shadow: none; }
+.pg-cmd-input:focus-within { border-bottom-color: var(--pg-ink); }
+.pg-cmd-error { margin: 8px 14px 0; }
+.pg-cmd-list { overflow-y: auto; padding: 6px 8px 8px; min-height: 0; }
+.pg-cmd-group { margin: 10px 8px 4px; font-size: 12px; color: var(--pg-muted); }
+.pg-cmd-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 6px; background: none; font: inherit; text-align: left; color: var(--pg-ink); text-decoration: none; cursor: pointer; }
+.pg-cmd-item .material-symbols-rounded { font-size: 20px; color: var(--pg-muted); flex: none; }
+.pg-cmd-item:hover { background: var(--pg-ground); }
+.pg-cmd-item[aria-selected="true"] { background: var(--pg-raised); }
+.pg-cmd-item:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: -2px; }
+.pg-cmd-what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.pg-cmd-what b { font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.pg-cmd-what span { font-size: 12.5px; color: var(--pg-muted); }
+.pg-cmd-none { margin: 16px 8px; font-size: 13.5px; color: var(--pg-muted); }
+.pg-cmd-help { margin: 0; padding: 8px 14px; border-top: 1px solid var(--pg-rule); font-size: 12px; color: var(--pg-muted); }
+@media (max-width: 640px) {
+    .pg-cmd-open-t, .pg-cmd-open .pg-kbd { display: none; }
+    .pg-cmd { margin-top: 8vh; }
+    .pg-cmd-help { display: none; }
 }

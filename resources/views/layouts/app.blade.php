@@ -77,6 +77,9 @@
         <div class="pg-where">@isset($header){{ $header }}@else<b>Dot.Projects</b>@endisset</div>
         <span class="pg-fill"></span>
         @auth
+            <button type="button" class="pg-chip pg-cmd-open" data-cmd-open aria-keyshortcuts="Control+K Meta+K" aria-label="Search and commands">
+                <span class="material-symbols-rounded" aria-hidden="true" style="font-size:18px">search</span><span class="pg-cmd-open-t">Search</span><kbd class="pg-kbd" data-cmd-key>Ctrl K</kbd>
+            </button>
             @if (Laravel\Jetstream\Jetstream::hasTeamFeatures() && Auth::user()->currentTeam)
                 <details class="pg-menu">
                     <summary class="pg-chip" aria-label="Switch business">{{ Auth::user()->currentTeam->name }}<span class="material-symbols-rounded" aria-hidden="true" style="font-size:18px">unfold_more</span></summary>
@@ -118,6 +121,12 @@
         {{-- Inside the content area, below the fixed top bar, so a banner is never hidden behind it. --}}
         <x-banner />
         <main>{{ $slot }}</main>
+        @auth
+            {{-- The command palette (R-34 P13b): a native dialog, so focus stays inside and Escape closes it. --}}
+            <dialog class="pg-cmd" data-cmd aria-label="Search and commands">
+                <livewire:command-palette :project-id="($p = request()->route('project')) instanceof App\Models\Project ? $p->id : null" />
+            </dialog>
+        @endauth
     </div>
 
     @stack('modals')
