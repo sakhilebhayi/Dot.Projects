@@ -657,3 +657,33 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
 
   Each must answer 403 or 404: 28 record routes, 151 assertions. A route added later without a
   record in the sweep fails the test until it is covered.
+- **P12b data retention, a Data and security page, `/ready` and two health checks** (2026-11-02).
+
+  **Retention** is chosen per business by its owner or an admin (`/data-and-security`), and
+  applied every night at 03:30 by `data:prune`, after the 02:45 backup:
+  - activity history (the audit trail): kept for ever by default, or 1, 2, 3, 5 or 7 years;
+  - read notices: 30, 90, 180 (default) or 365 days; unread notices are never removed;
+  - finished automation runs: 90, 180, 365 (default) or 730 days; waiting runs stay.
+
+  Every change is recorded in the activity history. Each night records when it ran and what it
+  removed, and the page shows that. Projects, tasks, time, money, governance records, reports and
+  documents are never removed by retention, and the page says so in full.
+
+  **The page** also states what protects the data, read from the server's real settings: the
+  enforced CSP and its kill-switch, HSTS days, rate limits, the nightly backup and `/ready`.
+
+  **`/ready`** is public and never cached. It returns 200 or 503 and names checks and ages, never
+  data:
+  - database (pending migrations);
+  - cache;
+  - storage;
+  - scheduler heartbeat;
+  - outbox: due calls unsent for more than 10 minutes mean the sender stopped. Calls waiting to be
+    retried because a neighbour is down are not a failure.
+
+  **Guardian checks** added to `/guardian/health`:
+  - `outbox`: critical when the sender has stopped; a warning when calls were given up in the
+    last day;
+  - `automations`: a warning when any business's rule failed in the last day.
+
+  Owner step: point an uptime monitor at `https://projects.infodot.co.za/ready`.

@@ -46,6 +46,7 @@
         // Integrations is for the business owner and admins only.
         if (Auth::user()?->currentTeam && App\Services\Workload::oversees(Auth::user(), Auth::user()->currentTeam)) {
             $nav[] = ['integrations.index', 'integrations.*', 'hub', 'Integrations'];
+            $nav[] = ['security.index', 'security.*', 'shield', 'Data and security'];
         }
     @endphp
     <nav class="pg-rail" aria-label="Dot.Projects">
