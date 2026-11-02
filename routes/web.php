@@ -60,6 +60,7 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
+    'throttle:app',
 ])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
@@ -71,8 +72,8 @@ Route::middleware([
     Route::view('/dashboards', 'dashboards.index')->name('dashboards.index');
     Route::view('/automations', 'automations.index')->name('automations.index');
     Route::view('/integrations', 'integrations.index')->name('integrations.index');
-    Route::get('/reports/export.{format}', [ReportController::class, 'export'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->name('reporting.export');
-    Route::get('/reports/saved/{saved}/export.{format}', [ReportController::class, 'saved'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->name('reporting.saved.export');
+    Route::get('/reports/export.{format}', [ReportController::class, 'export'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->middleware('throttle:exports')->name('reporting.export');
+    Route::get('/reports/saved/{saved}/export.{format}', [ReportController::class, 'saved'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->middleware('throttle:exports')->name('reporting.saved.export');
 
     Route::get('/projects/create', fn () => view('projects.create'))
         ->middleware('can:create,'.Project::class)
@@ -85,7 +86,7 @@ Route::middleware([
     Route::get('/projects/{project}/money', [ProjectController::class, 'money'])->name('projects.money');
     Route::get('/projects/{project}/time.csv', [ProjectTimeController::class, 'csv'])->name('projects.time.csv');
     Route::get('/projects/{project}/documents', [ProjectDocumentController::class, 'index'])->name('projects.documents');
-    Route::get('/projects/{project}/documents/{document}', [ProjectDocumentController::class, 'download'])->scopeBindings()->name('projects.documents.download');
+    Route::get('/projects/{project}/documents/{document}', [ProjectDocumentController::class, 'download'])->scopeBindings()->middleware('throttle:downloads')->name('projects.documents.download');
     Route::get('/projects/{project}/risks', [GovernanceController::class, 'risks'])->name('projects.risks');
     Route::get('/projects/{project}/risks/{risk}', [GovernanceController::class, 'risk'])->scopeBindings()->name('projects.risks.show');
     Route::get('/projects/{project}/issues', [GovernanceController::class, 'issues'])->name('projects.issues');

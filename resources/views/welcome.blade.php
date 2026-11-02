@@ -300,7 +300,7 @@
             </div>
         </footer>
 
-        <script>
+        <script nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}">
             // Nav scroll state + mobile menu (vanilla JS — no Alpine dependency on this guest page)
             const header = document.getElementById('site-header');
             const onScroll = () => {
