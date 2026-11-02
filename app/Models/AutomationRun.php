@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property list<array{action: string, ok: bool, summary: string}> $steps
  * @property string|null $error
  * @property int $attempts
+ * @property Carbon|null $resume_at when a waiting run carries on
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read AutomationRule $rule
@@ -31,9 +32,9 @@ use Illuminate\Support\Carbon;
  */
 class AutomationRun extends Model
 {
-    public const STATUSES = ['done' => 'Done', 'failed' => 'Failed', 'skipped' => 'Nothing to do'];
+    public const STATUSES = ['done' => 'Done', 'failed' => 'Failed', 'skipped' => 'Nothing to do', 'waiting' => 'Waiting'];
 
-    protected $casts = ['steps' => 'array', 'attempts' => 'integer'];
+    protected $casts = ['steps' => 'array', 'attempts' => 'integer', 'resume_at' => 'datetime'];
 
     /** @return BelongsTo<AutomationRule, $this> */
     public function rule(): BelongsTo

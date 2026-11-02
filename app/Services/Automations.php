@@ -163,19 +163,25 @@ final class Automations
             return null;
         }
         [$subject, $person, $key, $what] = $ctx;
-        $role = $c['role'] ?? null;
+
+        return $this->passes($rule, $subject, $c['role'] ?? null) ? ['project' => $project, 'subject' => $subject, 'person' => $person, 'key' => $key, 'what' => $what] : null;
+    }
+
+    /** Whether the record meets every condition of the rule. */
+    private function passes(AutomationRule $rule, Model $subject, ?string $role): bool
+    {
         foreach ($rule->conditions as $cond) {
             $value = $cond['field'] === 'role' ? $role : $subject->getAttribute($cond['field']);
             if (! in_array((string) $value, $cond['values'], true)) {
-                return null;
+                return false;
             }
         }
 
-        return ['project' => $project, 'subject' => $subject, 'person' => $person, 'key' => $key, 'what' => $what];
+        return true;
     }
 
     /** @param  array{project: Project, subject: Model, person: User|null, key: string, what: string}  $ctx */
-    private function fire(AutomationRule $rule, array $ctx, ?int $activityId): void
+    private function fire(AutomationRule $rule, array $ctx, ?int $activityId): bool
     {
         $run = new AutomationRun;
         $run->forceFill([
@@ -185,9 +191,11 @@ final class Automations
         try {
             $run->save();
         } catch (UniqueConstraintViolationException) {
-            return; // it already ran for this event or record
+            return false; // it already ran for this event or record
         }
         $this->execute($rule, $run, $ctx);
+
+        return true;
     }
 
     /**
@@ -206,13 +214,21 @@ final class Automations
         }
         $previous = self::$running;
         self::$running = $rule->id;
+        $waitUntil = null;
         try {
             foreach ($rule->actions as $i => $action) {
                 if (($steps[$i]['ok'] ?? false) === true) {
                     continue;
                 }
+                if ($action['type'] === 'wait') {
+                    $waitUntil = Carbon::now()->addDays((int) $action['days']);
+                    $steps[$i] = ['action' => 'wait', 'ok' => true, 'did' => false, 'summary' => 'Wait until '.$waitUntil->format('j M, H:i').' UTC'];
+                    break;
+                }
                 try {
-                    [$summary, $did] = DB::transaction(fn () => $this->act($action, $rule, $ctx, $by));
+                    // Outside the scopes: the sweep runs with nobody signed in, and the engine checks
+                    // who may change the project and who may see it itself (act(), recipients()).
+                    [$summary, $did] = Project::withoutTeamScope(fn () => DB::transaction(fn () => $this->act($action, $rule, $ctx, $by)));
                     $steps[$i] = ['action' => $action['type'], 'ok' => true, 'did' => $did, 'summary' => $summary];
                 } catch (Throwable $e) {
                     $why = $e instanceof ValidationException ? (string) collect($e->errors())->flatten()->first() : 'Something went wrong; the step can be retried.';
@@ -229,9 +245,131 @@ final class Automations
         $failed = collect($steps)->first(fn ($s) => ! $s['ok']);
         $run->forceFill([
             'steps' => array_values($steps),
-            'status' => $failed ? 'failed' : (collect($steps)->contains('did', true) ? 'done' : 'skipped'),
+            'status' => $failed ? 'failed' : ($waitUntil ? 'waiting' : (collect($steps)->contains('did', true) ? 'done' : 'skipped')),
             'error' => $failed ? mb_substr($failed['summary'], 0, 500) : null,
+            'resume_at' => $failed ? null : $waitUntil,
         ])->save();
+    }
+
+    /**
+     * Carries on a waiting run once its wait is over: unless the rule was switched off, what it
+     * was about was deleted, or (when the wait says so) it no longer applies.
+     */
+    private function resume(AutomationRun $run): void
+    {
+        $rule = $run->rule;
+        $ctx = $rule->active ? $this->rebuild($run) : null;
+        $waits = array_keys(array_filter($rule->actions, fn ($a) => $a['type'] === 'wait'));
+        $lastWait = collect($waits)->filter(fn ($i) => ($run->steps[$i]['ok'] ?? false) === true)->last();
+        $why = match (true) {
+            ! $rule->active => 'Stopped after the wait: the rule was switched off.',
+            $ctx === null => 'Stopped after the wait: what it was about has been deleted.',
+            $lastWait !== null && ($rule->actions[$lastWait]['recheck'] ?? false) && ! $this->stillApplies($rule, $ctx['subject']) => 'Stopped after the wait: it no longer applies.',
+            default => null,
+        };
+        if ($why !== null) {
+            $steps = $run->steps;
+            $steps[] = ['action' => 'stop', 'ok' => true, 'did' => false, 'summary' => $why];
+            $run->forceFill(['steps' => $steps, 'resume_at' => null, 'status' => collect($steps)->contains('did', true) ? 'done' : 'skipped'])->save();
+
+            return;
+        }
+        /** @var array{project: Project, subject: Model, person: User|null, key: string, what: string} $ctx */
+        $run->forceFill(['resume_at' => null])->save();
+        $this->execute($rule, $run, $ctx);
+    }
+
+    /** Whether what set the rule off is still so, for a wait that stops when it is not. */
+    private function stillApplies(AutomationRule $rule, Model $s): bool
+    {
+        $today = Carbon::today();
+
+        return match (true) {
+            $s instanceof ProjectTask => match ($rule->trigger) {
+                'task_status' => $s->status === ($rule->params['status'] ?? ''),
+                'task_blocked' => $s->isBlocked(),
+                'task_overdue' => $s->status !== 'done' && $s->due_date !== null && $s->due_date->lt($today),
+                default => $s->status !== 'done',
+            },
+            $s instanceof Milestone => $s->status !== 'completed',
+            $s instanceof ProjectRisk => $s->isLive() && ($rule->trigger !== 'risk_review_due' || ($s->review_date !== null && $s->review_date->lte($today))),
+            $s instanceof ProjectIssue => $s->isOpen(),
+            $s instanceof Project => ! $s->isArchived() && $s->status !== 'completed',
+            default => true,
+        };
+    }
+
+    /** The hours (UTC) the sweep acts in: 07:00 to 19:00 in South Africa, so nobody is woken by a rule. */
+    public const DAY = [5, 17];
+
+    /**
+     * The hourly sweep: dated rules act on what is due or overdue today, and waiting runs whose
+     * wait is over carry on. Both only in working hours (DAY); everything is keyed, so running the
+     * sweep again never repeats a run.
+     *
+     * @return array{fired: int, resumed: int}
+     */
+    public function sweep(?Carbon $now = null): array
+    {
+        $now ??= Carbon::now();
+        $out = ['fired' => 0, 'resumed' => 0];
+        if ($now->hour < self::DAY[0] || $now->hour >= self::DAY[1]) {
+            return $out;
+        }
+        foreach (AutomationRule::query()->where('active', true)->whereIn('trigger', AutomationCatalog::DATED)->orderBy('id')->get() as $rule) {
+            foreach ($this->candidates($rule, $now->copy()->startOfDay()) as $ctx) {
+                $out['fired'] += $this->fire($rule, $ctx, null) ? 1 : 0;
+            }
+        }
+        foreach (AutomationRun::query()->where('status', 'waiting')->where('resume_at', '<=', $now)->with('rule')->orderBy('id')->get() as $run) {
+            $this->resume($run);
+            $out['resumed']++;
+        }
+
+        return $out;
+    }
+
+    /**
+     * What a dated rule acts on today, each with the key that makes it act once: once per task
+     * and due date (moving the date re-arms it), per milestone and date, per risk and review date,
+     * per project and due date, and per project and week for weekly rules.
+     *
+     * @return list<array{project: Project, subject: Model, person: User|null, key: string, what: string}>
+     */
+    public function candidates(AutomationRule $rule, Carbon $today): array
+    {
+        $projects = Project::withoutTeamScope(fn () => Project::query()->with('team')->where('team_id', $rule->team_id)->whereNull('archived_at')->where('status', '!=', 'completed')
+            ->when($rule->project_id !== null, fn ($q) => $q->whereKey($rule->project_id))->orderBy('id')->get());
+        $p = $rule->params;
+        $d = $today->toDateString();
+        $until = fn (string $param) => $today->copy()->addDays((int) ($p[$param] ?? 0))->toDateString();
+        $user = fn ($id) => $id ? User::query()->find((int) $id) : null;
+        $out = [];
+        foreach ($projects as $project) {
+            $items = match ($rule->trigger) {
+                'task_overdue' => $project->tasks()->where('status', '!=', 'done')->whereNotNull('due_date')->whereDate('due_date', '<', $d)->orderBy('due_date')->get()
+                    ->map(fn (ProjectTask $t) => [$t, $user($t->assignee_id), 'overdue:'.$t->id.':'.$t->due_date->toDateString(), 'Task “'.$t->title.'” is overdue (it was due '.$t->due_date->format('j M').')']),
+                'task_due_soon' => $project->tasks()->where('status', '!=', 'done')->whereNotNull('due_date')->whereDate('due_date', '>=', $d)->whereDate('due_date', '<=', $until('days'))->orderBy('due_date')->get()
+                    ->map(fn (ProjectTask $t) => [$t, $user($t->assignee_id), 'due:'.$t->id.':'.$t->due_date->toDateString(), 'Task “'.$t->title.'” is due '.($t->due_date->isSameDay($today) ? 'today' : $t->due_date->format('j M'))]),
+                'milestone_overdue' => $project->milestones()->where('status', '!=', 'completed')->whereNotNull('due_date')->whereDate('due_date', '<', $d)->get()
+                    ->map(fn (Milestone $m) => [$m, null, 'm-overdue:'.$m->id.':'.$m->due_date->toDateString(), 'Milestone “'.$m->title.'” passed its date ('.$m->due_date->format('j M').') unfinished']),
+                'milestone_due_soon' => $project->milestones()->where('status', '!=', 'completed')->whereNotNull('due_date')->whereDate('due_date', '>=', $d)->whereDate('due_date', '<=', $until('days'))->get()
+                    ->map(fn (Milestone $m) => [$m, null, 'm-due:'.$m->id.':'.$m->due_date->toDateString(), 'Milestone “'.$m->title.'” is due '.($m->due_date->isSameDay($today) ? 'today' : $m->due_date->format('j M'))]),
+                'project_deadline' => $project->due_date !== null && $project->due_date->toDateString() >= $d && $project->due_date->toDateString() <= $until('deadline')
+                    ? collect([[$project, null, 'deadline:'.$project->due_date->toDateString(), 'The project is due on '.$project->due_date->format('j M').', in '.(int) $today->diffInDays($project->due_date).' '.str('day')->plural((int) $today->diffInDays($project->due_date))]]) : collect(),
+                'risk_review_due' => $project->risks()->whereIn('status', ProjectRisk::LIVE)->whereNotNull('review_date')->whereDate('review_date', '<=', $d)->get()
+                    ->map(fn (ProjectRisk $r) => [$r, $user($r->owner_id), 'review:'.$r->id.':'.$r->review_date->toDateString(), 'Risk '.$r->ref().' “'.$r->title.'” is due for review ('.$r->review_date->format('j M').')']),
+                'weekly' => $today->dayOfWeekIso === (int) ($p['weekday'] ?? 0) ? collect([[$project, null, 'week:'.$today->format('o-\WW'), 'It is '.$today->format('l j M')]]) : collect(),
+                default => collect(),
+            };
+            foreach ($items as [$subject, $person, $key, $what]) {
+                if ($this->passes($rule, $subject, null)) {
+                    $out[] = ['project' => $project, 'subject' => $subject, 'person' => $person, 'key' => $key, 'what' => $what];
+                }
+            }
+        }
+
+        return $out;
     }
 
     /** Repeats the steps of a failed run that did not finish, as its rule now stands. */
@@ -264,7 +402,7 @@ final class Automations
         }
         $project = Project::withoutTeamScope(fn () => Project::query()->with('team')->find($run->project_id));
         $class = $run->subject_type ? Model::getActualClassNameForMorph($run->subject_type) : null;
-        $subject = $class && class_exists($class) ? $class::query()->find($run->subject_id) : null;
+        $subject = $class && class_exists($class) ? Project::withoutTeamScope(fn () => $class::query()->find($run->subject_id)) : null;
         if ($project === null || ! $subject instanceof Model) {
             return null;
         }
@@ -274,7 +412,7 @@ final class Automations
             default => null,
         };
 
-        return ['project' => $project, 'subject' => $subject, 'person' => $person, 'key' => $run->key, 'what' => 'Retried'];
+        return ['project' => $project, 'subject' => $subject, 'person' => $person, 'key' => $run->key, 'what' => $run->what ?? 'A rule ran'];
     }
 
     /**
@@ -365,6 +503,12 @@ final class Automations
 
                 return ['Labelled it “'.$a['label'].'”', true];
 
+            case 'start_report':
+                $open = $project->reports()->where('status', 'draft')->exists();
+                $report = app(StatusReports::class)->start($project, $by);
+
+                return [$open ? 'A progress review was already open ('.$report->ref().')' : 'Started progress review '.$report->ref().' as a draft', ! $open];
+
             case 'assign':
                 $owner = User::query()->find($project->owner_id);
                 if (! $subject instanceof ProjectTask || $owner === null || $subject->assignee_id === $owner->id) {
@@ -441,17 +585,28 @@ final class Automations
      * What the rule would have done over the last 30 days, worked out without doing anything:
      * the events it would have matched (at most $limit, newest first) and the total.
      *
-     * @return array{items: list<array{at: Carbon, what: string, project: string, steps: list<string>, done: bool}>, total: int, scanned: int}
+     * @return array{items: list<array{at: Carbon, what: string, project: string, steps: list<string>, done: bool}>, total: int, scanned: int, dated: bool}
      */
     public function preview(AutomationRule $rule, Team $team, int $limit = 8): array
     {
+        $subject = AutomationCatalog::TRIGGERS[$rule->trigger]['subject'] ?? 'project';
+        if (in_array($rule->trigger, AutomationCatalog::DATED, true)) {
+            // A dated rule acts on what is due now, at its next check, not on past events.
+            $found = $this->candidates($rule, Carbon::today());
+            $items = array_map(fn ($ctx) => [
+                'at' => Carbon::today(), 'what' => $ctx['what'], 'project' => $ctx['project']->name,
+                'steps' => array_map(fn ($a) => AutomationCatalog::describeAction($a, $subject), $rule->actions),
+                'done' => $rule->exists && AutomationRun::query()->where('rule_id', $rule->id)->where('key', $ctx['key'])->exists(),
+            ], array_slice($found, 0, $limit));
+
+            return ['items' => $items, 'total' => count($found), 'scanned' => 0, 'dated' => true];
+        }
         $lines = ActivityLine::query()->where('team_id', $team->id)->whereIn('action', self::EVENTS[$rule->trigger] ?? [])
             ->when($rule->project_id !== null, fn ($q) => $q->where('project_id', $rule->project_id))
             ->where('created_at', '>=', Carbon::now()->subDays(30))->latest('id')->limit(500)->get();
         $items = [];
         $total = 0;
         $seen = [];
-        $subject = AutomationCatalog::TRIGGERS[$rule->trigger]['subject'] ?? 'project';
         foreach ($lines as $line) {
             $ctx = $this->match($rule, $line);
             if ($ctx === null || isset($seen[$ctx['key']])) {
@@ -470,7 +625,7 @@ final class Automations
             }
         }
 
-        return ['items' => $items, 'total' => $total, 'scanned' => $lines->count()];
+        return ['items' => $items, 'total' => $total, 'scanned' => $lines->count(), 'dated' => false];
     }
 
     /**

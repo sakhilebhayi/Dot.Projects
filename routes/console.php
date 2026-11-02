@@ -13,6 +13,8 @@ Artisan::command('inspire', function () {
 
 // Dot.Projects scheduled tasks
 Schedule::command('projects:check-milestones-due')->dailyAt('07:00');
+// Dated automation rules and waits (R-34 P9b); the sweep itself only acts 07:00 to 19:00 SAST.
+Schedule::command('automations:sweep')->hourlyAt(5)->withoutOverlapping()->onOneServer();
 
 // Liveness of the platform itself. /up/scheduler reports this heartbeat's
 // age and answers 503 once it is older than

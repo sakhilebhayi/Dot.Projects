@@ -514,3 +514,26 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
     off, and name the rule.
   - Each run records its steps. A failing step records why and the others still run. A retry
     repeats only the unfinished steps.
+- **P9b dated rules and waits** (2026-11-02): rules can now act on dates. An hourly sweep
+  (`automations:sweep`, scheduled at five past each hour) acts only 07:00 to 19:00 South African
+  time. Date triggers:
+  - a task becomes overdue, or is due within 1, 2, 3 or 7 days;
+  - a milestone passes its date unfinished, or is due soon;
+  - the project's due date is a week, two weeks or a month away;
+  - a risk is due for review;
+  - every week on a chosen weekday.
+
+  Each acts once per record and date. Moving a date re-arms it, and weekly rules act once per
+  project per week.
+
+  Two new steps:
+  - "wait N days", after which the rest of the rule carries on, in working hours. It can stop if
+    by then it no longer applies (the task is done, the risk closed, the milestone complete), if
+    the rule was switched off, or if the record was deleted.
+  - "start a progress review", which opens a status report draft or leaves an open one as it is.
+
+  Dated rules preview what they would act on at their next check. Two new templates cover the
+  brief's dated examples: chase overdue work and then escalate it, and start a progress review
+  two weeks before the due date. Actions run outside the scopes, because the sweep has nobody
+  signed in; the engine checks who may change the project and who may see it itself. Next,
+  P9c: approval steps and conditional branches.
