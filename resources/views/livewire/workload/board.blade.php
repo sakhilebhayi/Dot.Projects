@@ -75,6 +75,22 @@
                             @else
                                 <span class="pg-sub">{{ $fmt($r['capacity']) }} a week{{ $r['note'] ? ', '.$r['note'] : '' }}@if ($oversees) <button type="button" class="pg-linkbtn" wire:click="editCapacity({{ $r['user']->id }})" aria-label="Change the capacity of {{ $r['user']->name }}">Change</button>@endif</span>
                             @endif
+                            @if ($oversees)
+                                @if ($rating === $r['user']->id)
+                                    <form wire:submit="saveRate" class="pg-cap-form">
+                                        <label for="rate-{{ $r['user']->id }}" class="pg-sr">Hourly rate for {{ $r['user']->name }}, in rand</label>
+                                        <input id="rate-{{ $r['user']->id }}" type="text" inputmode="decimal" wire:model="rate" class="pg-input" style="width:96px;min-height:30px" placeholder="450">
+                                        <label for="ratef-{{ $r['user']->id }}" class="pg-sr">From</label>
+                                        <input id="ratef-{{ $r['user']->id }}" type="date" wire:model="rateFrom" class="pg-input" style="width:auto;min-height:30px">
+                                        <button type="submit" class="pg-btn pg-btn--primary pg-btn--sm">Save</button>
+                                        <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="$set('rating', null)">Cancel</button>
+                                        @error('rate')<span class="pg-error" style="width:100%">{{ $message }}</span>@enderror
+                                    </form>
+                                @else
+                                    @php $now = App\Services\LabourCost::rateOn($rates, $r['user']->id, today()); @endphp
+                                    <span class="pg-sub">{{ $now === null ? 'No rate' : App\Support\Money::rand($now).' an hour' }} <button type="button" class="pg-linkbtn" wire:click="editRate({{ $r['user']->id }})" aria-label="Set the hourly rate of {{ $r['user']->name }}">{{ $now === null ? 'Set' : 'Change' }}</button></span>
+                                @endif
+                            @endif
                         </td>
                         <td data-label="Last week" class="r {{ $r['lastWeek'] ? '' : 'pg-muted' }}">{{ $r['lastWeek'] ? $fmt($r['lastWeek']) : '–' }}</td>
                         @foreach ($r['weeks'] as $week => $w)
@@ -98,6 +114,7 @@
         </table>
     </section>
     <p class="pg-help" style="margin-top:10px">
+        @if ($oversees) Hourly rates cost approved time on each project's Money tab; only the business owner and admins see them. A new rate applies from its date, so earlier time keeps the rate it was worked at. @endif
         Planned load is each open task's estimate, less the time logged on it, spread over its working days (Monday to Friday) up to its due date; overdue work counts in this week. Capacity is project hours a week (40 unless {{ $oversees ? 'you change it' : 'the business owner changes it' }}). Leave and public holidays will come from Dot.HR once it can share them.
         @unless ($oversees) Only the business owner and admins see everyone's load.@endunless
     </p>

@@ -536,3 +536,6 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-table--costs .pg-sub { max-width: 32ch; }
 @media (max-width: 640px) { .pg-table--costs .pg-sub { max-width: none; } }
 @media (max-width: 640px) { .pg-table--money td:not(.pg-name) .pg-sub { margin-left: 8px; } .pg-table--money td.pg-name .pg-sub { display: block; } .pg-table--money .pg-linkbtn.pg-sub { display: inline; margin: 0 0 0 8px; } }
+.pg-table--ev td:first-child { font-weight: 500; }
+.pg-table--ev td[data-label="How"] { color: var(--pg-muted); font-size: 12.5px; }
+.pg-table--ev td[data-label="Value"] { white-space: nowrap; font-variant-numeric: tabular-nums; }

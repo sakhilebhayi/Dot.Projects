@@ -148,6 +148,7 @@ final class ActivityFeed
                 'project.visibility_changed' => ($c['visibility']['to'] ?? '') === 'private' ? 'made the project private' : 'opened the project to the business',
                 'budget.line_added' => 'added a '.mb_strtolower(BudgetLine::CATEGORIES[$c['category'] ?? ''] ?? 'budget').' line to the budget',
                 'budget.revised' => ($c['change_id'] ?? null) ? 'revised the budget for an approved change' : 'revised the budget',
+                'budget.labour_line_set' => 'chose where approved time is charged in the budget',
                 'budget.forecast_set' => 'updated the cost still to come on a budget line',
                 'cost.commitment_added' => 'recorded a commitment',
                 'cost.actual_added' => 'recorded an actual cost',

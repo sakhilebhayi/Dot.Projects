@@ -62,7 +62,7 @@
                         <tr wire:key="bl-{{ $l->id }}" class="{{ $openLine === (string) $l->id ? 'is-open' : '' }}">
                             <td class="pg-name"><button type="button" class="pg-linkbtn" style="margin:0;text-decoration:none;font-weight:500" wire:click="$set('openLine', '{{ $openLine === (string) $l->id ? '' : $l->id }}')">{{ $l->name }}</button><span class="pg-sub">{{ App\Models\BudgetLine::CATEGORIES[$l->category] ?? 'Other' }}</span></td>
                             <td data-label="Budget" class="r">{{ $r($row['budget']) }}@if ($canEdit)<button type="button" class="pg-linkbtn pg-sub" wire:click="startRevise({{ $l->id }})" aria-label="Revise the budget of {{ $l->name }}">Revise</button>@endif</td>
-                            <td data-label="Actual" class="r">{{ $r($row['actual']) }}</td>
+                            <td data-label="Actual" class="r">{{ $r($row['actual']) }}@if ($row['fromTime'])<span class="pg-sub">incl. {{ $r($row['fromTime']) }} from time</span>@endif</td>
                             <td data-label="Committed" class="r">{{ $r($row['open']) }}</td>
                             <td data-label="To complete" class="r">{{ $r($row['toComplete']) }}<span class="pg-sub">{{ $row['toCompleteSet'] ? 'Set' : 'What is left' }}@if ($canEdit) <button type="button" class="pg-linkbtn" wire:click="startForecast({{ $l->id }})" aria-label="Set the cost still to come on {{ $l->name }}">Change</button>@endif</span></td>
                             <td data-label="Forecast" class="r">{{ $r($row['forecast']) }}</td>
@@ -104,6 +104,65 @@
             </form>
         @endif
     </section>
+
+    @php
+        $x = fn (?float $v) => $v === null ? '–' : number_format($v, 2);
+        $signed = fn (int $c) => $c < 0 ? '−'.$r(-$c) : $r($c);
+    @endphp
+    <div class="pg-grid" style="margin-top:var(--pg-gap)">
+        <section class="pg-card pg-s8" aria-labelledby="ev-h">
+            <div class="pg-card-head">
+                <h2 id="ev-h">Earned value</h2>
+                <span style="display:flex;gap:6px;align-items:center"><label for="ev-asof" class="pg-help" style="margin:0">As of</label><input id="ev-asof" type="date" wire:model.live.debounce.500ms="asOf" value="{{ $ev['asOf']->toDateString() }}" class="pg-input" style="width:auto;min-height:30px"></span>
+            </div>
+            @if ($ev['bac'] === 0 || $ev['tasks'] === 0)
+                <p class="pg-empty">Earned value needs a budget and tasks to measure progress against.</p>
+            @else
+                <p style="margin:0 0 10px">
+                    @if ($ev['cpi'] !== null)For each rand spent, the project has earned {{ number_format($ev['cpi'] * 100) }}c of planned work (CPI {{ $x($ev['cpi']) }}). @endif
+                    @if ($ev['spi'] !== null)It has done {{ number_format($ev['spi'] * 100) }}% of the work planned to {{ $ev['asOf']->format('j M') }} (SPI {{ $x($ev['spi']) }}). @endif
+                    @if ($ev['eac'] !== null)If costs keep running this way it finishes at {{ $r($ev['eac']) }}, <span class="{{ $ev['vac'] < 0 ? 'pg-neg' : '' }}">{{ $ev['vac'] < 0 ? $r(-$ev['vac']).' over' : $r($ev['vac']).' under' }}</span> the budget.@endif
+                </p>
+                <table class="pg-table pg-table--ev" style="min-width:0">
+                    <thead><tr><th scope="col">Measure</th><th scope="col" class="r">Value</th><th scope="col">How it is worked out</th></tr></thead>
+                    <tbody>
+                        <tr><td>Budget at completion (BAC)</td><td data-label="Value" class="r">{{ $r($ev['bac']) }}</td><td data-label="How">Total budget</td></tr>
+                        <tr><td>Planned value (PV)</td><td data-label="Value" class="r">{{ $r($ev['pv']) }}</td><td data-label="How">Budget for the work planned by {{ $ev['asOf']->format('j M') }}</td></tr>
+                        <tr><td>Earned value (EV)</td><td data-label="Value" class="r">{{ $r($ev['ev']) }}</td><td data-label="How">Budget for the work done: not started 0%, started 50%, done 100%</td></tr>
+                        <tr><td>Actual cost (AC)</td><td data-label="Value" class="r">{{ $r($ev['ac']) }}</td><td data-label="How">Actual costs, with approved time at rates</td></tr>
+                        <tr><td>Schedule variance (SV) and index (SPI)</td><td data-label="Value" class="r {{ $ev['sv'] < 0 ? 'pg-neg' : '' }}">{{ $signed($ev['sv']) }}, {{ $x($ev['spi']) }}</td><td data-label="How">EV minus PV, and EV divided by PV; below 1 is behind</td></tr>
+                        <tr><td>Cost variance (CV) and index (CPI)</td><td data-label="Value" class="r {{ $ev['cv'] < 0 ? 'pg-neg' : '' }}">{{ $signed($ev['cv']) }}, {{ $x($ev['cpi']) }}</td><td data-label="How">EV minus AC, and EV divided by AC; below 1 is over cost</td></tr>
+                        <tr><td>Estimate at completion (EAC)</td><td data-label="Value" class="r">{{ $ev['eac'] === null ? '–' : $r($ev['eac']) }}</td><td data-label="How">BAC divided by CPI</td></tr>
+                        <tr><td>Estimate to complete (ETC)</td><td data-label="Value" class="r">{{ $ev['etc'] === null ? '–' : $r($ev['etc']) }}</td><td data-label="How">EAC minus AC</td></tr>
+                        <tr><td>Variance at completion (VAC)</td><td data-label="Value" class="r {{ ($ev['vac'] ?? 0) < 0 ? 'pg-neg' : '' }}">{{ $ev['vac'] === null ? '–' : $signed($ev['vac']) }}</td><td data-label="How">BAC minus EAC</td></tr>
+                        <tr><td>To-complete performance index (TCPI)</td><td data-label="Value" class="r">{{ $x($ev['tcpi']) }}</td><td data-label="How">(BAC minus EV) divided by (BAC minus AC): the cost efficiency needed from now to land on budget</td></tr>
+                    </tbody>
+                </table>
+                <p class="pg-help" style="margin:10px 0 0">Planned dates come from {{ $ev['baseline'] ? 'baseline '.$ev['baseline'] : 'the current task dates (no baseline is set)' }}. {{ $ev['coverage'] }}% of the work, by {{ $ev['weighted'] ? 'estimate' : 'task count, since no task has an estimate' }}, has dates to plan against; {{ $ev['tasks'] - $ev['dated'] }} of {{ $ev['tasks'] }} {{ Str::plural('task', $ev['tasks']) }} {{ $ev['tasks'] - $ev['dated'] === 1 ? 'has' : 'have' }} none and add nothing to PV. An index with nothing to divide by shows as a dash.</p>
+            @endif
+        </section>
+
+        <section class="pg-card pg-s4" aria-labelledby="lab-h">
+            <div class="pg-card-head"><h2 id="lab-h">Labour from approved time</h2></div>
+            <dl class="pg-kv">
+                <dt>Approved hours</dt><dd>{{ App\Support\Duration::format($labour['minutes']) }}</dd>
+                <dt>At rates</dt><dd>{{ $r($labour['cents']) }}</dd>
+                @if ($labour['unpriced'])<dt>No rate set</dt><dd class="pg-neg">{{ App\Support\Duration::format($labour['unpriced']) }} not costed</dd>@endif
+            </dl>
+            @if ($seesRates && count($labour['people']) > 0)
+                <dl class="pg-kv" style="margin-top:10px">@foreach ($labour['people'] as $p)<dt>{{ $p['name'] }}</dt><dd>{{ App\Support\Duration::format($p['minutes']) }}, {{ $r($p['cents']) }}{{ $p['unpriced'] ? ' (some without a rate)' : '' }}</dd>@endforeach</dl>
+            @endif
+            <div class="pg-field" style="margin-top:12px">
+                <label for="lab-line" class="pg-label">Charge it to</label>
+                <select id="lab-line" class="pg-select" wire:change="chargeTime($event.target.value)" @disabled(! $canEdit)>
+                    <option value="" @selected(! $project->labour_line_id)>Not charged to the budget</option>
+                    @foreach ($lines as $row)<option value="{{ $row['line']->id }}" @selected($project->labour_line_id === $row['line']->id)>{{ $row['line']->name }}</option>@endforeach
+                </select>
+                @error('labour_line_id')<p class="pg-error">{{ $message }}</p>@enderror
+            </div>
+            <p class="pg-help" style="margin:8px 0 0">Approved weeks only, at each person's hourly rate on the day worked. Rates are set by the business owner or an admin on the Workload page.</p>
+        </section>
+    </div>
 
     <div class="pg-grid" style="margin-top:var(--pg-gap)">
         <section class="pg-table-wrap pg-s8" aria-labelledby="ci-h">
