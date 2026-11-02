@@ -63,6 +63,7 @@ Route::middleware([
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::view('/time', 'time.index')->name('time.index');
+    Route::view('/workload', 'workload.index')->name('workload.index');
 
     Route::get('/projects/create', fn () => view('projects.create'))
         ->middleware('can:create,'.Project::class)
