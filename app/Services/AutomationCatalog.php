@@ -34,7 +34,18 @@ final class AutomationCatalog
         'project_status' => ['label' => 'the project\'s status changes to', 'subject' => 'project', 'param' => 'project_status'],
         'change_submitted' => ['label' => 'a change request is submitted', 'subject' => 'change', 'param' => null],
         'budget_threshold' => ['label' => 'spending and commitments reach', 'subject' => 'project', 'param' => 'percent'],
+        // Dates: checked by the hourly sweep (Automations::sweep), not by an event.
+        'task_overdue' => ['label' => 'a task becomes overdue', 'subject' => 'task', 'param' => null],
+        'task_due_soon' => ['label' => 'a task is due', 'subject' => 'task', 'param' => 'days'],
+        'milestone_overdue' => ['label' => 'a milestone passes its date unfinished', 'subject' => 'milestone', 'param' => null],
+        'milestone_due_soon' => ['label' => 'a milestone is due', 'subject' => 'milestone', 'param' => 'days'],
+        'project_deadline' => ['label' => 'the project\'s due date is', 'subject' => 'project', 'param' => 'deadline'],
+        'risk_review_due' => ['label' => 'a risk is due for review', 'subject' => 'risk', 'param' => null],
+        'weekly' => ['label' => 'it is', 'subject' => 'project', 'param' => 'weekday'],
     ];
+
+    /** Triggers the hourly sweep checks against dates instead of waiting for an event. */
+    public const DATED = ['task_overdue', 'task_due_soon', 'milestone_overdue', 'milestone_due_soon', 'project_deadline', 'risk_review_due', 'weekly'];
 
     /** The choices each trigger setting offers. @var array<string, array<string, string>> */
     public const PARAMS = [
@@ -42,6 +53,9 @@ final class AutomationCatalog
         'band' => ['high' => 'high or critical', 'critical' => 'critical'],
         'project_status' => ['planning' => 'Planning', 'active' => 'Active', 'on_hold' => 'On hold'],
         'percent' => ['75' => '75% of the budget', '90' => '90% of the budget', '100' => '100% of the budget', '110' => '110% of the budget'],
+        'days' => ['1' => 'within a day', '2' => 'within 2 days', '3' => 'within 3 days', '7' => 'within a week'],
+        'deadline' => ['7' => 'a week away', '14' => 'two weeks away', '30' => 'a month away'],
+        'weekday' => ['1' => 'Monday', '2' => 'Tuesday', '3' => 'Wednesday', '4' => 'Thursday', '5' => 'Friday'],
     ];
 
     /** Conditions each subject can be narrowed by: field => [label, choices]. @var array<string, array<string, array{0: string, 1: array<string, string>}>> */
@@ -68,6 +82,8 @@ final class AutomationCatalog
         'set_priority' => ['label' => 'Set the task\'s priority', 'subjects' => ['task']],
         'add_label' => ['label' => 'Label the task', 'subjects' => ['task']],
         'assign' => ['label' => 'Give the task to', 'subjects' => ['task']],
+        'start_report' => ['label' => 'Start a progress review', 'subjects' => null],
+        'wait' => ['label' => 'Wait', 'subjects' => null],
     ];
 
     /** Who a notice can go to. @var array<string, string> */
@@ -102,6 +118,10 @@ final class AutomationCatalog
             'actions' => [['type' => 'create_tasks', 'titles' => "Read the project brief and plan\nMeet the project owner\nCheck you can open the project's documents", 'due_days' => 3, 'assign' => 'subject_person', 'priority' => 'medium']]],
         'phase_tasks' => ['name' => 'Plan the next phase when a stage gate passes', 'trigger' => 'gate_passed', 'param' => '', 'conditions' => [],
             'actions' => [['type' => 'create_tasks', 'titles' => "Plan the next phase's work\nUpdate the schedule and set a new baseline\nTell stakeholders the gate has passed", 'due_days' => 5, 'assign' => 'project_owner', 'priority' => 'high']]],
+        'overdue_task' => ['name' => 'Chase overdue work, then escalate it', 'trigger' => 'task_overdue', 'param' => '', 'conditions' => [],
+            'actions' => [['type' => 'notify', 'to' => ['subject_person'], 'note' => 'Finish it or agree a new date.'], ['type' => 'wait', 'days' => 2, 'recheck' => true], ['type' => 'escalate']]],
+        'deadline_review' => ['name' => 'Start a progress review two weeks before the due date', 'trigger' => 'project_deadline', 'param' => '14', 'conditions' => [],
+            'actions' => [['type' => 'start_report'], ['type' => 'notify', 'to' => ['project_owner', 'project_managers'], 'note' => 'A status report draft is ready to finish.']]],
         'budget_90' => ['name' => 'Warn when spending reaches 90% of the budget', 'trigger' => 'budget_threshold', 'param' => '90', 'conditions' => [],
             'actions' => [['type' => 'notify', 'to' => ['project_owner', 'project_managers'], 'note' => 'Review the cost report before more is committed.']]],
     ];
@@ -169,6 +189,9 @@ final class AutomationCatalog
         if ($actions === []) {
             throw ValidationException::withMessages(['actions' => 'Add at least one thing for the rule to do.']);
         }
+        if (end($actions)['type'] === 'wait') {
+            throw ValidationException::withMessages(['actions' => 'A wait needs a step after it.']);
+        }
         if (count($actions) > self::MAX_ACTIONS) {
             throw ValidationException::withMessages(['actions' => 'A rule does at most '.self::MAX_ACTIONS.' things.']);
         }
@@ -227,6 +250,12 @@ final class AutomationCatalog
                 return $label === '' || mb_strlen($label) > 40 ? $fail('a label is 1 to 40 characters.') : ['type' => 'add_label', 'label' => $label];
             })(),
             'assign' => ($a['to'] ?? '') === 'project_owner' ? ['type' => 'assign', 'to' => 'project_owner'] : $fail('choose who gets the task.'),
+            'start_report' => ['type' => 'start_report'],
+            'wait' => (function () use ($a, $fail) {
+                $days = (int) ($a['days'] ?? 0);
+
+                return $days < 1 || $days > 30 ? $fail('wait 1 to 30 days.') : ['type' => 'wait', 'days' => $days, 'recheck' => (bool) ($a['recheck'] ?? true)];
+            })(),
             default => $fail('choose something this trigger can do.'),
         };
     }
@@ -241,7 +270,7 @@ final class AutomationCatalog
         $when = 'When '.$def['label'];
         if ($def['param'] !== null) {
             $label = self::PARAMS[$def['param']][$rule->params[$def['param']] ?? ''] ?? '?';
-            $when .= ' '.($def['param'] === 'status' ? $label : mb_strtolower($label)); // task statuses keep their names
+            $when .= ' '.(in_array($def['param'], ['status', 'weekday'], true) ? $label : mb_strtolower($label)); // names keep their capitals
         }
         $when .= $rule->project_id === null ? ' in any project' : ' in '.($projectName ?? 'its project');
         $subject = $def['subject'];
@@ -269,6 +298,8 @@ final class AutomationCatalog
             'set_priority' => 'set the task\'s priority to '.$a['priority'],
             'add_label' => 'label the task “'.$a['label'].'”',
             'assign' => 'give the task to the project owner',
+            'start_report' => 'start a progress review (a status report draft for the project)',
+            'wait' => 'wait '.($a['days'] === 1 ? 'a day' : $a['days'].' days').($a['recheck'] ? ' and stop if it no longer applies' : ''),
             default => $a['type'],
         };
     }

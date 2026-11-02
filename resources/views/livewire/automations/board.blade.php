@@ -44,7 +44,8 @@
                         <div class="pg-auto-row">
                             <label for="a-trigger" class="pg-sr">What starts the rule</label>
                             <select id="a-trigger" wire:model.live="form.trigger" class="pg-select">
-                                @foreach ($C::TRIGGERS as $k => $t)<option value="{{ $k }}">{{ ucfirst($t['label']) }}{{ $t['param'] ? '…' : '' }}</option>@endforeach
+                                <optgroup label="When something happens">@foreach ($C::TRIGGERS as $k => $t)@unless (in_array($k, $C::DATED, true))<option value="{{ $k }}">{{ ucfirst($t['label']) }}{{ $t['param'] ? '…' : '' }}</option>@endunless @endforeach</optgroup>
+                                <optgroup label="On a date (checked hourly)">@foreach ($C::DATED as $k)<option value="{{ $k }}">{{ ucfirst($C::TRIGGERS[$k]['label']) }}{{ $C::TRIGGERS[$k]['param'] ? '…' : '' }}</option>@endforeach</optgroup>
                             </select>
                             @if ($param = $C::TRIGGERS[$form['trigger']]['param'] ?? null)
                                 <label for="a-param" class="pg-sr">Which</label>
@@ -109,6 +110,17 @@
                                         @break
                                     @case('assign')
                                         <p class="pg-help">Gives the task to the project owner.</p>
+                                        @break
+                                    @case('start_report')
+                                        <p class="pg-help">Starts a status report draft for the project, covering the days since its last report, for the project's manager to finish and publish. If a draft is already open, it is left as it is.</p>
+                                        @break
+                                    @case('wait')
+                                        <div class="pg-auto-row">
+                                            <label for="a-wait-{{ $i }}" class="pg-label" style="margin:0">Days</label>
+                                            <input id="a-wait-{{ $i }}" type="number" min="1" max="30" wire:model.live.debounce.500ms="form.actions.{{ $i }}.days" class="pg-input" style="width:90px">
+                                            <label class="pg-radio"><input type="checkbox" wire:model.live="form.actions.{{ $i }}.recheck"> Stop if it no longer applies by then</label>
+                                        </div>
+                                        <p class="pg-help">The steps after this one run when the wait is over, in working hours. With the box ticked they are skipped if, by then, the task is done, the risk closed, the milestone complete or the like.</p>
                                         @break
                                 @endswitch
                             </div>
@@ -187,7 +199,7 @@
                             </div>
                         @endif
                     @endforeach
-                    <p class="pg-help">Rules that act on dates (overdue work, an approaching deadline) and approval steps come next.</p>
+                    <p class="pg-help">Rules on dates are checked every hour from 07:00 to 19:00 South African time. Approval steps and branches come next.</p>
                 </section>
             @else
                 <p class="pg-empty">Rules are made by the people who manage a project, and by the business owner and admins.</p>

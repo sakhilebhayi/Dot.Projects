@@ -171,6 +171,7 @@ class Board extends Component
             'set_priority' => ['type' => 'set_priority', 'priority' => 'high'],
             'add_label' => ['type' => 'add_label', 'label' => ''],
             'assign' => ['type' => 'assign', 'to' => 'project_owner'],
+            'wait' => ['type' => 'wait', 'days' => 2, 'recheck' => true],
             default => ['type' => $this->newAction],
         };
     }
@@ -235,6 +236,7 @@ class Board extends Component
                 $v = AutomationCatalog::clean($this->form, $team, $me);
                 $draft = new AutomationRule(['name' => $v['name'], 'trigger' => $v['trigger'], 'params' => $v['params'], 'conditions' => $v['conditions'], 'actions' => $v['actions']]);
                 $draft->project_id = $v['project_id'];
+                $draft->team_id = $team->id;
                 $preview = $automations->preview($draft, $team);
             } catch (ValidationException $e) {
                 $draftError = (string) collect($e->errors())->flatten()->first();
