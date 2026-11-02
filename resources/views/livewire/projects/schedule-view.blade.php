@@ -5,6 +5,7 @@
         $x = fn ($d) => (int) $from->diffInDays($d) * $ppd;
         $today = Illuminate\Support\Carbon::today();
         $critical = $schedule->critical();
+        $cross = $schedule->crossProject();
         $forecast = $schedule->forecastFinish();
         $target = $project->due_date;
         $baseDue = isset($base['project'][$project->id]) ? $base['project'][$project->id]->due_date : null;
@@ -30,6 +31,9 @@
                             {{ $critical->count() }} open {{ Str::plural('task', $critical->count()) }} {{ $critical->count() === 1 ? 'is' : 'are' }} on the critical path{{ $schedule->conflictCount() ? ', '.$schedule->conflictCount().' '.Str::plural('dependency', $schedule->conflictCount()).' broken' : '' }}.
                         @endif
                         @if ($chosen && $baseDue) Baseline {{ $chosen->number }} was due {{ $baseDue->format('j M') }}. @endif
+                    @endif
+                    @if ($cross['waits'] || $cross['holds'])
+                        <span class="pg-cross">@if ($cross['waits']){{ $cross['waits'] }} {{ Str::plural('task', $cross['waits']) }} {{ $cross['waits'] === 1 ? 'waits' : 'wait' }} on other projects{{ $cross['open'] ? ', '.$cross['open'].' still held up' : '' }}.@endif @if ($cross['holds']){{ $cross['holds'] }} {{ Str::plural('task', $cross['holds']) }} here {{ $cross['holds'] === 1 ? 'holds' : 'hold' }} up work in other projects, so {{ $cross['holds'] === 1 ? 'its' : 'their' }} float counts that work's start.@endif</span>
                     @endif
                 </p>
             </div>

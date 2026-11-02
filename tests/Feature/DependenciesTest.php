@@ -57,12 +57,15 @@ class DependenciesTest extends TestCase
         $panel($a)->set('newDependency', (string) $c->id)->call('addDependency')->assertHasErrors('dependency');
         $this->assertSame(0, $a->predecessors()->count(), 'Go live waits on Fit, which waits on Clear: Clear cannot wait on Go live');
 
-        $other = Project::create(['team_id' => $project->team_id, 'owner_id' => $owner->id, 'name' => 'Other', 'status' => 'active']);
-        $foreign = $other->tasks()->create(['title' => 'Elsewhere', 'status' => 'todo']);
+        // Since R-34 P8b a task may wait on another project of the same business (CrossProjectTest);
+        // another business's work stays out of reach.
+        $stranger = User::factory()->withPersonalTeam()->create();
+        $other = Project::withoutTeamScope(fn () => Project::create(['team_id' => $stranger->currentTeam->id, 'owner_id' => $stranger->id, 'name' => 'Other', 'status' => 'active']));
+        $foreign = Project::withoutTeamScope(fn () => $other->tasks()->create(['title' => 'Elsewhere', 'status' => 'todo']));
         $this->actingAs($owner);
         try {
             app(ProjectWork::class)->addDependency($b, $foreign, $owner);
-            $this->fail('a dependency across projects was accepted');
+            $this->fail('a dependency across businesses was accepted');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('dependency', $e->errors());
         }

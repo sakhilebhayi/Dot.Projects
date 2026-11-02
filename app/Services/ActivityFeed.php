@@ -95,6 +95,7 @@ final class ActivityFeed
                 'project.duplicated' => 'duplicated the project',
                 'dependency.added' => 'made '.$q($tasks->get($l->subject_id)).' wait for another task',
                 'dependency.removed' => 'removed a dependency from '.$q($tasks->get($l->subject_id)),
+                'dependency.external' => 'made a task in another project wait for '.$q($tasks->get($l->subject_id)),
                 'subtask.added' => 'added the subtask '.$q($tasks->get($l->subject_id)),
                 'label.added' => 'labelled '.$q($tasks->get($l->subject_id)),
                 'label.removed' => 'removed a label from '.$q($tasks->get($l->subject_id)),

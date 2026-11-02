@@ -141,31 +141,48 @@
             <div class="pg-card-head"><h2 id="dep-h">Waits for</h2><small>{{ $task->isBlocked() ? 'Blocked' : '' }}</small></div>
             @forelse ($this->predecessors as $p)
                 <div class="pg-row" wire:key="pred-{{ $p->id }}">
-                    <div><a href="{{ route('projects.tasks.show', [$project, $p]) }}">{{ $p->title }}</a><div class="pg-sub">{{ App\Services\ProjectSummary::STATUSES[$p->status] ?? $p->status }}</div></div>
+                    <div>
+                        @if ($this->places[$p->id]['url'])<a href="{{ $this->places[$p->id]['url'] }}">{{ $p->title }}</a>@else<span class="pg-dep-hidden">A task in a project you cannot see</span>@endif
+                        <div class="pg-sub">@unless ($this->places[$p->id]['here'])<span class="pg-dep-where">{{ $this->places[$p->id]['project'] ? 'In '.$this->places[$p->id]['project'] : 'Another project' }}</span>, @endunless{{ App\Services\ProjectSummary::STATUSES[$p->status] ?? $p->status }}@if (! $this->places[$p->id]['here'] && $p->due_date && $this->places[$p->id]['project']), due {{ $p->due_date->format('j M') }}@endif</div>
+                    </div>
                     <span style="display:flex;gap:6px;align-items:center">
                         <span class="pg-pill {{ $p->status === 'done' ? 'pg-pill--positive' : 'pg-pill--warning' }}">{{ $p->status === 'done' ? 'Done' : 'Not done' }}</span>
-                        @if ($canEdit)<button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="removeDependency({{ $p->id }})" aria-label="Stop waiting for {{ $p->title }}">Remove</button>@endif
+                        @if ($canEdit)<button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="removeDependency({{ $p->id }})" aria-label="Stop waiting for {{ $this->places[$p->id]['url'] ? $p->title : 'that task' }}">Remove</button>@endif
                     </span>
                 </div>
             @empty
                 <p class="pg-empty">Nothing. It can start any time.</p>
             @endforelse
-            @if ($canEdit && $this->candidates->isNotEmpty())
-                <form wire:submit="addDependency" style="display:flex;gap:8px;margin-top:10px">
+            @if ($canEdit)
+                <form wire:submit="addDependency" class="pg-dep-form">
+                    @if ($this->otherProjects->isNotEmpty())
+                        <label for="dep-project" class="pg-sr">Project the task is in</label>
+                        <select id="dep-project" wire:model.live="depProject" class="pg-select">
+                            <option value="">This project</option>
+                            @foreach ($this->otherProjects as $o)<option value="{{ $o->id }}">{{ Str::limit($o->name, 48) }}</option>@endforeach
+                        </select>
+                    @endif
                     <label for="dep-new" class="pg-sr">Task this one waits for</label>
-                    <select id="dep-new" wire:model="newDependency" class="pg-select">
-                        <option value="">Choose a task to wait for</option>
+                    <select id="dep-new" wire:model="newDependency" class="pg-select" @disabled($this->candidates->isEmpty())>
+                        <option value="">{{ $this->candidates->isEmpty() ? 'No tasks to choose from' : 'Choose a task to wait for' }}</option>
                         @foreach ($this->candidates as $c)<option value="{{ $c->id }}">{{ Str::limit($c->title, 60) }}</option>@endforeach
                     </select>
-                    <button type="submit" class="pg-btn pg-btn--secondary">Add</button>
+                    <button type="submit" class="pg-btn pg-btn--secondary" @disabled($this->candidates->isEmpty())>Add</button>
                 </form>
+                @if ($depProject !== '')<p class="pg-empty pg-dep-note">Its owner and managers are told that work here waits on it.</p>@endif
                 @error('dependency')<p class="pg-error">{{ $message }}</p>@enderror
                 @error('newDependency')<p class="pg-error">{{ $message }}</p>@enderror
             @endif
             @if ($this->successors->isNotEmpty())
                 <div class="pg-card-head" style="margin-top:14px"><h2>Holds up</h2><small>{{ $this->successors->count() }}</small></div>
                 @foreach ($this->successors as $n)
-                    <div class="pg-row"><a href="{{ route('projects.tasks.show', [$project, $n]) }}">{{ $n->title }}</a><span class="pg-sub">{{ App\Services\ProjectSummary::STATUSES[$n->status] ?? $n->status }}</span></div>
+                    <div class="pg-row" wire:key="succ-{{ $n->id }}">
+                        <div>
+                            @if ($this->places[$n->id]['url'])<a href="{{ $this->places[$n->id]['url'] }}">{{ $n->title }}</a>@else<span class="pg-dep-hidden">A task in a project you cannot see</span>@endif
+                            @unless ($this->places[$n->id]['here'])<div class="pg-sub"><span class="pg-dep-where">{{ $this->places[$n->id]['project'] ? 'In '.$this->places[$n->id]['project'] : 'Another project' }}</span></div>@endunless
+                        </div>
+                        <span class="pg-sub">{{ App\Services\ProjectSummary::STATUSES[$n->status] ?? $n->status }}</span>
+                    </div>
                 @endforeach
             @endif
         </section>

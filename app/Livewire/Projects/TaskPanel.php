@@ -19,6 +19,10 @@ use Livewire\Component;
 
 /**
  * @property-read Collection<int, ProjectTask> $predecessors
+ * @property-read Collection<int, ProjectTask> $successors
+ * @property-read Collection<int, Project> $otherProjects
+ * @property-read \Illuminate\Support\Collection<int, ProjectTask> $candidates
+ * @property-read array<int, array{here: bool, project: string|null, url: string|null}> $places
  *
  * One task, read by every member and edited by people who can change the project: its details,
  * dates and estimate, who does it, its checklist, and deleting it. Saved with one button, so a
@@ -53,6 +57,9 @@ class TaskPanel extends Component
     public bool $confirmingDelete = false;
 
     public string $newDependency = '';
+
+    /** The project to pick a predecessor from: '' for this one, or another project's id. */
+    public string $depProject = '';
 
     public string $newSubtask = '';
 
@@ -117,6 +124,25 @@ class TaskPanel extends Component
         return $this->task->successors()->orderBy('title')->get();
     }
 
+    /**
+     * Where each linked task lives, as this person may know it: here; in another project they can
+     * see (named, with a link); or in one they cannot (not named, no link).
+     *
+     * @return array<int, array{here: bool, project: string|null, url: string|null}>
+     */
+    #[Computed]
+    public function places(): array
+    {
+        $out = [];
+        foreach ($this->predecessors->concat($this->successors) as $t) {
+            $here = (int) $t->project_id === $this->project->id;
+            $project = $here ? $this->project : $t->projectSeenBy(auth()->user());
+            $out[$t->id] = ['here' => $here, 'project' => $project?->name, 'url' => $project === null ? null : route('projects.tasks.show', [$project, $t])];
+        }
+
+        return $out;
+    }
+
     #[Computed]
     public function subtasks()
     {
@@ -129,29 +155,55 @@ class TaskPanel extends Component
         return $this->task->labels()->get();
     }
 
-    /** Tasks this one could wait for: the project's others, not already linked. */
+    /**
+     * Other live projects in this business the person can see, whose tasks this one may wait
+     * for. The scopes already hide other businesses and private projects they are not in.
+     */
+    #[Computed]
+    public function otherProjects()
+    {
+        return Project::query()->whereKeyNot($this->project->id)->whereNull('archived_at')->orderBy('name')->get(['id', 'name', 'team_id', 'visibility', 'owner_id']);
+    }
+
+    /** Tasks this one could wait for, in the chosen project (this one by default), not already linked. */
     #[Computed]
     public function candidates()
     {
         $linked = $this->predecessors->pluck('id')->push($this->task->id);
+        $from = $this->pickFrom();
 
-        return ProjectTask::query()->where('project_id', $this->project->id)->whereNotIn('id', $linked)->orderBy('title')->get(['id', 'title', 'status']);
+        return $from === null ? collect() : ProjectTask::query()->where('project_id', $from)->whereNotIn('id', $linked)->orderBy('title')->get(['id', 'title', 'status']);
+    }
+
+    /** The project id predecessors are picked from: this one, or a listed other one; null otherwise. */
+    private function pickFrom(): ?int
+    {
+        return $this->depProject === '' ? $this->project->id : $this->otherProjects->firstWhere('id', (int) $this->depProject)?->id;
+    }
+
+    public function updatedDepProject(): void
+    {
+        $this->reset('newDependency');
+        $this->resetErrorBag();
     }
 
     public function addDependency(ProjectWork $work): void
     {
         $this->authorize('update', $this->task);
+        $this->resetErrorBag();
         $this->validate(['newDependency' => ['required', 'integer']], [], ['newDependency' => 'task']);
-        $work->addDependency($this->task, ProjectTask::query()->where('project_id', $this->project->id)->findOrFail((int) $this->newDependency), auth()->user());
+        $from = $this->pickFrom();
+        abort_if($from === null, 404);
+        $work->addDependency($this->task, ProjectTask::query()->where('project_id', $from)->findOrFail((int) $this->newDependency), auth()->user());
         $this->reset('newDependency');
-        unset($this->predecessors, $this->candidates);
+        unset($this->predecessors, $this->candidates, $this->places);
     }
 
     public function removeDependency(int $id, ProjectWork $work): void
     {
         $this->authorize('update', $this->task);
         $work->removeDependency($this->task, $id);
-        unset($this->predecessors, $this->candidates);
+        unset($this->predecessors, $this->candidates, $this->places);
     }
 
     public function addSubtask(ProjectWork $work): void

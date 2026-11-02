@@ -7,8 +7,10 @@ use App\Models\BaselineItem;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * The project's schedule as it stands, computed from the dates people entered. Nothing is
@@ -24,6 +26,10 @@ use Illuminate\Support\Carbon;
  *  - Critical: an open task with float of zero or less; on it, any slip moves the finish (or it is
  *    already late). Done tasks are history and are never critical.
  *  - Conflict: a task that starts before something it waits for finishes.
+ *  - Other projects (R-34 P8b): a task here may wait for a task in another project of the same
+ *    business. That task is not drawn, but a start before its due date is a conflict; and a task
+ *    here that another project waits for must finish the day before that task starts, which
+ *    counts in its float. Tasks in projects the viewer cannot see are never named.
  *  - Forecast: a milestone lands when its last dated task is due; the project when its last dated
  *    task is due.
  */
@@ -42,7 +48,7 @@ final class Schedule
 
     public function __construct(public readonly Project $project)
     {
-        $this->tasks = $project->tasks()->with(['predecessors:id,title,status,start_date,due_date', 'assignee:id,name', 'milestone:id,title'])
+        $this->tasks = $project->tasks()->with(['predecessors:id,project_id,title,status,start_date,due_date', 'successors:id,project_id,title,status,start_date,due_date', 'assignee:id,name', 'milestone:id,title'])
             ->orderByRaw('start_date is null')->orderBy('start_date')->orderByRaw('due_date is null')->orderBy('due_date')->orderBy('sort_order')->get();
         $this->milestones = $project->milestones()->get();
         $scheduled = $this->tasks->filter(fn (ProjectTask $t) => $t->due_date !== null);
@@ -90,6 +96,12 @@ final class Schedule
                 $start = $finish->copy();
             }
             $lf = $this->target?->copy() ?? $finish->copy();
+            foreach ($this->outside($t->successors) as $ext) {
+                $limit = ($ext->start_date ?? $ext->due_date)?->copy()->subDay();
+                if ($ext->status !== 'done' && $limit !== null && $limit->lt($lf)) {
+                    $lf = $limit;
+                }
+            }
             foreach ($successors[$id] ?? [] as $s) {
                 $succ = $byId[$s];
                 $succLatestStart = $latestFinish[$s]->copy()->subDays((int) ($succ->start_date ?? $succ->due_date)->diffInDays($succ->due_date));
@@ -104,13 +116,46 @@ final class Schedule
             $this->rows[$id] = ['start' => $start, 'finish' => $finish, 'float' => $float, 'critical' => $open && $float !== null && $float <= 0, 'conflicts' => []];
         }
 
+        $viewer = Auth::user();
         foreach ($scheduled as $t) {
             foreach ($t->predecessors as $p) {
                 if ($p->due_date && $byId->has($p->id) && $this->rows[$t->id]['start']->lte($p->due_date)) {
                     $this->rows[$t->id]['conflicts'][] = 'Starts before “'.$p->title.'” finishes on '.$p->due_date->format('j M').'.';
                 }
             }
+            foreach ($this->outside($t->predecessors) as $p) {
+                if ($p->status === 'done' || $p->due_date === null || $this->rows[$t->id]['start']->gt($p->due_date)) {
+                    continue;
+                }
+                $seen = $viewer instanceof User ? $p->projectSeenBy($viewer) : null;
+                $this->rows[$t->id]['conflicts'][] = $seen === null
+                    ? 'Starts before a task it waits for in a project you cannot see is due.'
+                    : 'Starts before “'.$p->title.'” in '.$seen->name.' finishes on '.$p->due_date->format('j M').'.';
+            }
         }
+    }
+
+    /**
+     * Linked tasks that sit in other projects.
+     *
+     * @param  Collection<int, ProjectTask>  $linked
+     * @return Collection<int, ProjectTask>
+     */
+    private function outside(Collection $linked): Collection
+    {
+        return $linked->filter(fn (ProjectTask $o) => (int) $o->project_id !== $this->project->id);
+    }
+
+    /** @return array{waits: int, open: int, holds: int} tasks here waiting on other projects (and how many of those are not done), and tasks here other projects wait on */
+    public function crossProject(): array
+    {
+        $waits = $this->tasks->filter(fn (ProjectTask $t) => $this->outside($t->predecessors)->isNotEmpty());
+
+        return [
+            'waits' => $waits->count(),
+            'open' => $waits->filter(fn (ProjectTask $t) => $t->status !== 'done' && $this->outside($t->predecessors)->contains(fn ($p) => $p->status !== 'done'))->count(),
+            'holds' => $this->tasks->filter(fn (ProjectTask $t) => $this->outside($t->successors)->isNotEmpty())->count(),
+        ];
     }
 
     /** @return array{start: Carbon, finish: Carbon, float: int|null, critical: bool, conflicts: list<string>}|null */

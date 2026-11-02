@@ -30,7 +30,7 @@ final class ProjectSummary
     public function __construct(public readonly Project $project)
     {
         $this->today = Carbon::today();
-        $this->tasks = $project->tasks()->with(['assignee', 'milestone', 'predecessors:id,title,status'])->orderBy('sort_order')->get();
+        $this->tasks = $project->tasks()->with(['assignee', 'milestone', 'predecessors:id,project_id,title,status'])->orderBy('sort_order')->get();
         $this->milestones = $project->milestones()->get();
     }
 
