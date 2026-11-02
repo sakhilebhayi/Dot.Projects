@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property-read Milestone|null $milestone
  * @property-read User|null $assignee
  * @property-read Collection<int, ProjectTask> $predecessors
+ * @property-read Collection<int, ProjectTask> $successors
  */
 class ProjectTask extends Model
 {
@@ -128,5 +129,37 @@ class ProjectTask extends Model
     public function comments(): MorphMany
     {
         return $this->morphMany(ProjectComment::class, 'commentable');
+    }
+
+    /** @var array<int, Project|false> the task's project per viewer id, false where it is hidden */
+    private array $seenBy = [];
+
+    /**
+     * The task's project when $viewer may see it, and null when they may not. Read without the
+     * scopes, so the answer never depends on who happens to be signed in.
+     */
+    public function projectSeenBy(User $viewer): ?Project
+    {
+        if (! isset($this->seenBy[$viewer->id])) {
+            $project = Project::withoutTeamScope(fn () => Project::query()->with('team')->find($this->project_id));
+            $this->seenBy[$viewer->id] = $project !== null && $project->canBeSeenBy($viewer) ? $project : false;
+        }
+
+        return $this->seenBy[$viewer->id] ?: null;
+    }
+
+    /**
+     * How the task is named to $viewer, looking from the project $hereId: by its title there; by
+     * its title and project from another project they can see; and not named at all from a
+     * project they cannot see.
+     */
+    public function nameFor(?User $viewer, int $hereId): string
+    {
+        if ((int) $this->project_id === $hereId) {
+            return $this->title;
+        }
+        $project = $viewer === null ? null : $this->projectSeenBy($viewer);
+
+        return $project === null ? 'a task in a project you cannot see' : $this->title.' (in '.$project->name.')';
     }
 }

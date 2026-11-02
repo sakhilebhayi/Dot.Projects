@@ -74,7 +74,7 @@ class WorkList extends Component
     {
         $today = Carbon::today()->toDateString();
 
-        return $this->project->tasks()->with(['assignee', 'checklist', 'labels', 'parent:id,title', 'predecessors:id,title,status'])
+        return $this->project->tasks()->with(['assignee', 'checklist', 'labels', 'parent:id,title', 'predecessors:id,project_id,title,status'])
             ->when($this->label !== '', fn ($q) => $q->whereHas('labels', fn ($l) => $l->whereKey((int) $this->label)))
             ->when($this->status !== '', fn ($q) => $this->status === 'open' ? $q->where('status', '!=', 'done') : $q->where('status', $this->status))
             ->when($this->who !== '', fn ($q) => $this->who === 'none' ? $q->whereNull('assignee_id') : $q->where('assignee_id', (int) $this->who))

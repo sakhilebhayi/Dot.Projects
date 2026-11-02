@@ -402,3 +402,23 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   issues), milestones overdue or due within 30 days, portfolio budget and forecast, people over
   capacity (owner and admins), and active projects in no portfolio. No task-level detail. Next,
   P8b: cross-project dependencies and portfolio risks and milestones.
+- **P8b work between projects** (2026-11-02): a task may now wait for a task in another project of
+  the same business. On the task page, "Waits for" picks a project (this one by default) and then
+  a task in it. The predecessor's project must be one the person can see and not archived; another
+  business's work is never reachable. Loops are refused across every project in the business,
+  including projects the person cannot see. The other project's owner and managers get an in-app
+  notice, and it names the waiting project only to those who may see it; both activity logs record
+  the link without free text. Work in a project someone cannot see is never named to them: the task
+  page, the board, the work list, the overview, the "cannot start yet" message and schedule
+  conflicts all say "a task in a project you cannot see" and give no dates. The schedule flags a
+  start before external work is due as a conflict. A task that another project waits on must finish
+  the day before that work starts, and its float counts this. The schedule summary says how many
+  tasks wait on, or hold up, other projects. The portfolio adds three sections:
+  - a six-month roadmap of every project's milestones on one axis, with milestones about four days
+    apart sharing a mark that names each one;
+  - the major risks across the set (live, rated high or critical on each project's own matrix);
+  - which projects wait on which, with linked, still-held-up and conflicting counts. Links to
+    projects outside the view are counted, never named.
+
+  The duplicate of a project keeps only its internal dependencies. Next, P8c: reports with exports,
+  and custom dashboards.

@@ -69,7 +69,7 @@ class ProjectBoard extends Component
     public function tasksByStatus(): array
     {
         $tasks = $this->project->tasks()
-            ->with(['assignee', 'milestone', 'predecessors:id,title,status', 'labels'])
+            ->with(['assignee', 'milestone', 'predecessors:id,project_id,title,status', 'labels'])
             ->orderBy('sort_order')
             ->get()
             ->groupBy('status');

@@ -89,7 +89,7 @@
                                 @if ($late)<span class="pg-pill pg-pill--negative">Due {{ $task->due_date->format('j M') }}</span>
                                 @elseif ($task->due_date)<span>Due {{ $task->due_date->format('j M') }}</span>
                                 @endif
-                                @if ($task->isBlocked())<span class="pg-pill pg-pill--warning" title="Waits for {{ $task->predecessors->where('status', '!=', 'done')->pluck('title')->join(', ') }}">Blocked</span>@endif
+                                @if ($task->isBlocked())<span class="pg-pill pg-pill--warning" title="Waits for {{ $task->predecessors->where('status', '!=', 'done')->map(fn ($p) => $p->nameFor(auth()->user(), $project->id))->join(', ') }}">Blocked</span>@endif
                                 @if (in_array($task->priority, ['urgent', 'high'], true))<span class="pg-pill {{ $task->priority === 'urgent' ? 'pg-pill--warning' : '' }}">{{ ucfirst($task->priority) }}</span>@endif
                             </span>
                             <label for="assign-{{ $task->id }}" class="pg-sr">Who does {{ $task->title }}</label>

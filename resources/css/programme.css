@@ -553,3 +553,42 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-table--portfolio .pg-sub { white-space: normal; }
 @media (max-width: 640px) { .pg-table--portfolio { min-width: 0; } }
 @media (max-width: 640px) { .pg-table--portfolio td:not(.pg-name) .pg-sub { margin-left: 8px; } }
+
+/* ---------- Work between projects (dependencies, roadmap) ----------
+   A task names work in another project with that project's name, and never names work in a
+   project the reader cannot see. The roadmap shares one six-month axis: months ruled, today a 1px
+   ink line as on the schedule, milestones as diamonds (ink due, negative late, grey complete),
+   each named on hover and focus and in text for screen readers. */
+.pg-dep-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pg-dep-form .pg-select { flex: 1 1 180px; min-width: 0; }
+.pg-dep-hidden { color: var(--pg-muted); }
+.pg-dep-note { margin-top: 6px; font-size: 12.5px; }
+.pg-cross { display: block; margin-top: 4px; }
+.pg-road-scroll { margin: 0 -4px; padding: 8px 4px 0; }
+@media (max-width: 760px) { .pg-road-scroll { overflow-x: auto; } }
+.pg-road { min-width: 640px; }
+.pg-road-head, .pg-road-lane { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; align-items: center; }
+.pg-road-head { height: 20px; }
+.pg-road-lane { min-height: 38px; border-top: 1px solid var(--pg-rule); }
+.pg-road-name { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-road-track { position: relative; height: 100%; }
+.pg-road-lane .pg-road-track { height: 38px; }
+.pg-road-month { position: absolute; top: 0; padding-left: 5px; border-left: 1px solid var(--pg-border); font-size: 12px; line-height: 20px; color: var(--pg-muted); white-space: nowrap; }
+.pg-road-rule { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--pg-rule); }
+.pg-road-today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--pg-ink); }
+.pg-road-marks { list-style: none; margin: 0; padding: 0; position: absolute; inset: 0; }
+.pg-road-mark { --mk: var(--pg-ink); position: absolute; top: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border-radius: 3px; cursor: default; }
+.pg-road-mark::before { content: ""; position: absolute; inset: 5px; transform: rotate(45deg); border-radius: 2px; background: var(--mk); box-shadow: 0 0 0 2px var(--pg-surface); }
+.pg-road-mark.is-late { --mk: var(--pg-negative); }
+.pg-road-mark.is-done { --mk: var(--pg-bar-done); }
+.pg-road-mark:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
+.pg-road-mark[data-tip]:hover::after, .pg-road-mark[data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 3; padding: 4px 8px; border-radius: 4px; background: var(--pg-primary); color: var(--pg-on-primary); font-size: 12px; line-height: 1.4; width: max-content; max-width: 280px; white-space: normal; pointer-events: none; }
+.pg-road-mark.at-start[data-tip]::after { left: 0; transform: none; }
+.pg-road-mark.at-end[data-tip]::after { left: auto; right: 0; transform: none; }
+.pg-road-count { position: absolute; left: calc(100% - 1px); top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--pg-ink); }
+.pg-road-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; font-size: 12.5px; color: var(--pg-muted); }
+.pg-road-key span { display: inline-flex; align-items: center; gap: 6px; }
+.pg-road-key .pg-road-mark { position: relative; top: auto; display: inline-block; width: 14px; height: 14px; transform: none; }
+.pg-road-key .pg-road-mark::before { inset: 3px; }
+.pg-road-today--key { position: relative; display: inline-block; height: 14px; }
+@media (max-width: 640px) { .pg-road-head, .pg-road-lane { grid-template-columns: 120px minmax(0, 1fr); } }

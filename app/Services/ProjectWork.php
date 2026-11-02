@@ -12,8 +12,11 @@ use App\Models\ProjectLabel;
 use App\Models\ProjectTask;
 use App\Models\SavedView;
 use App\Models\User;
+use App\Notifications\GovernanceNotification;
 use App\Notifications\TaskAssignedNotification;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -248,17 +251,29 @@ final class ProjectWork
         if (! in_array($status, self::STARTED, true)) {
             return;
         }
-        $waiting = $task->predecessors()->where('status', '!=', 'done')->pluck('title');
+        $viewer = Auth::user();
+        /** @var Collection<int, ProjectTask> $open */
+        $open = $task->predecessors()->where('status', '!=', 'done')->get(['project_tasks.id', 'project_id', 'title']);
+        $waiting = $open->map(fn (ProjectTask $p) => $p->nameFor($viewer instanceof User ? $viewer : null, (int) $task->project_id));
         if ($waiting->isNotEmpty()) {
             throw ValidationException::withMessages(['status' => 'Waiting on '.$waiting->map(fn ($t) => '“'.$t.'”')->join(', ', ' and ').'. Finish '.($waiting->count() === 1 ? 'it' : 'them').' first, or remove the dependency.']);
         }
     }
 
-    /** $successor waits until $predecessor is done. Same project only, and never a loop. */
+    /**
+     * $successor waits until $predecessor is done. The predecessor may sit in another project of
+     * the same business, one the person can see and that is not archived; never a loop, checked
+     * across every project in the business. The other project's owner and managers are told.
+     */
     public function addDependency(ProjectTask $successor, ProjectTask $predecessor, User $by): void
     {
-        if ($predecessor->project_id !== $successor->project_id) {
-            throw ValidationException::withMessages(['dependency' => 'Choose a task in this project.']);
+        $here = $successor->project;
+        $there = (int) $predecessor->project_id === (int) $successor->project_id ? $here : $predecessor->projectSeenBy($by);
+        if ($there === null || $there->team_id !== $here->team_id) {
+            throw ValidationException::withMessages(['dependency' => 'Choose a task in a project of this business that you can see.']);
+        }
+        if ($there->isArchived()) {
+            throw ValidationException::withMessages(['dependency' => '“'.$there->name.'” is archived. Restore it before its work holds anything up.']);
         }
         if ($predecessor->id === $successor->id) {
             throw ValidationException::withMessages(['dependency' => 'A task cannot wait for itself.']);
@@ -266,14 +281,36 @@ final class ProjectWork
         if ($successor->predecessors()->whereKey($predecessor->id)->exists()) {
             throw ValidationException::withMessages(['dependency' => 'It already waits for that task.']);
         }
-        if ($this->reaches($successor->project_id, $successor->id, $predecessor->id)) {
-            throw ValidationException::withMessages(['dependency' => '“'.$predecessor->title.'” already waits, directly or through other tasks, for this one. That would be a loop.']);
+        if ($this->reaches((int) $here->team_id, $successor->id, $predecessor->id)) {
+            throw ValidationException::withMessages(['dependency' => '“'.$predecessor->nameFor($by, (int) $here->id).'” already waits, directly or through other tasks, for this one. That would be a loop.']);
         }
 
-        DB::transaction(function () use ($successor, $predecessor, $by) {
+        DB::transaction(function () use ($successor, $predecessor, $by, $here, $there) {
             $successor->predecessors()->attach($predecessor->id, ['type' => 'finish_to_start', 'created_by' => $by->id]);
-            Activity::record('dependency.added', $successor, ['predecessor_id' => $predecessor->id], $successor->project);
+            Activity::record('dependency.added', $successor, ['predecessor_id' => $predecessor->id], $here);
+            if ($there->id !== $here->id) {
+                Activity::record('dependency.external', $predecessor, ['successor_id' => $successor->id, 'project_id' => $here->id], $there);
+            }
         });
+
+        if ($there->id !== $here->id) {
+            $this->tellHolders($there, $predecessor, $successor, $by);
+        }
+    }
+
+    /**
+     * Tells the predecessor project's owner and managers that work elsewhere now waits on one of
+     * their tasks. The waiting project is named only to those who may see it.
+     */
+    private function tellHolders(Project $there, ProjectTask $predecessor, ProjectTask $successor, User $by): void
+    {
+        $managerIds = DB::table('project_members')->where('project_id', $there->id)->where('role', 'manager')->pluck('user_id')->map(fn ($id) => (int) $id);
+        $people = User::query()->whereIn('id', $managerIds->push((int) $there->owner_id)->unique()->all())->get()
+            ->reject(fn (User $u) => $u->id === $by->id);
+        foreach ($people as $person) {
+            $where = $successor->projectSeenBy($person) === null ? 'another project' : '“'.$successor->project->name.'”';
+            $person->notify(new GovernanceNotification('dependency_external', 'Other work now waits on yours', $by->name.' made a task in '.$where.' wait for “'.$predecessor->title.'” on “'.$there->name.'”. A delay there now holds it up.', $there->id, route('projects.tasks.show', [$there->id, $predecessor->id])));
+        }
     }
 
     public function removeDependency(ProjectTask $successor, int $predecessorId): void
@@ -283,12 +320,16 @@ final class ProjectWork
         }
     }
 
-    /** Whether $to can be reached from $from by following "is waited for by" edges in one project. */
-    private function reaches(int $projectId, int $from, int $to): bool
+    /**
+     * Whether $to can be reached from $from by following "is waited for by" edges anywhere in the
+     * business, so a loop through another project (even one the person cannot see) is refused.
+     */
+    private function reaches(int $teamId, int $from, int $to): bool
     {
         $edges = DB::table('task_dependencies')
             ->join('project_tasks', 'project_tasks.id', '=', 'task_dependencies.predecessor_id')
-            ->where('project_tasks.project_id', $projectId)
+            ->join('projects', 'projects.id', '=', 'project_tasks.project_id')
+            ->where('projects.team_id', $teamId)
             ->get(['predecessor_id', 'successor_id'])
             ->groupBy('predecessor_id');
         $seen = [$from => true];

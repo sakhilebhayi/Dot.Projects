@@ -83,10 +83,10 @@
                     <div class="pg-row">
                         <div>
                             @if ($task->assignee)<span class="pg-avatar" style="margin-right:6px;vertical-align:-6px" aria-hidden="true">{{ App\Services\ProjectSummary::initials($task->assignee->name) }}</span>@endif{{ $task->title }}
-                            <div class="pg-sub">{{ $task->assignee?->name ?? 'Unassigned' }}@if ($task->milestone), {{ $task->milestone->title }}@endif @if ($task->isBlocked()), waits for {{ $task->predecessors->where('status', '!=', 'done')->pluck('title')->map(fn ($t) => Str::limit($t, 30))->join(', ') }}@endif</div>
+                            <div class="pg-sub">{{ $task->assignee?->name ?? 'Unassigned' }}@if ($task->milestone), {{ $task->milestone->title }}@endif @if ($task->isBlocked()), waits for {{ $task->predecessors->where('status', '!=', 'done')->map(fn ($p) => $p->nameFor(auth()->user(), $project->id))->map(fn ($t) => Str::limit($t, 30))->join(', ') }}@endif</div>
                         </div>
                         @if ($task->isBlocked() && ! $late)
-                            <span class="pg-pill pg-pill--warning" title="Waits for {{ $task->predecessors->where('status', '!=', 'done')->pluck('title')->join(', ') }}">Blocked</span>
+                            <span class="pg-pill pg-pill--warning" title="Waits for {{ $task->predecessors->where('status', '!=', 'done')->map(fn ($p) => $p->nameFor(auth()->user(), $project->id))->join(', ') }}">Blocked</span>
                         @elseif ($late)
                             <span class="pg-pill pg-pill--negative">{{ (int) $task->due_date->diffInDays($summary->today) }} {{ Str::plural('day', (int) $task->due_date->diffInDays($summary->today)) }} late</span>
                         @else
