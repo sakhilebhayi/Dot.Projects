@@ -347,3 +347,11 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   the estimate flagged), the person's own share, a quick log for today and the timer; the split
   by person shows only to those who run the project and the business owner. Next, P6c: project
   time reports and workload, capacity and utilisation.
+- **P6c project time reports** (2026-11-02): a Time tab on each project for a chosen period (this
+  week, last week, this month, last month, since the start, or dates), optionally approved weeks
+  only. Everyone who can see the project sees the totals, the billable share, time by task and by
+  week, and each task's time against its estimate to date (over the estimate flagged). Time by
+  person and a CSV of the entries (date, person, task, note, hours, billable, timesheet status;
+  spreadsheet formulas neutralised) are for those who run the project and the business owner, the
+  same line as P6b. Running timers count once stopped. Next, P6d: workload, capacity and
+  utilisation across projects.

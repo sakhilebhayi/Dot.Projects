@@ -97,6 +97,15 @@ class ProjectPolicy
             && $user->hasTeamPermission($project->team, 'update');
     }
 
+    /**
+     * See time by person and export it: those who run the project (its owner and managers) and
+     * the business owner. Everyone who can see the project sees its totals.
+     */
+    public function seeTimeDetail(User $user, Project $project): bool
+    {
+        return $project->canBeSeenBy($user) && ($user->id === $project->owner_id || $project->roleOf($user) === 'manager' || $user->ownsTeam($project->team));
+    }
+
     /** Add and remove people and set their roles: the owner, a project manager or the business owner. */
     public function manageMembers(User $user, Project $project): bool
     {

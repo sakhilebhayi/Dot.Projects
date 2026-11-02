@@ -7,6 +7,7 @@ use App\Http\Controllers\GovernanceController;
 use App\Http\Controllers\GuardianHealthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectTimeController;
 use App\Http\Controllers\SchedulerProbeController;
 use App\Http\Middleware\AuthenticateGuardian;
 use App\Models\Project;
@@ -70,6 +71,8 @@ Route::middleware([
     Route::get('/projects/{project}/board', [ProjectController::class, 'board'])->name('projects.board');
     Route::get('/projects/{project}/work', [ProjectController::class, 'work'])->name('projects.work');
     Route::get('/projects/{project}/schedule', [ProjectController::class, 'schedule'])->name('projects.schedule');
+    Route::get('/projects/{project}/time', [ProjectTimeController::class, 'show'])->name('projects.time');
+    Route::get('/projects/{project}/time.csv', [ProjectTimeController::class, 'csv'])->name('projects.time.csv');
     Route::get('/projects/{project}/risks', [GovernanceController::class, 'risks'])->name('projects.risks');
     Route::get('/projects/{project}/risks/{risk}', [GovernanceController::class, 'risk'])->scopeBindings()->name('projects.risks.show');
     Route::get('/projects/{project}/issues', [GovernanceController::class, 'issues'])->name('projects.issues');
