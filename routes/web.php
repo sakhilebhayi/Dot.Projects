@@ -9,6 +9,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectDocumentController;
 use App\Http\Controllers\ProjectTimeController;
+use App\Http\Controllers\ReadyController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SchedulerProbeController;
 use App\Http\Middleware\AuthenticateGuardian;
@@ -72,6 +73,7 @@ Route::middleware([
     Route::view('/dashboards', 'dashboards.index')->name('dashboards.index');
     Route::view('/automations', 'automations.index')->name('automations.index');
     Route::view('/integrations', 'integrations.index')->name('integrations.index');
+    Route::view('/data-and-security', 'security.index')->name('security.index');
     Route::get('/reports/export.{format}', [ReportController::class, 'export'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->middleware('throttle:exports')->name('reporting.export');
     Route::get('/reports/saved/{saved}/export.{format}', [ReportController::class, 'saved'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->middleware('throttle:exports')->name('reporting.saved.export');
 
@@ -109,6 +111,9 @@ Route::middleware([
 // Public liveness probe for the cron scheduler, watched from GitHub every
 // 15 minutes by .github/workflows/scheduler-watchdog.yml.
 Route::get('/up/scheduler', SchedulerProbeController::class)->name('up.scheduler');
+
+// Public readiness for uptime monitors (R-34 P12b): checks and ages only, never data.
+Route::get('/ready', ReadyController::class)->name('ready');
 
 // Guardian observability report for Dot.Brain (dot-guardian/v1): operational
 // detail, so behind a bearer token (fails closed with 503 when none is

@@ -748,3 +748,17 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-docs-off { margin: 0 0 10px; }
 .pg-docs-task { margin-top: var(--pg-gap); }
 @media (max-width: 640px) { .pg-doc { flex-wrap: wrap; } .pg-doc-acts { justify-content: flex-start; } }
+
+/* ---------- Data and security ----------
+   Retention as three plain choices, each with what it means beside it; what is never removed said
+   in full under them; protections as a definition list read from the server's real settings. */
+.pg-ret-form { display: grid; gap: 0; }
+.pg-ret-row { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 8px 24px; align-items: center; padding: 12px 0; border-top: 1px solid var(--pg-rule); }
+.pg-ret-row:first-child { border-top: 0; padding-top: 0; }
+.pg-ret-row .pg-label { margin: 0; }
+.pg-ret-row .pg-help { margin: 2px 0 0; max-width: 60ch; }
+.pg-ret-form .pg-actions { padding-top: 12px; border-top: 1px solid var(--pg-rule); }
+.pg-ret-never { margin: 14px 0 0; font-size: 13px; color: var(--pg-muted); max-width: 90ch; }
+.pg-sec { grid-template-columns: 170px minmax(0, 1fr); }
+.pg-sec dd { max-width: 80ch; }
+@media (max-width: 640px) { .pg-ret-row, .pg-sec { grid-template-columns: minmax(0, 1fr); } }
