@@ -87,66 +87,20 @@
 
         @php
             $rm = $o['roadmap'];
-            $state = ['due' => 'Due', 'late' => 'Late', 'done' => 'Complete'];
         @endphp
         <section class="pg-card pg-s12" aria-labelledby="rd-h">
             <div class="pg-card-head"><h2 id="rd-h">Roadmap</h2><small>{{ $rm['from']->format('M Y') }} to {{ $rm['to']->format('M Y') }}</small></div>
-            @if ($rm['lanes'] === [])
-                <p class="pg-empty">No milestone falls in the next six months{{ $rm['undated'] ? ', and '.$rm['undated'].' open '.Str::plural('milestone', $rm['undated']).' '.($rm['undated'] === 1 ? 'has' : 'have').' no date' : '' }}.</p>
-            @else
-                <div class="pg-road-scroll">
-                    <div class="pg-road" role="list" aria-label="Milestones by project, {{ $rm['from']->format('F Y') }} to {{ $rm['to']->format('F Y') }}">
-                        <div class="pg-road-head" aria-hidden="true">
-                            <span></span>
-                            <div class="pg-road-track">@foreach ($rm['months'] as $mo)<span class="pg-road-month" style="left:{{ $mo['at'] }}%">{{ $mo['label']->format('M') }}</span>@endforeach</div>
-                        </div>
-                        @foreach ($rm['lanes'] as $lane)
-                            <div class="pg-road-lane" role="listitem" wire:key="rd-{{ $lane['project']->id }}">
-                                <a class="pg-road-name" href="{{ route('projects.schedule', $lane['project']) }}">{{ $lane['project']->name }}</a>
-                                <div class="pg-road-track">
-                                    @foreach ($rm['months'] as $mo)<i class="pg-road-rule" style="left:{{ $mo['at'] }}%" aria-hidden="true"></i>@endforeach
-                                    <i class="pg-road-today" style="left:{{ $rm['today'] }}%" aria-hidden="true"></i>
-                                    <ul class="pg-road-marks">
-                                        @foreach ($lane['marks'] as $mk)
-                                            @php
-                                                $tip = collect($mk['items'])->map(fn ($i) => Str::limit($i['title'], 32).', '.$i['due']->format('j M').($i['state'] === 'due' ? '' : ', '.mb_strtolower($state[$i['state']])));
-                                            @endphp
-                                            <li class="pg-road-mark is-{{ $mk['state'] }}{{ $mk['at'] < 15 ? ' at-start' : ($mk['at'] > 85 ? ' at-end' : '') }}" style="left:{{ $mk['at'] }}%" tabindex="0" data-tip="{{ count($mk['items']) > 1 ? count($mk['items']).' milestones: '.$tip->join('; ') : $tip->first() }}">@if (count($mk['items']) > 1)<b class="pg-road-count" aria-hidden="true">{{ count($mk['items']) }}</b>@endif<span class="pg-sr">@foreach ($mk['items'] as $i){{ $i['title'] }}, {{ $i['due']->format('j M Y') }}, {{ mb_strtolower($state[$i['state']]) }}. @endforeach</span></li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                <p class="pg-road-key"><span><i class="pg-road-mark is-due" aria-hidden="true"></i> Due</span><span><i class="pg-road-mark is-late" aria-hidden="true"></i> Late, not complete</span><span><i class="pg-road-mark is-done" aria-hidden="true"></i> Complete</span><span><i class="pg-road-today pg-road-today--key" aria-hidden="true"></i> Today</span>@if ($rm['undated'])<span class="pg-muted">{{ $rm['undated'] }} open {{ Str::plural('milestone', $rm['undated']) }} without a date</span>@endif</p>
-            @endif
+            @include('partials.programme.roadmap', ['rm' => $rm, 'k' => 'rd'])
         </section>
 
         <section class="pg-card pg-s8" aria-labelledby="mr-h">
             <div class="pg-card-head"><h2 id="mr-h">Major risks</h2><small>{{ $o['risks']['total'] ? ($o['risks']['total'] > count($o['risks']['items']) ? count($o['risks']['items']).' of '.$o['risks']['total'] : $o['risks']['total']) : '' }}</small></div>
-            @forelse ($o['risks']['items'] as $mr)
-                <div class="pg-row" wire:key="mr-{{ $mr['risk']->id }}">
-                    <div style="min-width:0"><a href="{{ route('projects.risks.show', [$mr['project'], $mr['risk']]) }}">{{ $mr['risk']->ref() }} {{ $mr['risk']->title }}</a><div class="pg-sub">{{ $mr['project']->name }}, {{ $mr['risk']->owner ? 'owned by '.$mr['risk']->owner->name : 'no owner' }}{{ $mr['risk']->escalated_at ? ', escalated' : '' }}</div></div>
-                    <span class="pg-pill {{ $mr['band'] === 'critical' ? 'pg-pill--solid' : 'pg-pill--negative' }}">{{ ucfirst($mr['band']) }} {{ $mr['score'] }}</span>
-                </div>
-            @empty
-                <p class="pg-empty">No live risk is rated high or critical on its project's matrix.</p>
-            @endforelse
+            @include('partials.programme.major-risks', ['risks' => $o['risks'], 'k' => 'mr'])
         </section>
 
         <section class="pg-card pg-s4" aria-labelledby="ln-h">
             <div class="pg-card-head"><h2 id="ln-h">Work between projects</h2></div>
-            @forelse ($o['links']['pairs'] as $ln)
-                <div class="pg-row" wire:key="ln-{{ $ln['waiting']->id }}-{{ $ln['on']->id }}">
-                    <div style="min-width:0"><a href="{{ route('projects.show', $ln['waiting']) }}">{{ $ln['waiting']->name }}</a> waits on <a href="{{ route('projects.show', $ln['on']) }}">{{ $ln['on']->name }}</a>
-                        <div class="pg-sub">{{ $ln['links'] }} linked {{ Str::plural('task', $ln['links']) }}, {{ $ln['open'] ? $ln['open'].' still held up' : 'none held up' }}@if ($ln['conflicts'])<span class="pg-neg">, {{ $ln['conflicts'] }} {{ $ln['conflicts'] === 1 ? 'starts' : 'start' }} before the work {{ $ln['conflicts'] === 1 ? 'it waits' : 'they wait' }} for is due</span>@endif</div>
-                    </div>
-                </div>
-            @empty
-                <p class="pg-empty">No project here waits on another. Link tasks across projects from a task's “Waits for”.</p>
-            @endforelse
-            @if ($o['links']['outside'])<p class="pg-help">{{ $o['links']['outside'] }} {{ Str::plural('link', $o['links']['outside']) }} {{ $o['links']['outside'] === 1 ? 'runs' : 'run' }} to projects outside this view.</p>@endif
+            @include('partials.programme.project-links', ['links' => $o['links'], 'k' => 'ln'])
         </section>
 
             <section class="pg-card pg-s4" aria-labelledby="iv-h">

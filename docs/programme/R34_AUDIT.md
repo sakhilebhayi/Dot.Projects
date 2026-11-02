@@ -457,3 +457,22 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
     with the first column repeated, and pages are numbered "n of N".
 
   Next, P8d: custom dashboards built from reports.
+- **P8d custom dashboards** (2026-11-02): a Dashboards page in the rail. Anyone can make dashboards
+  of their own, start from a suggested one, or begin empty. A dashboard holds up to 12 widgets:
+  - a report (a saved one or a standard one, its first 5, 10 or 20 rows, linked to Reports);
+  - health (counts, the health bar, what needs intervention);
+  - the roadmap;
+  - major risks;
+  - work between projects;
+  - your work (your open tasks overdue or due in the next two weeks);
+  - your time this week (hours against capacity, your timesheet).
+
+  The portfolio-wide widgets can be narrowed to one portfolio. Arranging is explicit and works by
+  keyboard: move earlier or later, half or full width, remove. A dashboard can be shared with the
+  business. Sharing shares the arrangement, never the rows: every widget is worked out for the
+  person looking. A saved report that is not shared with them says so instead of showing its
+  rows, and a removed portfolio says so too. Only the maker or the business owner arranges,
+  shares or deletes a dashboard. Anyone it is shared with can copy it to make it theirs; a copy
+  leaves behind widgets the copier cannot use. The roadmap, major-risks and project-links
+  markup is now one partial each, shared by the Portfolio page and the dashboards. **P8 portfolio
+  and reporting is complete.** Dot.Analytics integration waits for P11 (ecosystem).
