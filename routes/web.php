@@ -8,6 +8,7 @@ use App\Http\Controllers\GuardianHealthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectTimeController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SchedulerProbeController;
 use App\Http\Middleware\AuthenticateGuardian;
 use App\Models\Project;
@@ -65,6 +66,9 @@ Route::middleware([
     Route::view('/time', 'time.index')->name('time.index');
     Route::view('/workload', 'workload.index')->name('workload.index');
     Route::view('/portfolio', 'portfolio.index')->name('portfolio.index');
+    Route::view('/reports', 'reporting.index')->name('reporting.index');
+    Route::get('/reports/export.{format}', [ReportController::class, 'export'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->name('reporting.export');
+    Route::get('/reports/saved/{saved}/export.{format}', [ReportController::class, 'saved'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->name('reporting.saved.export');
 
     Route::get('/projects/create', fn () => view('projects.create'))
         ->middleware('can:create,'.Project::class)

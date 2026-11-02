@@ -422,3 +422,38 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
 
   The duplicate of a project keeps only its internal dependencies. Next, P8c: reports with exports,
   and custom dashboards.
+- **P8c reports and exports** (2026-11-02): a Reports page in the rail with ten reports, each with
+  stated columns:
+  - projects compared (the executive view);
+  - progress and health;
+  - schedule performance (finish against due and the latest baseline, critical tasks, broken
+    dependencies, SPI);
+  - budget and earned value (budget, actual, committed, forecast, variance, PV, EV, AC, SV, CV,
+    SPI, CPI, EAC, ETC, VAC, TCPI, by the formulas on the Money tab);
+  - risks;
+  - issues;
+  - task completion over a period (done, added, overdue, blocked, on time);
+  - milestone performance (baseline, due, lands or finished, slip);
+  - time over a period (by person on projects you run, totals elsewhere, approved hours apart);
+  - utilisation (capacity, planned load, logged hours; everyone only for the business owner and
+    admins).
+
+  Every figure comes from the service the project pages use, so a report and its page agree.
+  Filters: open, all or archived projects, a portfolio, chosen projects, and the period for
+  period reports. You can choose and order the columns and sort by any of them. Each report is
+  worked out for the person reading it: other projects, money, time by person and other people's
+  utilisation are left out where not allowed, and the notes say what was left out. Reports can be
+  saved under a name and shared with the business. Sharing shares the settings, never the rows. A
+  shared report is changed only by its maker or the business owner; anyone else's changes are
+  saved as their own copy.
+
+  Downloads are CSV, Excel and PDF, each carrying the same rows, totals and notes plus who it was
+  made for and when:
+  - CSV has a UTF-8 BOM, and cells that would run as formulas are written as text;
+  - Excel is a real .xlsx written without a library or the zip extension. Text is never a
+    formula, money is in rand, hours are decimal, dates are real dates, and the header is frozen;
+  - PDF is landscape A4 in the standard Helvetica fonts, written without a library. Only text
+    columns are ever shortened, never numbers; a table too wide for the page continues in parts
+    with the first column repeated, and pages are numbered "n of N".
+
+  Next, P8d: custom dashboards built from reports.
