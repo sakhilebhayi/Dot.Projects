@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Activity as ActivityLine;
+use App\Models\AutomationRule;
 use App\Models\BudgetLine;
 use App\Models\Milestone;
 use App\Models\Project;
@@ -62,6 +63,7 @@ final class ActivityFeed
         $people = User::query()->whereIn('id', $lines->filter(fn ($l) => str_starts_with($l->action, 'member.'))->map(fn ($l) => $l->changes['user_id'] ?? null)->filter())->pluck('name', 'id');
         $assignees = User::query()->whereIn('id', $lines->filter(fn ($l) => in_array($l->action, ['task.assigned', 'risk.updated', 'issue.updated'], true))
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
+        $ruleNames = AutomationRule::query()->whereIn('id', $lines->map(fn ($l) => $l->changes['rule_id'] ?? null)->filter())->pluck('name', 'id');
         $status = ProjectSummary::STATUSES;
         $q = fn (?string $title) => $title === null ? 'a deleted item' : '“'.$title.'”';
 
@@ -159,8 +161,12 @@ final class ActivityFeed
                 default => str_replace(['.', '_'], ' ', $l->action),
             };
 
-            // Lines that describe the system's own reaction read as a sentence with no person.
+            // Lines that describe the system's own reaction read as a sentence with no person; what
+            // an automation did names its rule.
             $who = in_array($l->action, ['project.closure_proposed', 'milestone.status_changed'], true) ? null : $l->user?->name;
+            if (isset($c['rule_id'])) {
+                [$who, $text] = [null, 'the rule “'.($ruleNames->get($c['rule_id']) ?? 'deleted rule').'” '.$text];
+            }
 
             $out[] = ['at' => Carbon::parse($l->created_at), 'who' => $who === null ? null : (string) $who, 'text' => (string) ($who ? $text : ucfirst($text))];
         }

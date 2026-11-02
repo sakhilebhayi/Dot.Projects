@@ -1,0 +1,513 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Activity as ActivityLine;
+use App\Models\AutomationRule;
+use App\Models\AutomationRun;
+use App\Models\Milestone;
+use App\Models\Project;
+use App\Models\ProjectChange;
+use App\Models\ProjectGate;
+use App\Models\ProjectIssue;
+use App\Models\ProjectRisk;
+use App\Models\ProjectTask;
+use App\Models\Team;
+use App\Models\User;
+use App\Notifications\GovernanceNotification;
+use App\Notifications\TaskAssignedNotification;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Throwable;
+
+/**
+ * The automation engine. Every activity line is an event: once its transaction has committed,
+ * the business's active rules for that project are matched against it, and each rule that matches
+ * runs its actions in order, as the person who made the rule.
+ *
+ * Rules (documented in docs/programme/R34_AUDIT.md):
+ *  - Idempotent: a run's key is unique per rule. Most rules key on the event, so an event runs a
+ *    rule once; "a risk is rated", "a milestone is completed", "someone is added" and "spending
+ *    and commitments reach" key on the risk, milestone, person or share of the budget, so they
+ *    run once for each, however often the record changes afterwards. Spending is actual cost
+ *    plus open commitments, against the current budget.
+ *  - No chains: what an automation does is recorded (attributed to the rule, with no person) but
+ *    never triggers another automation, so rules cannot loop.
+ *  - Failure handling: each action is a step; a failing step is recorded with its reason and the
+ *    rest still run. A retry repeats only the steps that did not finish.
+ *  - Notices go only to people who can see the project, never to the person whose action set the
+ *    rule off, and say which rule sent them.
+ */
+final class Automations
+{
+    private static ?int $running = null;
+
+    /** The rule being run now, if any. Activity::record attributes lines to it. */
+    public static function running(): ?int
+    {
+        return self::$running;
+    }
+
+    /** Called for every activity line; matches rules after the change has been committed. */
+    public static function queue(ActivityLine $line): void
+    {
+        if (self::$running !== null || $line->project_id === null) {
+            return;
+        }
+        DB::afterCommit(function () use ($line) {
+            if (self::$running === null) {
+                app(self::class)->handle($line);
+            }
+        });
+    }
+
+    public function handle(ActivityLine $line): void
+    {
+        $rules = AutomationRule::query()->where('team_id', $line->team_id)->where('active', true)
+            ->where(fn ($q) => $q->whereNull('project_id')->orWhere('project_id', $line->project_id))->orderBy('id')->get();
+        foreach ($rules as $rule) {
+            $ctx = $this->match($rule, $line);
+            if ($ctx !== null) {
+                $this->fire($rule, $ctx, $line->id);
+            }
+        }
+    }
+
+    /** The events each trigger listens to. @var array<string, list<string>> */
+    public const EVENTS = [
+        'task_created' => ['task.created'],
+        'task_status' => ['task.moved', 'task.updated'],
+        'task_assigned' => ['task.assigned', 'task.updated'],
+        'task_blocked' => ['dependency.added'],
+        'milestone_completed' => ['milestone.status_changed'],
+        'risk_rated' => ['risk.added', 'risk.updated'],
+        'issue_logged' => ['issue.added'],
+        'member_added' => ['member.added'],
+        'gate_passed' => ['gate.passed', 'gate.conditional'],
+        'project_status' => ['project.updated'],
+        'change_submitted' => ['change.submitted'],
+        'budget_threshold' => ['cost.actual_added', 'cost.commitment_added', 'cost.actual_removed', 'cost.commitment_removed', 'budget.line_added', 'budget.revised', 'budget.forecast_set'],
+    ];
+
+    /**
+     * Whether a line sets the rule off, and if so what about: the project, the record, the person
+     * it concerns, the run's key and a sentence saying what happened. Conditions are checked here.
+     *
+     * @return array{project: Project, subject: Model, person: User|null, key: string, what: string}|null
+     */
+    public function match(AutomationRule $rule, ActivityLine $line): ?array
+    {
+        if (! in_array($line->action, self::EVENTS[$rule->trigger] ?? [], true)) {
+            return null;
+        }
+        $project = Project::withoutTeamScope(fn () => Project::query()->with('team')->find($line->project_id));
+        if ($project === null || $project->isArchived() || ($rule->project_id !== null && $rule->project_id !== $project->id)) {
+            return null;
+        }
+        $c = $line->changes ?? [];
+        $p = $rule->params;
+        $byEvent = 'a:'.$line->id;
+        $find = fn (string $class) => $line->subject_type === (new $class)->getMorphClass() ? $class::query()->find($line->subject_id) : null;
+        $user = fn ($id) => $id ? User::query()->find((int) $id) : null;
+
+        $ctx = match ($rule->trigger) {
+            'task_created', 'task_status', 'task_assigned', 'task_blocked' => (function () use ($rule, $find, $c, $p, $byEvent, $user) {
+                /** @var ProjectTask|null $task */
+                $task = $find(ProjectTask::class);
+                if ($task === null) {
+                    return null;
+                }
+                $name = '“'.$task->title.'”';
+
+                return match ($rule->trigger) {
+                    'task_created' => [$task, $user($task->assignee_id), 'task:'.$task->id, 'Task '.$name.' was added'],
+                    'task_status' => ($c['status']['to'] ?? null) === ($p['status'] ?? '') ? [$task, $user($task->assignee_id), $byEvent, 'Task '.$name.' moved to '.(ProjectSummary::STATUSES[$p['status']] ?? $p['status'])] : null,
+                    'task_assigned' => ($c['assignee_id']['to'] ?? null) ? [$task, $user($c['assignee_id']['to']), $byEvent, 'Task '.$name.' was given to '.($user($c['assignee_id']['to'])->name ?? 'someone')] : null,
+                    default => $task->isBlocked() ? [$task, $user($task->assignee_id), $byEvent, 'Task '.$name.' now waits on unfinished work'] : null, // task_blocked
+                };
+            })(),
+            'milestone_completed' => ($c['status']['to'] ?? null) === 'completed' && ($m = $find(Milestone::class)) ? [$m, null, 'milestone:'.$m->id, 'Milestone “'.$m->title.'” is complete'] : null,
+            'risk_rated' => (function () use ($find, $p, $user) {
+                /** @var ProjectRisk|null $risk */
+                $risk = $find(ProjectRisk::class);
+                if ($risk === null || ! $risk->isLive()) {
+                    return null;
+                }
+                $band = $risk->band(RiskMatrix::forProject($risk->project));
+                $ok = $p['band'] === 'critical' ? $band === 'critical' : in_array($band, ['high', 'critical'], true);
+
+                return $ok ? [$risk, $user($risk->owner_id), 'risk:'.$risk->id, 'Risk '.$risk->ref().' “'.$risk->title.'” is rated '.$band] : null;
+            })(),
+            'issue_logged' => ($i = $find(ProjectIssue::class)) ? [$i, $user($i->owner_id), 'issue:'.$i->id, 'Issue '.$i->ref().' “'.$i->title.'” was logged ('.mb_strtolower(ProjectIssue::SEVERITIES[$i->severity] ?? $i->severity).')'] : null,
+            'member_added' => ($who = $user($c['user_id'] ?? null)) ? [$project, $who, 'member:'.$who->id, $who->name.' was added to the project as '.mb_strtolower(Project::ROLES[$c['role'] ?? ''] ?? 'a member')] : null,
+            'gate_passed' => ($g = $find(ProjectGate::class)) ? [$g, null, 'gate:'.$g->id, 'Stage gate '.$g->ref().' “'.$g->title.'” was passed'.($line->action === 'gate.conditional' ? ' with conditions' : '')] : null,
+            'project_status' => ($c['status']['to'] ?? null) === ($p['project_status'] ?? '') ? [$project, null, $byEvent, 'The project is now '.mb_strtolower(AutomationCatalog::PARAMS['project_status'][$p['project_status']] ?? '')] : null,
+            'change_submitted' => ($ch = $find(ProjectChange::class)) ? [$ch, $user($ch->requested_by), $byEvent, 'Change request '.$ch->ref().' “'.$ch->title.'” was submitted for approval'] : null,
+            'budget_threshold' => (function () use ($project, $p) {
+                if (! $project->budgetLines()->exists()) {
+                    return null;
+                }
+                // Spent and committed, not the forecast: an unspent line forecasts its whole budget.
+                $t = app(CostLedger::class)->ledger($project)['total'];
+                $share = $t['budget'] > 0 ? (int) floor(($t['actual'] + $t['open']) * 100 / $t['budget']) : 0;
+
+                return $t['budget'] > 0 && $share >= (int) $p['percent'] ? [$project, null, 'budget:'.$p['percent'], 'Spending and commitments have reached '.$share.'% of the budget'] : null;
+            })(),
+            default => null,
+        };
+        if ($ctx === null) {
+            return null;
+        }
+        [$subject, $person, $key, $what] = $ctx;
+        $role = $c['role'] ?? null;
+        foreach ($rule->conditions as $cond) {
+            $value = $cond['field'] === 'role' ? $role : $subject->getAttribute($cond['field']);
+            if (! in_array((string) $value, $cond['values'], true)) {
+                return null;
+            }
+        }
+
+        return ['project' => $project, 'subject' => $subject, 'person' => $person, 'key' => $key, 'what' => $what];
+    }
+
+    /** @param  array{project: Project, subject: Model, person: User|null, key: string, what: string}  $ctx */
+    private function fire(AutomationRule $rule, array $ctx, ?int $activityId): void
+    {
+        $run = new AutomationRun;
+        $run->forceFill([
+            'rule_id' => $rule->id, 'team_id' => $rule->team_id, 'project_id' => $ctx['project']->id, 'activity_id' => $activityId, 'key' => $ctx['key'],
+            'subject_type' => $ctx['subject']->getMorphClass(), 'subject_id' => $ctx['subject']->getKey(), 'what' => mb_substr($ctx['what'], 0, 300), 'status' => 'failed', 'steps' => [],
+        ]);
+        try {
+            $run->save();
+        } catch (UniqueConstraintViolationException) {
+            return; // it already ran for this event or record
+        }
+        $this->execute($rule, $run, $ctx);
+    }
+
+    /**
+     * Runs the rule's actions for a run, skipping steps that already finished.
+     *
+     * @param  array{project: Project, subject: Model, person: User|null, key: string, what: string}  $ctx
+     */
+    private function execute(AutomationRule $rule, AutomationRun $run, array $ctx): void
+    {
+        $by = $rule->created_by ? User::query()->find($rule->created_by) : null;
+        $steps = $run->steps;
+        if ($by === null || ! $by->belongsToTeam($ctx['project']->team)) {
+            $run->forceFill(['status' => 'failed', 'error' => 'The person who made this rule is no longer in the business. Someone who manages the project should make it again.'])->save();
+
+            return;
+        }
+        $previous = self::$running;
+        self::$running = $rule->id;
+        try {
+            foreach ($rule->actions as $i => $action) {
+                if (($steps[$i]['ok'] ?? false) === true) {
+                    continue;
+                }
+                try {
+                    [$summary, $did] = DB::transaction(fn () => $this->act($action, $rule, $ctx, $by));
+                    $steps[$i] = ['action' => $action['type'], 'ok' => true, 'did' => $did, 'summary' => $summary];
+                } catch (Throwable $e) {
+                    $why = $e instanceof ValidationException ? (string) collect($e->errors())->flatten()->first() : 'Something went wrong; the step can be retried.';
+                    $steps[$i] = ['action' => $action['type'], 'ok' => false, 'did' => false, 'summary' => $why];
+                    if (! $e instanceof ValidationException) {
+                        report($e);
+                    }
+                }
+            }
+        } finally {
+            self::$running = $previous;
+        }
+        ksort($steps);
+        $failed = collect($steps)->first(fn ($s) => ! $s['ok']);
+        $run->forceFill([
+            'steps' => array_values($steps),
+            'status' => $failed ? 'failed' : (collect($steps)->contains('did', true) ? 'done' : 'skipped'),
+            'error' => $failed ? mb_substr($failed['summary'], 0, 500) : null,
+        ])->save();
+    }
+
+    /** Repeats the steps of a failed run that did not finish, as its rule now stands. */
+    public function retry(AutomationRun $run, User $by): void
+    {
+        $rule = $run->rule;
+        if (! self::canManage($rule, $by)) {
+            throw ValidationException::withMessages(['run' => 'Only someone who manages this rule can retry it.']);
+        }
+        if ($run->status !== 'failed') {
+            throw ValidationException::withMessages(['run' => 'Only a failed run can be retried.']);
+        }
+        $ctx = $this->rebuild($run);
+        if ($ctx === null) {
+            throw ValidationException::withMessages(['run' => 'What this run was about has been deleted, so there is nothing to retry.']);
+        }
+        $run->forceFill(['attempts' => $run->attempts + 1])->save();
+        $this->execute($rule, $run, $ctx);
+    }
+
+    /** @return array{project: Project, subject: Model, person: User|null, key: string, what: string}|null */
+    private function rebuild(AutomationRun $run): ?array
+    {
+        $line = $run->activity_id ? ActivityLine::query()->find($run->activity_id) : null;
+        if ($line !== null) {
+            $ctx = $this->match($run->rule, $line);
+            if ($ctx !== null) {
+                return $ctx;
+            }
+        }
+        $project = Project::withoutTeamScope(fn () => Project::query()->with('team')->find($run->project_id));
+        $class = $run->subject_type ? Model::getActualClassNameForMorph($run->subject_type) : null;
+        $subject = $class && class_exists($class) ? $class::query()->find($run->subject_id) : null;
+        if ($project === null || ! $subject instanceof Model) {
+            return null;
+        }
+        $person = match (true) {
+            $subject instanceof ProjectTask => $subject->assignee_id ? User::query()->find($subject->assignee_id) : null,
+            $subject instanceof ProjectRisk, $subject instanceof ProjectIssue => $subject->owner_id ? User::query()->find($subject->owner_id) : null,
+            default => null,
+        };
+
+        return ['project' => $project, 'subject' => $subject, 'person' => $person, 'key' => $run->key, 'what' => 'Retried'];
+    }
+
+    /**
+     * One action. Returns a summary for the run's history and whether it did anything.
+     *
+     * @param  array<string, mixed>  $a
+     * @param  array{project: Project, subject: Model, person: User|null, key: string, what: string}  $ctx
+     * @return array{0: string, 1: bool}
+     */
+    private function act(array $a, AutomationRule $rule, array $ctx, User $by): array
+    {
+        $project = $ctx['project'];
+        $subject = $ctx['subject'];
+        $changes = $a['type'] !== 'notify';
+        if ($changes && ! $project->canBeChangedBy($by)) {
+            throw ValidationException::withMessages(['step' => $by->name.', who made this rule, can no longer change this project.']);
+        }
+
+        switch ($a['type']) {
+            case 'notify':
+                $people = $this->recipients($a['to'], $project, $ctx['person']);
+                $message = $ctx['what'].' on “'.$project->name.'”.'.($a['note'] !== '' ? ' '.$a['note'] : '');
+                foreach ($people as $u) {
+                    $u->notify(new GovernanceNotification('automation', 'Rule: '.$rule->name, $message, $project->id, $this->url($subject, $project)));
+                }
+
+                return $people === [] ? ['Nobody to notify', false] : ['Notified '.self::names($people), true];
+
+            case 'escalate':
+                if ($subject instanceof ProjectTask) {
+                    if ($subject->status !== 'done' && $subject->priority !== 'urgent') {
+                        app(ProjectWork::class)->updateTask($subject, ['priority' => 'urgent'], $by);
+                    }
+                    $owner = $this->recipients(['project_owner'], $project, null);
+                    foreach ($owner as $u) {
+                        $u->notify(new GovernanceNotification('automation', 'Escalated by rule: '.$rule->name, $ctx['what'].' on “'.$project->name.'”. It is now urgent.', $project->id, $this->url($subject, $project)));
+                    }
+
+                    return ['Made the task urgent'.($owner ? ' and told '.self::names($owner) : ''), true];
+                }
+                if (($subject instanceof ProjectRisk || $subject instanceof ProjectIssue) && $subject->escalated_at === null) {
+                    app(Governance::class)->escalate($subject, $by, 'Escalated by the rule “'.mb_substr($rule->name, 0, 400).'”.');
+
+                    return ['Escalated '.$subject->ref().' to the project owner', true];
+                }
+
+                return ['Already escalated', false];
+
+            case 'create_tasks':
+                $assignee = match ($a['assign']) {
+                    'subject_person' => $ctx['person'],
+                    'project_owner' => User::query()->find($project->owner_id),
+                    default => null,
+                };
+                if ($assignee !== null && ! $project->canBeSeenBy($assignee)) {
+                    $assignee = null;
+                }
+                $made = [];
+                foreach ($a['titles'] as $title) {
+                    $task = ProjectTask::create([
+                        'project_id' => $project->id, 'title' => $title, 'status' => 'todo', 'priority' => $a['priority'],
+                        'assignee_id' => $assignee?->id,
+                        'due_date' => $a['due_days'] === null ? null : Carbon::today()->addDays($a['due_days']),
+                        'sort_order' => (int) $project->tasks()->where('status', 'todo')->max('sort_order') + 1,
+                    ]);
+                    Activity::record('task.created', $task, [], $project);
+                    if ($assignee !== null && $assignee->id !== Auth::id()) {
+                        $assignee->notify(new TaskAssignedNotification($task));
+                    }
+                    $made[] = $task->id;
+                }
+
+                return ['Added '.count($made).' '.str('task')->plural(count($made)).($assignee ? ' for '.$assignee->name : ''), true];
+
+            case 'set_priority':
+                if (! $subject instanceof ProjectTask || $subject->priority === $a['priority']) {
+                    return ['The priority was already '.$a['priority'], false];
+                }
+                app(ProjectWork::class)->updateTask($subject, ['priority' => $a['priority']], $by);
+
+                return ['Set the priority to '.$a['priority'], true];
+
+            case 'add_label':
+                if (! $subject instanceof ProjectTask) {
+                    return ['Not a task', false];
+                }
+                app(ProjectWork::class)->addLabel($subject, $a['label']);
+
+                return ['Labelled it “'.$a['label'].'”', true];
+
+            case 'assign':
+                $owner = User::query()->find($project->owner_id);
+                if (! $subject instanceof ProjectTask || $owner === null || $subject->assignee_id === $owner->id) {
+                    return ['Already with the project owner', false];
+                }
+                app(ProjectWork::class)->updateTask($subject, ['assignee_id' => $owner->id], $by);
+
+                return ['Gave it to '.$owner->name, true];
+        }
+
+        return ['Nothing to do', false];
+    }
+
+    /**
+     * The people a notice goes to: those named who can still see the project, never the person
+     * whose action set the rule off.
+     *
+     * @param  list<string>  $to
+     * @return list<User>
+     */
+    private function recipients(array $to, Project $project, ?User $person): array
+    {
+        $ids = [];
+        foreach ($to as $r) {
+            $ids = array_merge($ids, match ($r) {
+                'project_owner' => [$project->owner_id],
+                'project_managers' => DB::table('project_members')->where('project_id', $project->id)->where('role', 'manager')->pluck('user_id')->all(),
+                'subject_person' => [$person?->id],
+                'business_owner' => [$project->team->user_id],
+                default => [],
+            });
+        }
+        $ids = array_values(array_unique(array_filter(array_map('intval', array_filter($ids)), fn ($id) => $id !== (int) Auth::id())));
+
+        return User::query()->whereIn('id', $ids)->orderBy('name')->get()->filter(fn (User $u) => $project->canBeSeenBy($u))->values()->all();
+    }
+
+    /** @param  list<User>  $people */
+    private static function names(array $people): string
+    {
+        $n = array_map(fn (User $u) => $u->name, $people);
+
+        return count($n) < 2 ? implode('', $n) : implode(', ', array_slice($n, 0, -1)).' and '.end($n);
+    }
+
+    private function url(Model $subject, Project $project): string
+    {
+        return match (true) {
+            $subject instanceof ProjectTask => route('projects.tasks.show', [$project, $subject]),
+            $subject instanceof ProjectRisk => route('projects.risks.show', [$project, $subject]),
+            $subject instanceof ProjectIssue => route('projects.issues.show', [$project, $subject]),
+            $subject instanceof ProjectGate => route('projects.gates.show', [$project, $subject]),
+            $subject instanceof ProjectChange => route('projects.changes.show', [$project, $subject]),
+            $subject instanceof Milestone => route('projects.schedule', $project),
+            default => route('projects.show', $project),
+        };
+    }
+
+    /** Whether $by may change, switch on or off, retry or delete the rule. */
+    public static function canManage(AutomationRule $rule, User $by): bool
+    {
+        if (! $by->belongsToTeam($rule->team)) {
+            return false;
+        }
+        if ($rule->project_id === null) {
+            return Workload::oversees($by, $rule->team);
+        }
+        $project = Project::withoutTeamScope(fn () => Project::query()->with('team')->find($rule->project_id));
+
+        return $project !== null && $project->canBeManagedBy($by);
+    }
+
+    /**
+     * What the rule would have done over the last 30 days, worked out without doing anything:
+     * the events it would have matched (at most $limit, newest first) and the total.
+     *
+     * @return array{items: list<array{at: Carbon, what: string, project: string, steps: list<string>, done: bool}>, total: int, scanned: int}
+     */
+    public function preview(AutomationRule $rule, Team $team, int $limit = 8): array
+    {
+        $lines = ActivityLine::query()->where('team_id', $team->id)->whereIn('action', self::EVENTS[$rule->trigger] ?? [])
+            ->when($rule->project_id !== null, fn ($q) => $q->where('project_id', $rule->project_id))
+            ->where('created_at', '>=', Carbon::now()->subDays(30))->latest('id')->limit(500)->get();
+        $items = [];
+        $total = 0;
+        $seen = [];
+        $subject = AutomationCatalog::TRIGGERS[$rule->trigger]['subject'] ?? 'project';
+        foreach ($lines as $line) {
+            $ctx = $this->match($rule, $line);
+            if ($ctx === null || isset($seen[$ctx['key']])) {
+                continue;
+            }
+            $seen[$ctx['key']] = true;
+            $total++;
+            if (count($items) < $limit) {
+                $items[] = [
+                    'at' => Carbon::parse($line->created_at),
+                    'what' => $ctx['what'],
+                    'project' => $ctx['project']->name,
+                    'steps' => array_map(fn ($a) => AutomationCatalog::describeAction($a, $subject), $rule->actions),
+                    'done' => $rule->exists && AutomationRun::query()->where('rule_id', $rule->id)->where('key', $ctx['key'])->exists(),
+                ];
+            }
+        }
+
+        return ['items' => $items, 'total' => $total, 'scanned' => $lines->count()];
+    }
+
+    /**
+     * Saves a rule (new or changed). Saved rules stay as they were switched; a new rule is off.
+     *
+     * @param  array<string, mixed>  $in
+     */
+    public function save(?AutomationRule $rule, Team $team, User $by, array $in): AutomationRule
+    {
+        if ($rule !== null && ! self::canManage($rule, $by)) {
+            throw ValidationException::withMessages(['rule' => 'Only someone who manages this rule can change it.']);
+        }
+        $v = AutomationCatalog::clean($in, $team, $by);
+        $rule ??= new AutomationRule;
+        $rule->fill(['name' => $v['name'], 'trigger' => $v['trigger'], 'params' => $v['params'], 'conditions' => $v['conditions'], 'actions' => $v['actions']]);
+        $rule->forceFill(['team_id' => $team->id, 'project_id' => $v['project_id'], 'created_by' => $rule->created_by ?? $by->id]);
+        if ($rule->isDirty() && $rule->exists) {
+            $rule->created_by = $by->id; // whoever changed it last answers for it, and it runs as them
+        }
+        $rule->save();
+
+        return $rule;
+    }
+
+    public function setActive(AutomationRule $rule, User $by, bool $on): void
+    {
+        if (! self::canManage($rule, $by)) {
+            throw ValidationException::withMessages(['rule' => 'Only someone who manages this rule can switch it on or off.']);
+        }
+        $rule->forceFill(['active' => $on, 'activated_at' => $on ? Carbon::now() : $rule->activated_at])->save();
+    }
+
+    public function delete(AutomationRule $rule, User $by): void
+    {
+        if (! self::canManage($rule, $by)) {
+            throw ValidationException::withMessages(['rule' => 'Only someone who manages this rule can delete it.']);
+        }
+        $rule->delete();
+    }
+}
