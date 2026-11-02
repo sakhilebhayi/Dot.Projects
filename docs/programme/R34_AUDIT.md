@@ -335,3 +335,15 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   people()) used by every policy, plus a fail-closed query scope. The "external" and "client"
   roles need sign-in for people outside the business and come with the client portal (P11).
   Next, P6b: time entries, timers and timesheets.
+- **P6b time** (2026-11-02): time people log themselves, never tracked. A "Time" page in the rail
+  shows the person's week in their business: seven days with totals, entries (project, optional
+  task, day, hours typed as 1:30, 1.5, 90m or 1h 30m, a note, billable or not) to add, change or
+  remove, and a timer: one per person, started on a project or task and stopped by hand, rounded
+  up to the minute. Rules: only on projects the person can change (so not private ones they are
+  not on), not for days ahead, at most 24 hours a day. The week goes as a timesheet to an approver
+  (someone who runs one of its projects, or the business owner; never the person themselves) and
+  is approved or returned with a reason; a submitted or approved week is fixed. Approvers review
+  the week's entries on the same page. The task page shows time logged against its estimate (over
+  the estimate flagged), the person's own share, a quick log for today and the timer; the split
+  by person shows only to those who run the project and the business owner. Next, P6c: project
+  time reports and workload, capacity and utilisation.
