@@ -390,3 +390,15 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   TCPI, each with how it is worked out, a plain-language reading, and the share of the work that
   had dates to plan against. Derived amounts are whole rand; an index with nothing to divide by
   shows as a dash. **P7 money is complete.**
+- **P8a portfolios and the executive view** (2026-11-02): a Portfolio page in the rail. Portfolios
+  group a business's projects under an owner and a strategic objective, as a portfolio, programme,
+  department, business unit or strategic initiative; a project can sit in several. The business
+  owner or an admin creates them; they or the portfolio's owner manage them, and choosing projects
+  only ever touches projects that person can see. The executive view (all active projects, or one
+  portfolio) shows a proportional health bar and, per project: health by the status-report rule
+  (with the last published report's rating when it differs), share of tasks done, forecast finish
+  against due, budget forecast and CPI (only where the viewer may see money), serious risks and
+  the next milestone; and across them, what needs intervention (off track, escalations, critical
+  issues), milestones overdue or due within 30 days, portfolio budget and forecast, people over
+  capacity (owner and admins), and active projects in no portfolio. No task-level detail. Next,
+  P8b: cross-project dependencies and portfolio risks and milestones.

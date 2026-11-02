@@ -539,3 +539,17 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-table--ev td:first-child { font-weight: 500; }
 .pg-table--ev td[data-label="How"] { color: var(--pg-muted); font-size: 12.5px; }
 .pg-table--ev td[data-label="Value"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---------- Portfolio ----------
+   One proportional bar of health above the project table (state colours, always labelled in the
+   finding and the pills); the objective set apart as a quoted line. */
+.pg-healthbar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; margin: 0 0 var(--pg-gap); }
+.pg-healthbar i { display: block; }
+.pg-healthbar .h-off_track { background: var(--pg-negative); }
+.pg-healthbar .h-at_risk { background: var(--pg-warning); }
+.pg-healthbar .h-on_track { background: var(--pg-positive); }
+.pg-objective { margin: 6px 0 0; max-width: 75ch; font-size: 13.5px; }
+.pg-table--portfolio { min-width: 820px; }
+.pg-table--portfolio .pg-sub { white-space: normal; }
+@media (max-width: 640px) { .pg-table--portfolio { min-width: 0; } }
+@media (max-width: 640px) { .pg-table--portfolio td:not(.pg-name) .pg-sub { margin-left: 8px; } }
