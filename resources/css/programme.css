@@ -518,3 +518,21 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
     .pg-table.pg-table--load td[data-label]:not([data-label="Last week"]):not([data-label="Not placed"]) { grid-column: auto; }
     .pg-table.pg-table--load td[data-label]:not([data-label="Last week"]):not([data-label="Not placed"])::before { display: block; font-size: 12px; }
 }
+
+/* ---------- Money ----------
+   A cost report read like a ledger: tabular figures, one total row in 700 (money totals only), and
+   colour only where a forecast goes over. */
+.pg-table--money { min-width: 920px; }
+.pg-table--money td, .pg-table--money th { font-variant-numeric: tabular-nums; }
+.pg-table--money tr.pg-total th, .pg-table--money tr.pg-total td { font-weight: 700; border-top: 2px solid var(--pg-border); }
+.pg-table--money tr.pg-total th { text-align: left; padding: 11px 16px; }
+.pg-table--money tr.is-open { background: var(--pg-ground); }
+.pg-table--money .pg-linkbtn.pg-sub { display: block; margin: 2px 0 0 auto; }
+.pg-money { font-weight: 700; font-variant-numeric: tabular-nums; }
+.pg-inline-form { padding: 12px 16px 16px; border-top: 1px solid var(--pg-rule); gap: 10px; }
+@media (max-width: 640px) { .pg-table--money { min-width: 0; } .pg-table--money tr.pg-total th { grid-column: 1 / -1; padding: 0; } }
+.pg-table--costs td[data-label="Amount"], .pg-table--costs td[data-label="Date"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pg-table--costs td:last-child { width: 1%; white-space: nowrap; padding-left: 4px; }
+.pg-table--costs .pg-sub { max-width: 32ch; }
+@media (max-width: 640px) { .pg-table--costs .pg-sub { max-width: none; } }
+@media (max-width: 640px) { .pg-table--money td:not(.pg-name) .pg-sub { margin-left: 8px; } .pg-table--money td.pg-name .pg-sub { display: block; } .pg-table--money .pg-linkbtn.pg-sub { display: inline; margin: 0 0 0 8px; } }

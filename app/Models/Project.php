@@ -361,4 +361,31 @@ class Project extends Model
     {
         return $this->hasMany(ProjectReport::class);
     }
+
+    /** @return HasMany<BudgetLine, $this> */
+    public function budgetLines(): HasMany
+    {
+        return $this->hasMany(BudgetLine::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** @return HasMany<CostItem, $this> */
+    public function costItems(): HasMany
+    {
+        return $this->hasMany(CostItem::class);
+    }
+
+    /**
+     * Who may see the project's money: its owner and managers, and the business owner and admins.
+     * Everyone else working on the project sees no amounts.
+     */
+    public function moneyVisibleTo(User $user): bool
+    {
+        return $this->canBeSeenBy($user) && ($user->id === $this->owner_id || $this->roleOf($user) === 'manager' || $user->ownsTeam($this->team) || $user->hasTeamPermission($this->team, 'delete'));
+    }
+
+    /** Who may change the budget and record costs: those who see the money and can change the project. */
+    public function moneyEditableBy(User $user): bool
+    {
+        return $this->moneyVisibleTo($user) && $this->canBeChangedBy($user);
+    }
 }

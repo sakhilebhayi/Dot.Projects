@@ -106,6 +106,18 @@ class ProjectPolicy
         return $project->canBeSeenBy($user) && ($user->id === $project->owner_id || $project->roleOf($user) === 'manager' || $user->ownsTeam($project->team));
     }
 
+    /** See the budget, costs and forecast. */
+    public function seeMoney(User $user, Project $project): bool
+    {
+        return $project->moneyVisibleTo($user);
+    }
+
+    /** Change the budget and record costs. */
+    public function editMoney(User $user, Project $project): bool
+    {
+        return $project->moneyEditableBy($user);
+    }
+
     /** Add and remove people and set their roles: the owner, a project manager or the business owner. */
     public function manageMembers(User $user, Project $project): bool
     {

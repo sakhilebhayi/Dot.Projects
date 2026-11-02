@@ -63,6 +63,9 @@
                         @if ($forecast)
                             <span class="d">Tasks as dated finish <a href="{{ route('projects.schedule', $project) }}">{{ $forecast->format('j M') }}</a>@if ($project->due_date && $forecast->gt($project->due_date)), <span class="pg-neg">{{ (int) $project->due_date->diffInDays($forecast) }} {{ Str::plural('day', (int) $project->due_date->diffInDays($forecast)) }} late</span>@endif</span>
                         @endif
+                        @if ($money)
+                            <span class="d">Cost forecast <a href="{{ route('projects.money', $project) }}">{{ App\Support\Money::rand($money['forecast']) }}</a> of {{ App\Support\Money::rand($money['budget']) }}@if ($money['variance'] < 0), <span class="pg-neg">{{ App\Support\Money::rand(-$money['variance']) }} over</span>@endif</span>
+                        @endif
                         @if ($latestReport)
                             <span class="d">Status <a href="{{ route('projects.reports.show', [$project, $latestReport]) }}">{{ $latestReport->ref() }}</a>: <span class="{{ $latestReport->overall === 'off_track' ? 'pg-neg' : '' }}">{{ mb_strtolower(App\Models\ProjectReport::RATINGS[$latestReport->overall] ?? '') }}</span>, {{ $latestReport->period_to->format('j M') }}</span>
                         @endif

@@ -73,6 +73,7 @@ Route::middleware([
     Route::get('/projects/{project}/work', [ProjectController::class, 'work'])->name('projects.work');
     Route::get('/projects/{project}/schedule', [ProjectController::class, 'schedule'])->name('projects.schedule');
     Route::get('/projects/{project}/time', [ProjectTimeController::class, 'show'])->name('projects.time');
+    Route::get('/projects/{project}/money', [ProjectController::class, 'money'])->name('projects.money');
     Route::get('/projects/{project}/time.csv', [ProjectTimeController::class, 'csv'])->name('projects.time.csv');
     Route::get('/projects/{project}/risks', [GovernanceController::class, 'risks'])->name('projects.risks');
     Route::get('/projects/{project}/risks/{risk}', [GovernanceController::class, 'risk'])->scopeBindings()->name('projects.risks.show');

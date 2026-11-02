@@ -367,3 +367,15 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   counts toward load but its names show only to people who can see the project. Nothing is moved
   automatically. Deferred: leave-aware capacity and skills shortages, which need Dot.HR to share
   leave and skills. **P6 is complete** (roles and private projects, time, reports, workload).
+- **P7a cost ledger** (2026-11-02): a Money tab, seen only by the project's owner and managers and
+  the business owner and admins (everyone else gets no tab, no overview line and a 403; amounts
+  never enter the shared activity log). Budget lines by category (labour, contractors, materials,
+  equipment, operational, contingency, other); every change to a line's amount is a revision with a
+  reason, optionally linked to the approved change request it comes from, and kept as the line's
+  history. Costs are commitments (orders, contracts) and actuals (invoices, expenses; a credit note
+  is negative), each with supplier, reference and date, never ahead of today; an actual can settle
+  a commitment. The cost report shows per line and in total: budget, actual, open commitments, cost
+  to complete (what is left unless set), forecast at completion, variance and percentage used, by
+  the formulas printed on the page. Budget risk indicators: forecast over budget, lines over,
+  spending ahead of progress, contingency drawn, approved changes the budget does not show. Costs
+  are entered here until Dot.Finance can share actuals. Next, P7b: earned value and labour cost.
