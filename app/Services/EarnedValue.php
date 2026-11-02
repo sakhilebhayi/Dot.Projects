@@ -32,13 +32,15 @@ final class EarnedValue
     public const STARTED = ['in_progress', 'review'];
 
     /**
+     * @param  array<string, int>|null  $ledgerTotal  CostLedger::ledger()['total'] when the caller already has it
      * @return array{asOf: Carbon, bac: int, pv: int, ev: int, ac: int, sv: int, cv: int, spi: float|null, cpi: float|null,
      *   eac: int|null, etc: int|null, vac: int|null, tcpi: float|null, baseline: int|null, tasks: int, dated: int, coverage: int, weighted: bool}
      */
-    public function compute(Project $project, ?Carbon $asOf = null): array
+    public function compute(Project $project, ?Carbon $asOf = null, ?array $ledgerTotal = null): array
     {
         $asOf = ($asOf ?? Carbon::today())->copy()->startOfDay();
-        $ledger = app(CostLedger::class)->ledger($project)['total'];
+        // Callers that have just worked out the ledger pass its total, so a page of projects loads each budget once.
+        $ledger = $ledgerTotal ?? app(CostLedger::class)->ledger($project)['total'];
         $bac = $ledger['budget'];
         $ac = $ledger['actual'];
 

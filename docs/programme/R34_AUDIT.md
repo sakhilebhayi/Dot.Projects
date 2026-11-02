@@ -687,3 +687,18 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   - `automations`: a warning when any business's rule failed in the last day.
 
   Owner step: point an uptime monitor at `https://projects.infodot.co.za/ready`.
+- **P12c restore drill, load test and readiness report** (2026-11-02). The full report is
+  [R34_READINESS.md](R34_READINESS.md).
+  - `projects:verify-restore` checks a restored copy: every migration applied, row counts per
+    table (optionally compared with the live tables), and a decrypt test of encrypted values with
+    this `APP_KEY`.
+  - A local drill on PostgreSQL 16 passed: 49 tables matched and the encrypted values decrypt.
+    A wrong key fails the check.
+  - `LoadSeeder` creates synthetic volume and refuses to run in production. `scripts/load-test.sh`
+    runs locally only.
+  - The load test found the workload computation scanning the whole task list for every task:
+    17 s at 2,000 open tasks, and 5.2 s on the Portfolio page. Fixed, the Portfolio page takes
+    1.2 s at 30 projects.
+  - `PerformanceBudgetTest` keeps it fixed and holds the portfolio to 36 queries per project,
+    independent of task count.
+  - The owner runs the host drill; the report has the commands.

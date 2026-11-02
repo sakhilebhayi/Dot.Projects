@@ -355,7 +355,7 @@ final class Reporting
             if ($p->moneyVisibleTo($viewer)) {
                 if ($p->budgetLines()->exists()) {
                     $t = app(CostLedger::class)->ledger($p)['total'];
-                    $ev = app(EarnedValue::class)->compute($p);
+                    $ev = app(EarnedValue::class)->compute($p, null, $t);
                     $row = array_merge($row, ['budget' => $t['budget'], 'forecast_cost' => $t['forecast'], 'variance' => $t['variance'], 'cpi' => $ev['cpi'], 'spi' => $ev['spi']]);
                 }
             } else {
@@ -459,7 +459,7 @@ final class Reporting
                 continue;
             }
             $t = app(CostLedger::class)->ledger($p)['total'];
-            $ev = app(EarnedValue::class)->compute($p);
+            $ev = app(EarnedValue::class)->compute($p, null, $t);
             $rows[] = [
                 'project' => $p->name, 'budget' => $t['budget'], 'actual' => $t['actual'], 'committed' => $t['open'], 'forecast_cost' => $t['forecast'],
                 'variance' => $t['variance'], 'used' => $t['used'], 'pv' => $ev['pv'], 'ev' => $ev['ev'], 'ac' => $ev['ac'], 'sv' => $ev['sv'], 'cv' => $ev['cv'],

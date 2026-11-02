@@ -54,7 +54,7 @@ final class PortfolioOverview
             ];
             if ($p->moneyVisibleTo($viewer) && $p->budgetLines()->exists()) {
                 $t = app(CostLedger::class)->ledger($p)['total'];
-                $ev = app(EarnedValue::class)->compute($p);
+                $ev = app(EarnedValue::class)->compute($p, null, $t);
                 $row['money'] = ['budget' => $t['budget'], 'forecast' => $t['forecast'], 'variance' => $t['variance'], 'cpi' => $ev['cpi'], 'spi' => $ev['spi']];
                 $money['budget'] += $t['budget'];
                 $money['forecast'] += $t['forecast'];

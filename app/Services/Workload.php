@@ -78,13 +78,17 @@ final class Workload
             ->whereDate('work_date', '>=', $monday->copy()->subWeek()->toDateString())->whereDate('work_date', '<=', $monday->copy()->subDay()->toDateString())
             ->selectRaw('user_id, sum(minutes) as m')->groupBy('user_id')->pluck('m', 'user_id');
         $visible = $projects->map(fn (Project $p) => $p->canBeSeenBy($viewer));
+        // Looked up by id and by person once: scanning the whole task list inside the loops below made a
+        // business with a few thousand open tasks take seconds (R-34 P12c load test).
+        $byId = $tasks->keyBy('id');
+        $byPerson = $tasks->groupBy('assignee_id');
 
         $out = [];
         foreach ($people as $person) {
             $row = ['user' => $person, 'capacity' => $capacities[$person->id]['minutes'] ?? self::DEFAULT_MINUTES, 'note' => $capacities[$person->id]['note'] ?? null,
                 'weeks' => array_fill_keys($weeks, ['minutes' => 0, 'items' => []]), 'overdue' => 0, 'undated' => 0, 'noEstimate' => 0, 'lastWeek' => (int) ($lastWeek[$person->id] ?? 0)];
             $byWeek = array_fill_keys($weeks, []);
-            foreach ($tasks->where('assignee_id', $person->id) as $t) {
+            foreach ($byPerson->get($person->id, collect()) as $t) {
                 if (! $t->estimate_minutes) {
                     $row['noEstimate']++;
 
@@ -111,7 +115,7 @@ final class Workload
             foreach ($byWeek as $week => $perTask) {
                 $items = [];
                 foreach ($perTask as $taskId => $minutes) {
-                    $t = $tasks->firstWhere('id', $taskId);
+                    $t = $byId[$taskId];
                     $items[] = ['task' => $t, 'project' => ($visible[$t->project_id] ?? false) ? $projects[$t->project_id]->name : null, 'minutes' => (int) round($minutes)];
                 }
                 usort($items, fn ($a, $b) => $b['minutes'] <=> $a['minutes']);
