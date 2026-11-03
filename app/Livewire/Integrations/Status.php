@@ -7,6 +7,8 @@ use App\Models\Project;
 use App\Models\ProjectDocument;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Integrations\AnalyticsClient;
+use App\Services\Integrations\AnalyticsSnapshot;
 use App\Services\Integrations\FilesClient;
 use App\Services\Integrations\NotifyClient;
 use App\Services\Integrations\Outbox;
@@ -52,9 +54,11 @@ class Status extends Component
         IntegrationDelivery::query()->where('team_id', $this->team()->id)->where('status', 'given_up')->get()->each(fn ($d) => $outbox->again($d));
     }
 
-    public function render(NotifyClient $notify): View
+    public function render(NotifyClient $notify, AnalyticsClient $analytics): View
     {
         $team = $this->team();
+        $sent = IntegrationDelivery::query()->where('team_id', $team->id)->where('integration', 'analytics');
+        $analyticsLast = (clone $sent)->latest('id')->first();
         $since = Carbon::now()->subDays(7);
         $rows = IntegrationDelivery::query()->where('team_id', $team->id)->where('integration', 'notify');
         $counts = (clone $rows)->where('created_at', '>=', $since)->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
@@ -69,6 +73,11 @@ class Status extends Component
             'filesOn' => app(FilesClient::class)->enabled(),
             'filesLast' => FilesClient::last(),
             'documents' => ProjectDocument::query()->whereIn('project_id', Project::withoutTeamScope(fn () => Project::query()->where('team_id', $team->id)->pluck('id')))->count(),
+            'analyticsOn' => $analytics->enabled(),
+            'analyticsLast' => $analyticsLast,
+            'analyticsSentAt' => (clone $sent)->where('status', 'sent')->max('sent_at'),
+            // Exactly what today's snapshot would carry: numbers only.
+            'analyticsNow' => $analytics->enabled() && filled($team->infodot_team_uuid) ? app(AnalyticsSnapshot::class)->metrics($team) : null,
             'problems' => (clone $rows)->where(fn ($q) => $q->where('status', 'given_up')->orWhere(fn ($r) => $r->where('status', 'pending')->where('attempts', '>', 0)))->latest('id')->limit(10)->get(),
         ]);
     }

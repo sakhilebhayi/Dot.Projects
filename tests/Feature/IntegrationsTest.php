@@ -161,7 +161,7 @@ class IntegrationsTest extends TestCase
         app(Outbox::class)->deliver();
 
         $page = Livewire::actingAs($boss)->test(Status::class)->assertSee('Some notices not sent')->assertSee('0 sent, 0 waiting, 1 not sent')
-            ->assertSee('risk escalated')->assertSee('Dot.Notify does not know this business')->assertSee('Waiting on Dot.Analytics');
+            ->assertSee('risk escalated')->assertSee('Dot.Notify does not know this business')->assertSee('ANALYTICS_INGEST_SECRET_PROJECTS');
         $id = IntegrationDelivery::query()->sole()->id;
         $page->call('sendAgain', $id);
         $this->assertSame(['pending', 0], [IntegrationDelivery::query()->sole()->status, IntegrationDelivery::query()->sole()->attempts]);

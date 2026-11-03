@@ -18,6 +18,8 @@ Schedule::command('automations:sweep')->hourlyAt(5)->withoutOverlapping()->onOne
 // Calls to other Dot platforms (R-34 P11a): the outbox is sent every minute and pruned nightly.
 Schedule::command('integrations:deliver')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('integrations:deliver --prune')->dailyAt('03:15')->onOneServer();
+// Each linked business's daily numbers for Dot.Analytics (R-34 P11c), queued for the outbox to send.
+Schedule::command('integrations:analytics-snapshots')->dailyAt('04:30')->withoutOverlapping()->onOneServer();
 // Each business's retention choices (R-34 P12b), after the 02:45 backup has taken the night's copy.
 Schedule::command('data:prune')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
 

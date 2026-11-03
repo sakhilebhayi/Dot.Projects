@@ -96,6 +96,7 @@ final class Outbox
         try {
             return match ($d->integration) {
                 'notify' => app(NotifyClient::class)->deliver($d->payload),
+                'analytics' => app(AnalyticsClient::class)->deliver($d->payload),
                 default => [self::GIVE_UP, null, 'No client for '.$d->integration.'.'],
             };
         } catch (Throwable $e) {
