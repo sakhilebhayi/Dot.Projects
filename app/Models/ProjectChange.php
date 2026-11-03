@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -43,6 +44,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectChange extends Model
 {
+    use BumpsProjectFacts;
+
     public const KINDS = ['scope' => 'Scope', 'schedule' => 'Schedule', 'budget' => 'Budget', 'resources' => 'People and resources', 'quality' => 'Quality', 'other' => 'Other'];
 
     public const STATUSES = ['draft' => 'Draft', 'submitted' => 'Waiting for approval', 'approved' => 'Approved', 'rejected' => 'Rejected', 'withdrawn' => 'Withdrawn', 'implemented' => 'Implemented'];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -39,6 +40,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectIssue extends Model
 {
+    use BumpsProjectFacts;
+
     public const STATUSES = ['open' => 'Open', 'investigating' => 'Being worked on', 'resolved' => 'Resolved', 'closed' => 'Closed'];
 
     public const OPEN = ['open', 'investigating'];

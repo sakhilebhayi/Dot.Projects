@@ -322,6 +322,7 @@ final class ProjectWork
 
         DB::transaction(function () use ($successor, $predecessor, $by, $here, $there) {
             $successor->predecessors()->attach($predecessor->id, ['type' => 'finish_to_start', 'created_by' => $by->id]);
+            ProjectFacts::bump((int) $here->id, (int) $there->id);
             Activity::record('dependency.added', $successor, ['predecessor_id' => $predecessor->id], $here);
             if ($there->id !== $here->id) {
                 Activity::record('dependency.external', $predecessor, ['successor_id' => $successor->id, 'project_id' => $here->id], $there);
@@ -351,6 +352,7 @@ final class ProjectWork
     public function removeDependency(ProjectTask $successor, int $predecessorId): void
     {
         if ($successor->predecessors()->detach($predecessorId) > 0) {
+            ProjectFacts::bump((int) $successor->project_id, (int) DB::table('project_tasks')->where('id', $predecessorId)->value('project_id'));
             Activity::record('dependency.removed', $successor, ['predecessor_id' => $predecessorId], $successor->project);
         }
     }

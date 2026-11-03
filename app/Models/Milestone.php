@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\MilestoneReached;
+use App\Models\Concerns\BumpsProjectFacts;
 use App\Services\Activity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,8 @@ use Illuminate\Support\Carbon;
  */
 class Milestone extends Model
 {
+    use BumpsProjectFacts;
+
     protected $fillable = [
         'project_id', 'title', 'description', 'due_date', 'status', 'sort_order',
     ];

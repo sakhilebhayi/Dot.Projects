@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,6 +29,8 @@ use Illuminate\Support\Carbon;
  */
 class CostItem extends Model
 {
+    use BumpsProjectFacts;
+
     public const KINDS = ['commitment' => 'Commitment', 'actual' => 'Actual'];
 
     protected $fillable = ['budget_line_id', 'kind', 'description', 'supplier', 'reference', 'amount_cents', 'dated', 'settles_id'];

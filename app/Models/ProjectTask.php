@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property int $id
@@ -33,6 +35,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectTask extends Model
 {
+    use BumpsProjectFacts;
+
     protected $fillable = [
         'project_id', 'milestone_id', 'parent_id', 'assignee_id',
         'title', 'description', 'status', 'status_id', 'priority', 'start_date', 'due_date', 'estimate_minutes', 'completed_at', 'sort_order',
@@ -161,5 +165,16 @@ class ProjectTask extends Model
         $project = $viewer === null ? null : $this->projectSeenBy($viewer);
 
         return $project === null ? 'a task in a project you cannot see' : $this->title.' (in '.$project->name.')';
+    }
+
+    /** @return list<int> its project, and the projects whose tasks wait on it or that it waits on */
+    public function factsProjectIds(): array
+    {
+        $linked = DB::table('task_dependencies as d')
+            ->join('project_tasks as t', fn ($j) => $j->on('t.id', '=', 'd.successor_id')->orOn('t.id', '=', 'd.predecessor_id'))
+            ->where(fn ($w) => $w->where('d.successor_id', $this->id)->orWhere('d.predecessor_id', $this->id))
+            ->distinct()->pluck('t.project_id')->map(fn ($id) => (int) $id)->all();
+
+        return array_values(array_unique([(int) $this->project_id, ...$linked]));
     }
 }

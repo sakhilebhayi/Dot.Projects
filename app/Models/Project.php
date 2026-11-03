@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\ProjectClosed;
+use App\Models\Concerns\BumpsProjectFacts;
 use App\Models\Concerns\HasTeamScope;
 use App\Models\Concerns\TeamScopeBypass;
 use App\Services\Activity;
@@ -36,6 +37,7 @@ use Illuminate\Support\Facades\DB;
  */
 class Project extends Model
 {
+    use BumpsProjectFacts;
     use HasTeamScope;
 
     protected $fillable = [
@@ -404,5 +406,11 @@ class Project extends Model
     public function moneyEditableBy(User $user): bool
     {
         return $this->moneyVisibleTo($user) && $this->canBeChangedBy($user);
+    }
+
+    /** @return list<int> */
+    public function factsProjectIds(): array
+    {
+        return [(int) $this->id];
     }
 }

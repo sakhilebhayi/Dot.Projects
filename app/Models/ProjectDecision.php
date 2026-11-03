@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -36,6 +37,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectDecision extends Model
 {
+    use BumpsProjectFacts;
+
     public const STATUSES = ['proposed' => 'Needs deciding', 'decided' => 'Decided', 'superseded' => 'Superseded'];
 
     protected $fillable = ['title', 'context', 'options', 'outcome', 'owner_id', 'decide_by', 'meeting_id'];

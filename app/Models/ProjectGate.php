@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectGate extends Model
 {
+    use BumpsProjectFacts;
+
     public const STATUSES = ['pending' => 'Not yet passed', 'passed' => 'Passed', 'conditional' => 'Passed with conditions', 'held' => 'Held'];
 
     protected $fillable = ['title', 'purpose', 'milestone_id', 'due_date', 'approver_id'];

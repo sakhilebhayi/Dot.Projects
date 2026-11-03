@@ -338,8 +338,10 @@ final class Reporting
         $links = [];
         $hidden = 0;
         $today = Carbon::today();
+        $facts = app(ProjectFacts::class);
+        $facts->prime($projects);
         foreach ($projects as $p) {
-            $f = $reports->facts($p, $today->copy()->subDays(6), $today);
+            $f = $facts->facts($p, $today->copy()->subDays(6), $today);
             $w = $f['work'];
             $row = [
                 'project' => $p->name,
@@ -353,9 +355,8 @@ final class Reporting
                 'budget' => null, 'forecast_cost' => null, 'variance' => null, 'cpi' => null, 'spi' => null,
             ];
             if ($p->moneyVisibleTo($viewer)) {
-                if ($p->budgetLines()->exists()) {
-                    $t = app(CostLedger::class)->ledger($p)['total'];
-                    $ev = app(EarnedValue::class)->compute($p, null, $t);
+                if ($m = $facts->money($p)) {
+                    [$t, $ev] = [$m['total'], $m['ev']];
                     $row = array_merge($row, ['budget' => $t['budget'], 'forecast_cost' => $t['forecast'], 'variance' => $t['variance'], 'cpi' => $ev['cpi'], 'spi' => $ev['spi']]);
                 }
             } else {
@@ -378,8 +379,10 @@ final class Reporting
         $rows = [];
         $links = [];
         $today = Carbon::today();
+        $facts = app(ProjectFacts::class);
+        $facts->prime($projects);
         foreach ($projects as $p) {
-            $f = $reports->facts($p, $today->copy()->subDays(6), $today);
+            $f = $facts->facts($p, $today->copy()->subDays(6), $today);
             $h = $reports->suggest($f);
             $w = $f['work'];
             $rows[] = [
@@ -416,8 +419,10 @@ final class Reporting
         $links = [];
         $hidden = 0;
         $today = Carbon::today();
+        $facts = app(ProjectFacts::class);
+        $facts->prime($projects);
         foreach ($projects as $p) {
-            $s = $reports->facts($p, $today, $today)['schedule'];
+            $s = $facts->facts($p, $today, $today)['schedule'];
             $money = $p->moneyVisibleTo($viewer);
             $hidden += $money ? 0 : 1;
             $rows[] = [
@@ -430,7 +435,7 @@ final class Reporting
                 'slip' => self::slip($s['baseline_due'], $s['forecast']),
                 'critical' => $s['critical'],
                 'broken' => $s['conflicts'],
-                'spi' => $money && $p->budgetLines()->exists() ? app(EarnedValue::class)->compute($p)['spi'] : null,
+                'spi' => $money ? ($facts->money($p)['ev']['spi'] ?? null) : null,
             ];
             $links[] = route('projects.schedule', $p);
         }
@@ -447,19 +452,21 @@ final class Reporting
         $rows = [];
         $links = [];
         [$hidden, $empty] = [0, 0];
+        $facts = app(ProjectFacts::class);
+        $facts->prime($projects);
         foreach ($projects as $p) {
             if (! $p->moneyVisibleTo($viewer)) {
                 $hidden++;
 
                 continue;
             }
-            if (! $p->budgetLines()->exists()) {
+            $m = $facts->money($p);
+            if ($m === null) {
                 $empty++;
 
                 continue;
             }
-            $t = app(CostLedger::class)->ledger($p)['total'];
-            $ev = app(EarnedValue::class)->compute($p, null, $t);
+            [$t, $ev] = [$m['total'], $m['ev']];
             $rows[] = [
                 'project' => $p->name, 'budget' => $t['budget'], 'actual' => $t['actual'], 'committed' => $t['open'], 'forecast_cost' => $t['forecast'],
                 'variance' => $t['variance'], 'used' => $t['used'], 'pv' => $ev['pv'], 'ev' => $ev['ev'], 'ac' => $ev['ac'], 'sv' => $ev['sv'], 'cv' => $ev['cv'],

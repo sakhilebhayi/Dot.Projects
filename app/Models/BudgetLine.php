@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class BudgetLine extends Model
 {
+    use BumpsProjectFacts;
+
     public const CATEGORIES = ['labour' => 'Labour', 'contractors' => 'Contractors', 'materials' => 'Materials', 'equipment' => 'Equipment', 'operational' => 'Operational', 'contingency' => 'Contingency', 'other' => 'Other'];
 
     protected $fillable = ['category', 'name', 'sort_order'];
