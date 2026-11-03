@@ -6,6 +6,7 @@ use App\Models\ChecklistItem;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\TimeEntry;
+use App\Services\ProjectStatuses;
 use App\Services\ProjectWork;
 use App\Services\TimeTracking;
 use App\Support\Duration;
@@ -85,7 +86,7 @@ class TaskPanel extends Component
         $t = $this->task;
         $this->title = $t->title;
         $this->description = (string) $t->description;
-        $this->status = $t->status ?? 'backlog';
+        $this->status = app(ProjectStatuses::class)->keyOf($t, app(ProjectStatuses::class)->for($this->project));
         $this->priority = $t->priority ?? 'medium';
         $this->assignee = (string) $t->assignee_id;
         $this->milestone = (string) $t->milestone_id;
@@ -236,7 +237,7 @@ class TaskPanel extends Component
         $data = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'status' => ['required', Rule::in(ProjectWork::STATUSES)],
+            'status' => ['required', Rule::in(app(ProjectStatuses::class)->for($this->project)->pluck('key')->all())],
             'priority' => ['required', Rule::in(ProjectWork::PRIORITIES)],
             'assignee' => ['nullable', 'integer'],
             'milestone' => ['nullable', 'integer'],

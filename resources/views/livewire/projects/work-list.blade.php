@@ -14,7 +14,7 @@
         <select id="w-status" wire:model.live="status" class="pg-select">
             <option value="">Any status</option>
             <option value="open">Not done</option>
-            @foreach ($statuses as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+            @foreach ($statuses as $st)<option value="{{ $st['key'] }}">{{ $st['name'] }}</option>@endforeach
         </select>
         <label for="w-who" class="pg-sr">Who</label>
         <select id="w-who" wire:model.live="who" class="pg-select">
@@ -104,16 +104,17 @@
                         @foreach ($g['tasks'] as $task)
                             @php($late = $task->status !== 'done' && $task->due_date && $task->due_date->lt($today))
                             @php($items = $task->checklist)
+                            @php($taskKey = app(App\Services\ProjectStatuses::class)->keyOf($task, $statuses))
                             <tr wire:key="task-{{ $task->id }}">
                                 <td class="pg-name"><a href="{{ route('projects.tasks.show', [$project, $task]) }}" style="{{ $task->status === 'done' ? 'color:var(--pg-muted)' : '' }}">{{ $task->title }}</a>@if ($task->parent)<span class="pg-sub">Part of {{ Str::limit($task->parent->title, 40) }}</span>@endif @if ($items->isNotEmpty())<span class="pg-sub">Checklist {{ $items->whereNotNull('done_at')->count() }} of {{ $items->count() }}</span>@endif @if ($task->isBlocked())<span class="pg-sub" style="color:var(--pg-warning)">Waits for {{ $task->predecessors->where('status', '!=', 'done')->map(fn ($p) => $p->nameFor(auth()->user(), $project->id))->map(fn ($t) => Str::limit($t, 30))->join(', ') }}</span>@endif @if ($task->labels->isNotEmpty())<span class="pg-sub">{{ $task->labels->pluck('name')->join(', ') }}</span>@endif</td>
                                 <td data-label="Status">
                                     @if ($canEdit)
                                         <label for="st-{{ $task->id }}" class="pg-sr">Status of {{ $task->title }}</label>
                                         <select id="st-{{ $task->id }}" class="pg-select" style="min-height:30px;padding:3px 8px;width:auto;position:relative;z-index:1" wire:change="setStatus({{ $task->id }}, $event.target.value)">
-                                            @foreach ($statuses as $value => $label)<option value="{{ $value }}" @selected($task->status === $value)>{{ $label }}</option>@endforeach
+                                            @foreach ($statuses as $st)<option value="{{ $st['key'] }}" @selected($taskKey === $st['key'])>{{ $st['name'] }}</option>@endforeach
                                         </select>
                                     @else
-                                        {{ $statuses[$task->status] ?? $task->status }}
+                                        {{ $statuses->firstWhere('key', $taskKey)['name'] ?? $task->status }}
                                     @endif
                                 </td>
                                 <td data-label="Who">

@@ -6,7 +6,7 @@ use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\SavedView;
-use App\Services\ProjectSummary;
+use App\Services\ProjectStatuses;
 use App\Services\ProjectWork;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -76,7 +76,25 @@ class WorkList extends Component
 
         return $this->project->tasks()->with(['assignee', 'checklist', 'labels', 'parent:id,title', 'predecessors:id,project_id,title,status'])
             ->when($this->label !== '', fn ($q) => $q->whereHas('labels', fn ($l) => $l->whereKey((int) $this->label)))
-            ->when($this->status !== '', fn ($q) => $this->status === 'open' ? $q->where('status', '!=', 'done') : $q->where('status', $this->status))
+            ->when($this->status !== '', function ($q) {
+                if ($this->status === 'open') {
+                    return $q->where('status', '!=', 'done');
+                }
+                // One of the project's own statuses, or a category (also how saved views from before P13c read).
+                $statuses = app(ProjectStatuses::class);
+                $to = $statuses->resolve($this->project, $this->status);
+                if ($to === null) {
+                    return $q->whereRaw('1 = 0');
+                }
+                if ($to['id'] === null || $this->status === $to['category']) {
+                    return $q->where('status', $to['category']);
+                }
+                // A task with no status of its own shows under the first status of its category, so it filters there too.
+                $first = $statuses->for($this->project)->firstWhere('category', $to['category'])['id'] ?? null;
+
+                return $q->where(fn ($w) => $w->where('status_id', $to['id'])
+                    ->when($first === $to['id'], fn ($o) => $o->orWhere(fn ($n) => $n->whereNull('status_id')->where('status', $to['category']))));
+            })
             ->when($this->who !== '', fn ($q) => $this->who === 'none' ? $q->whereNull('assignee_id') : $q->where('assignee_id', (int) $this->who))
             ->when($this->lateOnly, fn ($q) => $q->where('status', '!=', 'done')->whereNotNull('due_date')->whereDate('due_date', '<', $today))
             ->when(trim($this->search) !== '', fn ($q) => $q->where('title', 'like', '%'.trim($this->search).'%'))
@@ -139,7 +157,7 @@ class WorkList extends Component
     {
         $task = $this->task($taskId);
         $this->authorize('update', $task);
-        abort_unless(in_array($status, ProjectWork::STATUSES, true), 422);
+        abort_unless(app(ProjectStatuses::class)->resolve($this->project, $status) !== null, 422);
         $work->updateTask($task, ['status' => $status], auth()->user());
         unset($this->tasks, $this->milestones);
     }
@@ -202,7 +220,7 @@ class WorkList extends Component
     public function render(): View
     {
         return view('livewire.projects.work-list', [
-            'statuses' => ProjectSummary::STATUSES,
+            'statuses' => app(ProjectStatuses::class)->for($this->project),
             'canEdit' => auth()->user()->can('update', $this->project),
             'today' => Carbon::today(),
         ]);

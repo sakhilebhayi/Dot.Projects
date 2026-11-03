@@ -283,7 +283,9 @@ html.dark .pg-rail .pg-mark .night { display: block; }
 .pg-filters .pg-select { width: 170px; }
 
 /* ---------- Board ---------- */
-.pg-board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: var(--pg-gap); overflow-x: auto; padding-bottom: 8px; }
+.pg-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: var(--pg-gap); overflow-x: auto; padding-bottom: 8px; }
+/* A column's category, under its name, once a project has its own statuses (R-34 P13c). */
+.pg-col-cat { display: block; font-size: 12px; font-weight: 400; color: var(--pg-muted); margin-top: 1px; }
 .pg-col { background: var(--pg-raised); border-radius: 8px; padding: 10px; min-width: 0; min-height: 120px; }
 .pg-col-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 600; margin: 0 2px 8px; }
 .pg-col-head span { font-weight: 400; color: var(--pg-muted); font-size: 12px; }
@@ -900,4 +902,27 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
     .pg-cmd-open-t, .pg-cmd-open .pg-kbd { display: none; }
     .pg-cmd { margin-top: 8vh; }
     .pg-cmd-help { display: none; }
+}
+
+/* ---------- Workflow (R-34 P13c) ----------
+   The project's statuses as a ruled, ordered list: name, what it means and how many tasks it holds; row actions are
+   ghost buttons; the meaning is always words, never a colour. */
+.pg-wf-lead { margin: 0 0 10px; max-width: 80ch; }
+.pg-wf-list { list-style: none; margin: 0; padding: 0; }
+.pg-wf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--pg-rule); }
+.pg-wf-row:first-child { border-top: 0; }
+.pg-wf-what b { display: block; font-size: 14px; font-weight: 500; }
+.pg-wf-what span { display: block; font-size: 12.5px; color: var(--pg-muted); margin-top: 1px; }
+.pg-wf-act { display: flex; gap: 2px; align-items: center; }
+.pg-wf-edit { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; grid-column: 1 / -1; }
+.pg-wf-edit .pg-input, .pg-wf-edit .pg-select { width: auto; min-width: 200px; flex: 1 1 200px; }
+.pg-wf-remove { grid-column: 1 / -1; display: grid; gap: 6px; padding: 10px 12px; border-radius: 6px; background: var(--pg-ground); }
+.pg-wf-remove .pg-label { margin: 0; }
+.pg-wf-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 10px; align-items: end; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--pg-rule); }
+.pg-wf-add .pg-field { margin: 0; }
+.pg-wf-foot { margin: 10px 0 0; }
+.pg-wf-start { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--pg-rule); }
+@media (max-width: 640px) {
+    .pg-wf-row { grid-template-columns: minmax(0, 1fr); }
+    .pg-wf-add { grid-template-columns: minmax(0, 1fr); }
 }

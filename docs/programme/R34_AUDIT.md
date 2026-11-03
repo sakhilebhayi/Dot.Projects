@@ -763,3 +763,26 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
 
   **Not in this step:** a business-wide calendar across projects, assigning work from the palette,
   and recently viewed items.
+- **P13c statuses as data** (2026-11-03; planned in P3).
+
+  **What a project can do.** Name its own task statuses (for example "Awaiting client", "QA" or
+  "Ready to invoice"), in its own order, from **Workflow** in its settings.
+
+  **What stays fixed.** Each status means one of the five fixed categories: backlog, to do, in
+  progress, in review, done.
+  - `project_tasks.status` keeps the category, so every rule keeps its meaning: done, blocked work,
+    milestones, earned value, reports, automations and the overview.
+  - `project_tasks.status_id` names which of the project's statuses a task is in.
+  - A project with none uses the standard five, unchanged.
+
+  **Rules and behaviour.**
+  - Only the project's owner, managers and the business owner change the workflow.
+  - At least one done status and one not-done status are always kept.
+  - Removing a status moves its tasks to another status the person chooses.
+  - Going back to the standard five keeps every task's category.
+  - Every write path resolves a status key (the board, the task panel, the work list and its filter).
+    A bare category such as "done" still works on a project with its own statuses, so automations
+    and older callers are unaffected.
+
+  **History, templates and copies.** The activity history stores status ids, never names, and shows
+  each status's current name. Templates and duplicated projects bring the workflow with them.
