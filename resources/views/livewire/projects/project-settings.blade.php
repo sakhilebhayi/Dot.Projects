@@ -57,6 +57,70 @@
         </form>
     </section>
 
+    <section class="pg-card pg-s8 pg-wf" aria-labelledby="wf-h">
+        <div class="pg-card-head"><h2 id="wf-h">Workflow</h2><small>The board's columns, in order</small></div>
+        <p class="pg-help pg-wf-lead">Each status means one of five things, so done still counts as done, blocked work still cannot start and reports, automations and the overview still add up, whatever the statuses are called.</p>
+        @error('workflow')<p class="pg-error" role="alert">{{ $message }}</p>@enderror
+        <ol class="pg-wf-list">
+            @foreach ($workflow as $i => $st)
+                <li class="pg-wf-row" wire:key="wf-{{ $st['key'] }}">
+                    @if ($customWorkflow && $renaming === $st['id'])
+                        <form wire:submit="saveStatusName" class="pg-wf-edit">
+                            <label for="wf-name-{{ $st['id'] }}" class="pg-sr">New name for {{ $st['name'] }}</label>
+                            <input id="wf-name-{{ $st['id'] }}" type="text" wire:model="statusName" maxlength="40" class="pg-input" required>
+                            <button type="submit" class="pg-btn pg-btn--primary pg-btn--sm">Save</button>
+                            <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="$set('renaming', null)">Cancel</button>
+                        </form>
+                    @else
+                        <div class="pg-wf-what">
+                            <b>{{ $st['name'] }}</b>
+                            <span>{{ $st['name'] === App\Services\ProjectStatuses::CATEGORIES[$st['category']] ? ucfirst(App\Services\ProjectStatuses::MEANS[$st['category']]) : 'Means '.mb_strtolower(App\Services\ProjectStatuses::CATEGORIES[$st['category']]).': '.App\Services\ProjectStatuses::MEANS[$st['category']] }}. {{ ($taskCounts[$st['key']] ?? 0) === 0 ? 'No tasks' : ($taskCounts[$st['key']].' '.Str::plural('task', $taskCounts[$st['key']])) }}.</span>
+                        </div>
+                        @if ($canWorkflow && $customWorkflow)
+                            <div class="pg-wf-act">
+                                <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm pg-btn--icon" wire:click="moveStatus({{ $st['id'] }}, -1)" aria-label="Move {{ $st['name'] }} earlier" @disabled($i === 0)><span class="material-symbols-rounded" aria-hidden="true">arrow_upward</span></button>
+                                <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm pg-btn--icon" wire:click="moveStatus({{ $st['id'] }}, 1)" aria-label="Move {{ $st['name'] }} later" @disabled($i === $workflow->count() - 1)><span class="material-symbols-rounded" aria-hidden="true">arrow_downward</span></button>
+                                <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="renameStatus({{ $st['id'] }})">Rename</button>
+                                <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="removeStatus({{ $st['id'] }})">Remove</button>
+                            </div>
+                        @endif
+                    @endif
+                    @if ($customWorkflow && $removing === $st['id'])
+                        <form wire:submit="confirmRemoveStatus" class="pg-wf-remove">
+                            <label for="wf-to" class="pg-label">{{ ($taskCounts[$st['key']] ?? 0) === 0 ? 'It has no tasks. Remove it?' : 'Move its '.$taskCounts[$st['key']].' '.Str::plural('task', $taskCounts[$st['key']]).' to' }}</label>
+                            <div class="pg-wf-edit">
+                                <select id="wf-to" wire:model="moveTo" class="pg-select" @if (($taskCounts[$st['key']] ?? 0) === 0) hidden @endif>
+                                    @foreach ($workflow as $other)@continue($other['id'] === $st['id'])<option value="{{ $other['key'] }}">{{ $other['name'] }}</option>@endforeach
+                                </select>
+                                <button type="submit" class="pg-btn pg-btn--danger pg-btn--sm">Remove {{ $st['name'] }}</button>
+                                <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="$set('removing', null)">Cancel</button>
+                            </div>
+                        </form>
+                    @endif
+                </li>
+            @endforeach
+        </ol>
+        @if ($canWorkflow)
+            @if ($customWorkflow)
+                <form wire:submit="addStatus" class="pg-wf-add">
+                    <div class="pg-field"><label for="wf-new" class="pg-label">New status</label><input id="wf-new" type="text" wire:model="newStatusName" maxlength="40" class="pg-input" placeholder="Awaiting client" required></div>
+                    <div class="pg-field"><label for="wf-cat" class="pg-label">It means</label>
+                        <select id="wf-cat" wire:model="newStatusCategory" class="pg-select">
+                            @foreach (App\Services\ProjectStatuses::CATEGORIES as $c => $label)<option value="{{ $c }}">{{ $label }}: {{ App\Services\ProjectStatuses::MEANS[$c] }}</option>@endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="pg-btn pg-btn--secondary">Add status</button>
+                </form>
+                <p class="pg-wf-foot"><button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="resetWorkflow" wire:confirm="Go back to the standard five statuses? Every task keeps what its status means; the names you chose are removed.">Back to the standard five</button></p>
+            @else
+                <div class="pg-wf-foot pg-wf-start">
+                    <p class="pg-help" style="margin:0">This project uses the standard five. Make them its own to rename, reorder, add or remove statuses.</p>
+                    <button type="button" class="pg-btn pg-btn--secondary" wire:click="customiseWorkflow">Make the workflow this project's own</button>
+                </div>
+            @endif
+        @endif
+    </section>
+
     <aside class="pg-s4" style="display:grid;gap:var(--pg-gap);align-content:start">
         @can('duplicate', $project)
             <section class="pg-card" aria-labelledby="dup-h">

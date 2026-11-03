@@ -1,5 +1,7 @@
 <div>
     @php
+        $statusList = app(App\Services\ProjectStatuses::class)->for($project);
+        $statusNames = $statusList->pluck('name', 'key');
         [$from, $to] = $schedule->range();
         $days = (int) $from->diffInDays($to) + 1;
         $x = fn ($d) => (int) $from->diffInDays($d) * $ppd;
@@ -143,7 +145,7 @@
         <section class="pg-card" style="margin-top:var(--pg-gap)" aria-labelledby="unsched-h">
             <div class="pg-card-head"><h2 id="unsched-h">Not on the schedule</h2><small>{{ $schedule->unscheduled()->count() }} without a due date</small></div>
             @foreach ($schedule->unscheduled()->take(8) as $t)
-                <div class="pg-row"><a href="{{ route('projects.tasks.show', [$project, $t]) }}">{{ $t->title }}</a><span class="pg-sub">{{ App\Services\ProjectSummary::STATUSES[$t->status] ?? $t->status }}</span></div>
+                <div class="pg-row"><a href="{{ route('projects.tasks.show', [$project, $t]) }}">{{ $t->title }}</a><span class="pg-sub">{{ $statusNames[app(App\Services\ProjectStatuses::class)->keyOf($t, $statusList)] ?? $t->status }}</span></div>
             @endforeach
             @if ($schedule->unscheduled()->count() > 8)<p class="pg-help">And {{ $schedule->unscheduled()->count() - 8 }} more in the <a href="{{ route('projects.work', $project) }}">work view</a>.</p>@endif
         </section>

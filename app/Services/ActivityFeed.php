@@ -16,6 +16,7 @@ use App\Models\ProjectIssue;
 use App\Models\ProjectMeeting;
 use App\Models\ProjectReport;
 use App\Models\ProjectRisk;
+use App\Models\ProjectStatus;
 use App\Models\ProjectTask;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -66,7 +67,10 @@ final class ActivityFeed
             ->map(fn ($l) => $l->changes['assignee_id']['to'] ?? $l->changes['owner_id']['to'] ?? null)->filter())->pluck('name', 'id');
         $ruleNames = AutomationRule::query()->whereIn('id', $lines->map(fn ($l) => $l->changes['rule_id'] ?? $l->changes['automation_rule'] ?? null)->filter())->pluck('name', 'id');
         $documents = ProjectDocument::query()->whereIn('id', $lines->where('subject_type', (new ProjectDocument)->getMorphClass())->pluck('subject_id'))->pluck('name', 'id');
-        $status = ProjectSummary::STATUSES;
+        // A move names the project's own status when there was one (R-34 P13c), else the category; the log keeps
+        // ids, never names, so a renamed status reads with its current name.
+        $statusNames = ProjectStatus::query()->whereIn('id', $lines->flatMap(fn ($l) => [$l->changes['status_id']['from'] ?? null, $l->changes['status_id']['to'] ?? null])->filter()->unique())->pluck('name', 'id');
+        $status = fn (array $c, string $end) => $statusNames->get($c['status_id'][$end] ?? 0) ?? ProjectSummary::STATUSES[$c['status'][$end] ?? ''] ?? '?';
         $q = fn (?string $title) => $title === null ? 'a deleted item' : '“'.$title.'”';
 
         $out = [];
@@ -80,7 +84,7 @@ final class ActivityFeed
                 'project.closed' => 'closed the project',
                 'project.closure_rejected' => 'kept the project open',
                 'task.created' => 'added '.$q($tasks->get($l->subject_id)),
-                'task.moved' => 'moved '.$q($tasks->get($l->subject_id)).' from '.($status[$c['status']['from'] ?? ''] ?? '?').' to '.($status[$c['status']['to'] ?? ''] ?? '?'),
+                'task.moved' => 'moved '.$q($tasks->get($l->subject_id)).' from '.$status($c, 'from').' to '.$status($c, 'to'),
                 'task.assigned' => ($c['assignee_id']['to'] ?? null) ? 'gave '.$q($tasks->get($l->subject_id)).' to '.($assignees->get($c['assignee_id']['to']) ?? 'someone') : 'unassigned '.$q($tasks->get($l->subject_id)),
                 'milestone.created' => 'added the milestone '.$q($milestones->get($l->subject_id)),
                 'milestone.status_changed' => 'Milestone '.$q($milestones->get($l->subject_id)).' is now '.str_replace('_', ' ', (string) ($c['status']['to'] ?? '')),
@@ -217,13 +221,13 @@ final class ActivityFeed
 
     /**
      * @param  array<string, mixed>  $c
-     * @param  array<string, string>  $status
+     * @param  callable(array<string, mixed>, string): string  $status
      * @param  Collection<int|string, mixed>  $assignees
      */
-    private static function taskUpdate(string $title, array $c, array $status, $assignees): string
+    private static function taskUpdate(string $title, array $c, callable $status, $assignees): string
     {
-        if (isset($c['status']['to'])) {
-            return 'moved '.$title.' from '.($status[$c['status']['from'] ?? ''] ?? '?').' to '.($status[$c['status']['to']] ?? '?');
+        if (isset($c['status']['to']) || array_key_exists('status_id', $c)) {
+            return 'moved '.$title.' from '.$status($c, 'from').' to '.$status($c, 'to');
         }
         if (array_key_exists('assignee_id', $c)) {
             return 'reassigned '.$title;

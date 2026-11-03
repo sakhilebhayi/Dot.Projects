@@ -28,7 +28,8 @@ use Illuminate\Validation\ValidationException;
  *  - tasks: [{title, phase, parent, priority, estimate (minutes), start, due, checklist: [text], labels: [name],
  *    after: [task index]}], a flat list; parent and after point at other tasks by position;
  *  - gates: [{title, phase, due, checks: [text]}], risks: [{title, category, probability, impact}],
- *    budget: [{category, name}] (names only: amounts are never kept), labels: [name], days (the usual length).
+ *    budget: [{category, name}] (names only: amounts are never kept), labels: [name], days (the usual length);
+ *  - statuses: [{name, category}], the project's own workflow (R-34 P13c), when it has one.
  *
  * Kept out of every template: people, statuses, time, costs and amounts, comments, documents and history.
  */
@@ -113,6 +114,11 @@ final class ProjectTemplates
     {
         $at = fn ($offset) => $offset === null ? null : $start->copy()->addDays((int) $offset);
 
+        foreach ($s['statuses'] as $i => $st) {
+            $project->statuses()->create(['name' => $st['name'], 'category' => $st['category'], 'sort_order' => $i + 1]);
+        }
+        $initial = app(ProjectStatuses::class)->initial($project);
+
         $milestones = [];
         foreach ($s['phases'] as $i => $p) {
             $milestones[$i] = Milestone::create(['project_id' => $project->id, 'title' => $p['title'], 'due_date' => $at($p['due']), 'sort_order' => $i])->id;
@@ -124,9 +130,9 @@ final class ProjectTemplates
 
         $ids = [];
         foreach ($s['tasks'] as $i => $t) {
-            $task = ProjectTask::create([
+            $task = ProjectTask::create($initial + [
                 'project_id' => $project->id, 'milestone_id' => $t['phase'] !== null ? ($milestones[$t['phase']] ?? null) : null,
-                'title' => $t['title'], 'status' => 'backlog', 'priority' => $t['priority'], 'estimate_minutes' => $t['estimate'],
+                'title' => $t['title'], 'priority' => $t['priority'], 'estimate_minutes' => $t['estimate'],
                 'start_date' => $at($t['start']), 'due_date' => $at($t['due']), 'sort_order' => $i,
             ]);
             foreach ($t['checklist'] as $n => $body) {
@@ -248,6 +254,7 @@ final class ProjectTemplates
                 ->map(fn (ProjectRisk $r) => ['title' => $r->title, 'category' => $r->category, 'probability' => $r->probability, 'impact' => $r->impact])->values()->all(),
             'budget' => $project->budgetLines()->orderBy('sort_order')->get()->map(fn (BudgetLine $b) => ['category' => $b->category, 'name' => $b->name])->values()->all(),
             'labels' => $project->labels()->orderBy('name')->pluck('name')->values()->all(),
+            'statuses' => $project->statuses()->get()->map(fn ($st) => ['name' => $st->name, 'category' => $st->category])->values()->all(),
         ];
     }
 
@@ -256,7 +263,7 @@ final class ProjectTemplates
      * exists, no subtask under itself and no dependency loop.
      *
      * @param  array<string, mixed>  $s
-     * @return array{v: int, days: ?int, phases: list<array{title: string, due: ?int}>, tasks: list<array<string, mixed>>, gates: list<array<string, mixed>>, risks: list<array<string, mixed>>, budget: list<array{category: string, name: string}>, labels: list<string>}
+     * @return array{v: int, days: ?int, phases: list<array{title: string, due: ?int}>, tasks: list<array<string, mixed>>, gates: list<array<string, mixed>>, risks: list<array<string, mixed>>, budget: list<array{category: string, name: string}>, labels: list<string>, statuses: list<array{name: string, category: string}>}
      */
     public function clean(array $s): array
     {
@@ -329,6 +336,32 @@ final class ProjectTemplates
             'budget' => array_values(array_filter(array_map(fn ($b) => ['category' => (string) ($b['category'] ?? ''), 'name' => $text($b['name'] ?? '', 160)], array_slice((array) ($s['budget'] ?? []), 0, 30)),
                 fn ($b) => $b['name'] !== '' && isset(BudgetLine::CATEGORIES[$b['category']]))),
             'labels' => $labels,
+            'statuses' => $this->cleanStatuses((array) ($s['statuses'] ?? [])),
         ];
+    }
+
+    /**
+     * A workflow is kept only whole: up to 20 named statuses with known categories, no name twice, at least one
+     * that means done and one that does not. Anything less and the project starts with the standard five.
+     *
+     * @param  array<mixed>  $raw
+     * @return list<array{name: string, category: string}>
+     */
+    private function cleanStatuses(array $raw): array
+    {
+        $out = [];
+        $seen = [];
+        foreach (array_slice($raw, 0, 20) as $st) {
+            $name = mb_substr(trim((string) (is_array($st) ? ($st['name'] ?? '') : '')), 0, 40);
+            $category = is_array($st) ? (string) ($st['category'] ?? '') : '';
+            if ($name === '' || ! isset(ProjectStatuses::CATEGORIES[$category]) || isset($seen[mb_strtolower($name)])) {
+                continue;
+            }
+            $seen[mb_strtolower($name)] = true;
+            $out[] = ['name' => $name, 'category' => $category];
+        }
+        $categories = array_column($out, 'category');
+
+        return in_array('done', $categories, true) && count(array_diff($categories, ['done'])) > 0 ? $out : [];
     }
 }

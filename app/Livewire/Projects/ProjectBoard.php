@@ -8,6 +8,7 @@ use App\Models\ProjectTask;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use App\Services\Activity;
+use App\Services\ProjectStatuses;
 use App\Services\ProjectWork;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,7 @@ use Livewire\Component;
 
 /**
  * @property-read Collection<int, Milestone> $milestones
+ * @property-read \Illuminate\Support\Collection<int, array<string, mixed>> $columns
  */
 class ProjectBoard extends Component
 {
@@ -41,14 +43,6 @@ class ProjectBoard extends Component
 
     public string $newMilestoneDue = '';
 
-    public const COLUMNS = [
-        'backlog' => 'Backlog',
-        'todo' => 'To do',
-        'in_progress' => 'In progress',
-        'review' => 'In review',
-        'done' => 'Done',
-    ];
-
     public function mount(Project $project): void
     {
         $this->authorize('view', $project);
@@ -64,18 +58,27 @@ class ProjectBoard extends Component
         return $this->project->people();
     }
 
+    /** @return \Illuminate\Support\Collection<int, array<string, mixed>> the board's columns: the project's statuses */
+    #[Computed]
+    public function columns()
+    {
+        return app(ProjectStatuses::class)->for($this->project);
+    }
+
     #[Computed]
     public function tasksByStatus(): array
     {
+        $statuses = $this->columns;
+        $service = app(ProjectStatuses::class);
         $tasks = $this->project->tasks()
             ->with(['assignee', 'milestone', 'predecessors:id,project_id,title,status', 'labels'])
             ->orderBy('sort_order')
             ->get()
-            ->groupBy('status');
+            ->groupBy(fn (ProjectTask $t) => $service->keyOf($t, $statuses));
 
         $columns = [];
-        foreach (array_keys(self::COLUMNS) as $status) {
-            $columns[$status] = $tasks->get($status, collect());
+        foreach ($statuses as $s) {
+            $columns[$s['key']] = $tasks->get($s['key'], collect());
         }
 
         return $columns;
@@ -86,16 +89,17 @@ class ProjectBoard extends Component
         $this->authorize('update', $this->project);
         // Only the board's own columns: anything else from a tampered request is refused
         // before it reaches the database constraint.
-        abort_unless(array_key_exists($newStatus, self::COLUMNS), 422, 'That is not a column on this board.');
+        $to = app(ProjectStatuses::class)->resolve($this->project, $newStatus);
+        abort_if($to === null || ! $this->columns->contains('key', $newStatus), 422, 'That is not a column on this board.');
 
         $task = ProjectTask::findOrFail($taskId);
         abort_unless($task->project_id === $this->project->id, 403);
-        app(ProjectWork::class)->assertCanStart($task, $newStatus);
+        app(ProjectWork::class)->assertCanStart($task, $to['category']);
 
-        $from = $task->status;
-        $task->update(['status' => $newStatus, 'completed_at' => $newStatus === 'done' ? ($task->completed_at ?? now()) : null]);
-        if ($from !== $newStatus) {
-            Activity::record('task.moved', $task, ['status' => ['from' => $from, 'to' => $newStatus]], $this->project);
+        $from = ['status' => $task->status, 'status_id' => $task->status_id];
+        $task->update(['status' => $to['category'], 'status_id' => $to['id'], 'completed_at' => $to['category'] === 'done' ? ($task->completed_at ?? now()) : null]);
+        if ($from['status'] !== $to['category'] || $from['status_id'] !== $to['id']) {
+            Activity::record('task.moved', $task, ['status' => ['from' => $from['status'], 'to' => $to['category']], 'status_id' => ['from' => $from['status_id'], 'to' => $to['id']]], $this->project);
         }
 
         if ($task->milestone_id) {

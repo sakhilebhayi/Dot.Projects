@@ -46,12 +46,22 @@ final class ProjectWork
             }
         }
 
+        if (isset($data['status'])) {
+            // A status key: one of the project's statuses, or a category (R-34 P13c). The category is stored in
+            // status, which every rule reads; status_id says which of the project's statuses it is.
+            $resolved = app(ProjectStatuses::class)->resolve($project, (string) $data['status']);
+            if ($resolved === null) {
+                throw ValidationException::withMessages(['status' => 'Choose one of this project\'s statuses.']);
+            }
+            $data['status'] = $resolved['category'];
+            $data['status_id'] = $resolved['id'];
+        }
         if (isset($data['status']) && $data['status'] !== $task->status) {
             $this->assertCanStart($task, $data['status']);
         }
 
         return DB::transaction(function () use ($task, $data, $by, $project) {
-            $before = $task->only(['status', 'priority', 'assignee_id', 'milestone_id', 'start_date', 'due_date', 'estimate_minutes']);
+            $before = $task->only(['status', 'status_id', 'priority', 'assignee_id', 'milestone_id', 'start_date', 'due_date', 'estimate_minutes']);
             $oldMilestone = $task->milestone_id;
             $task->fill($data);
             if ($task->isDirty('status')) {
@@ -62,7 +72,7 @@ final class ProjectWork
 
             if ($dirty !== []) {
                 $changes = [];
-                foreach (array_intersect($dirty, ['status', 'priority', 'assignee_id', 'milestone_id']) as $field) {
+                foreach (array_intersect($dirty, ['status', 'status_id', 'priority', 'assignee_id', 'milestone_id']) as $field) {
                     $changes[$field] = ['from' => $before[$field] ?? null, 'to' => $task->{$field}];
                 }
                 // Text fields (title, description) and dates are named, never copied into the log.
@@ -190,11 +200,10 @@ final class ProjectWork
     public function addTask(Project $project, string $title, ?int $milestoneId = null, ?string $due = null): ProjectTask
     {
         return DB::transaction(function () use ($project, $title, $milestoneId, $due) {
-            $task = ProjectTask::create([
+            $task = ProjectTask::create(app(ProjectStatuses::class)->initial($project) + [
                 'project_id' => $project->id,
                 'milestone_id' => $milestoneId,
                 'title' => trim($title),
-                'status' => 'backlog',
                 'priority' => 'medium',
                 'due_date' => $due,
                 'sort_order' => (int) $project->tasks()->where('status', 'backlog')->max('sort_order') + 1,
@@ -220,6 +229,11 @@ final class ProjectWork
                 'description' => $source->description, 'status' => 'planning',
                 'start_date' => $source->start_date, 'due_date' => $source->due_date,
             ]);
+            // The workflow comes too: the project's own statuses, in order (R-34 P13c).
+            foreach ($source->statuses()->get() as $s) {
+                $copy->statuses()->create(['name' => $s->name, 'category' => $s->category, 'sort_order' => $s->sort_order]);
+            }
+            $initial = app(ProjectStatuses::class)->initial($copy);
             $milestoneMap = [];
             foreach ($source->milestones()->get() as $m) {
                 $milestoneMap[$m->id] = Milestone::create([
@@ -234,10 +248,10 @@ final class ProjectWork
                 $labelMap[$label->id] = ProjectLabel::create(['project_id' => $copy->id, 'name' => $label->name])->id;
             }
             foreach ($sourceTasks as $t) {
-                $task = ProjectTask::create([
+                $task = ProjectTask::create($initial + [
                     'project_id' => $copy->id, 'milestone_id' => $t->milestone_id ? ($milestoneMap[$t->milestone_id] ?? null) : null,
                     'assignee_id' => $t->assignee_id, 'title' => $t->title, 'description' => $t->description,
-                    'status' => 'backlog', 'priority' => $t->priority, 'start_date' => $t->start_date, 'due_date' => $t->due_date,
+                    'priority' => $t->priority, 'start_date' => $t->start_date, 'due_date' => $t->due_date,
                     'estimate_minutes' => $t->estimate_minutes, 'sort_order' => $t->sort_order,
                 ]);
                 foreach ($t->checklist as $item) {
@@ -380,9 +394,9 @@ final class ProjectWork
         }
 
         return DB::transaction(function () use ($parent, $title) {
-            $sub = ProjectTask::create([
+            $sub = ProjectTask::create(app(ProjectStatuses::class)->initial($parent->project) + [
                 'project_id' => $parent->project_id, 'milestone_id' => $parent->milestone_id, 'parent_id' => $parent->id,
-                'title' => trim($title), 'status' => 'backlog', 'priority' => 'medium',
+                'title' => trim($title), 'priority' => 'medium',
                 'sort_order' => (int) $parent->subtasks()->max('sort_order') + 1,
             ]);
             Activity::record('subtask.added', $sub, ['parent_id' => $parent->id], $parent->project);

@@ -19,7 +19,7 @@
                     <div class="pg-field">
                         <label for="t-status" class="pg-label">Status</label>
                         <select id="t-status" wire:model="status" class="pg-select">
-                            @foreach (App\Services\ProjectSummary::STATUSES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                            @foreach (app(App\Services\ProjectStatuses::class)->for($project) as $st)<option value="{{ $st['key'] }}">{{ $st['name'] }}</option>@endforeach
                         </select>
                     </div>
                     <div class="pg-field">

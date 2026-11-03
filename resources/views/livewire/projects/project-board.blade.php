@@ -70,14 +70,16 @@
 
     @error('status')<div class="pg-notice" role="alert" style="margin-bottom:12px"><span>{{ $message }}</span></div>@enderror
     <div class="pg-board">
-        @foreach (\App\Livewire\Projects\ProjectBoard::COLUMNS as $status => $label)
-            <section class="pg-col" aria-label="{{ $label }}"
+        @foreach ($this->columns as $col)
+            @php($status = $col['key'])
+            @php($label = $col['name'])
+            <section class="pg-col" aria-label="{{ $label }}" wire:key="col-{{ $status }}"
                  @if ($canEdit)
                  x-data="{ over: false }" x-bind:class="{ 'is-over': over }"
                  x-on:dragover.prevent="over = true" x-on:dragleave="over = false"
                  x-on:drop.prevent="over = false; $wire.moveTask($event.dataTransfer.getData('taskId'), '{{ $status }}')"
                  @endif>
-                <div class="pg-col-head">{{ $label }}<span>{{ $this->tasksByStatus[$status]->count() }}</span></div>
+                <div class="pg-col-head"><span>{{ $label }}@if ($col['id'] !== null && $col['name'] !== (App\Services\ProjectStatuses::CATEGORIES[$col['category']] ?? ''))<small class="pg-col-cat">{{ App\Services\ProjectStatuses::CATEGORIES[$col['category']] }}</small>@endif</span><span>{{ $this->tasksByStatus[$status]->count() }}</span></div>
                 @forelse ($this->tasksByStatus[$status] as $task)
                     @php($late = $task->status !== 'done' && $task->due_date && $task->due_date->isPast() && ! $task->due_date->isToday())
                     <article class="pg-task" wire:key="task-{{ $task->id }}"

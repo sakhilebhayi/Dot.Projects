@@ -333,6 +333,16 @@ class Project extends Model
         return $this->hasMany(ProjectChange::class);
     }
 
+    /**
+     * The project's own task statuses (R-34 P13c); none means the standard five.
+     *
+     * @return HasMany<ProjectStatus, $this>
+     */
+    public function statuses(): HasMany
+    {
+        return $this->hasMany(ProjectStatus::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     /** @return HasMany<ProjectDecision, $this> */
     public function decisions(): HasMany
     {

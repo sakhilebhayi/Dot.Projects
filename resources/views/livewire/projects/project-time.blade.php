@@ -5,7 +5,8 @@
         $share = $s['total'] ? (int) round($s['billable'] / $s['total'] * 100) : 0;
         $over = collect($estimates)->filter(fn ($r) => $r['over'] !== null && $r['over'] > 0);
         $weekMax = max(1, (int) collect($s['byWeek'])->max('minutes'));
-        $statuses = App\Services\ProjectSummary::STATUSES;
+        $statusList = app(App\Services\ProjectStatuses::class)->for($project);
+        $statusName = fn ($task) => $statusList->firstWhere('key', app(App\Services\ProjectStatuses::class)->keyOf($task, $statusList))['name'] ?? $task->status;
     @endphp
 
     <form class="pg-filters" wire:submit.prevent aria-label="Choose the period">
@@ -88,7 +89,7 @@
                     @foreach ($estimates as $r)
                         <tr>
                             <td class="pg-name"><a href="{{ route('projects.tasks.show', [$project, $r['task']]) }}">{{ $r['task']->title }}</a></td>
-                            <td data-label="Status">{{ $statuses[$r['task']->status] ?? $r['task']->status }}</td>
+                            <td data-label="Status">{{ $statusName($r['task']) }}</td>
                             <td data-label="Estimate" class="r {{ $r['estimate'] ? '' : 'pg-muted' }}">{{ $r['estimate'] ? $fmt($r['estimate']) : 'None' }}</td>
                             <td data-label="Logged" class="r">{{ $fmt($r['logged']) }}</td>
                             <td data-label="Against">@if ($r['estimate'])<div class="pg-meter" role="img" aria-label="{{ (int) round($r['logged'] / $r['estimate'] * 100) }}% of the estimate"><i class="{{ $r['over'] > 0 ? 'is-over' : '' }}" style="width:{{ min(100, (int) round($r['logged'] / $r['estimate'] * 100)) }}%"></i></div>@endif</td>

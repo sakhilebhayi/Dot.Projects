@@ -35,7 +35,7 @@ class ProjectTask extends Model
 {
     protected $fillable = [
         'project_id', 'milestone_id', 'parent_id', 'assignee_id',
-        'title', 'description', 'status', 'priority', 'start_date', 'due_date', 'estimate_minutes', 'completed_at', 'sort_order',
+        'title', 'description', 'status', 'status_id', 'priority', 'start_date', 'due_date', 'estimate_minutes', 'completed_at', 'sort_order',
     ];
 
     protected $casts = [
