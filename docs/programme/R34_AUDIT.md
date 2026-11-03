@@ -786,3 +786,15 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
 
   **History, templates and copies.** The activity history stores status ids, never names, and shows
   each status's current name. Templates and duplicated projects bring the workflow with them.
+- **P13d business calendar** (2026-11-03). A **Calendar** page in the rail and the palette shows one
+  month across every open project the person can see. It narrows to one project, one kind of event,
+  or only their own items.
+
+  **The same calendar as each project's.** It shares the month grid, the day list and the move
+  rules with the project calendar: open tasks move by drag or arrow keys, in projects the person
+  can change.
+
+  **Built for scale.** It makes one query per kind of record across all projects, never one per
+  project, and the change check is worked out in bulk. A test holds the query count flat as
+  projects are added. The critical path is worked out per project, so it shows on each project's
+  own calendar, and the page says so.

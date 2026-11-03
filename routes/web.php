@@ -75,6 +75,7 @@ Route::middleware([
     Route::view('/integrations', 'integrations.index')->name('integrations.index');
     Route::view('/data-and-security', 'security.index')->name('security.index');
     Route::view('/templates', 'templates.index')->name('templates.index');
+    Route::view('/calendar', 'calendar.index')->name('calendar.index');
     Route::get('/reports/export.{format}', [ReportController::class, 'export'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->middleware('throttle:exports')->name('reporting.export');
     Route::get('/reports/saved/{saved}/export.{format}', [ReportController::class, 'saved'])->whereIn('format', ['csv', 'xlsx', 'pdf'])->middleware('throttle:exports')->name('reporting.saved.export');
 

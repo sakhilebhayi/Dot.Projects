@@ -37,6 +37,7 @@
             ['dashboard', 'dashboard', 'folder_open', 'Projects'],
             ['dashboards.index', 'dashboards.*', 'space_dashboard', 'Dashboards'],
             ['portfolio.index', 'portfolio.*', 'account_tree', 'Portfolio'],
+            ['calendar.index', 'calendar.*', 'calendar_month', 'Calendar'],
             ['reporting.index', 'reporting.*', 'table_chart', 'Reports'],
             ['automations.index', 'automations.*', 'bolt', 'Automations'],
             ['time.index', 'time.*', 'timer', 'Time'],
