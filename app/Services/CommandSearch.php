@@ -69,6 +69,7 @@ final class CommandSearch
             ['Projects', 'all projects, the list', 'dashboard', 'folder_open'],
             ['Dashboards', 'custom dashboards', 'dashboards.index', 'space_dashboard'],
             ['Portfolio', 'executive view, programmes', 'portfolio.index', 'account_tree'],
+            ['Calendar', 'deadlines, meetings, month, dates', 'calendar.index', 'calendar_month'],
             ['Reports', 'export csv excel pdf', 'reporting.index', 'table_chart'],
             ['Automations', 'rules', 'automations.index', 'bolt'],
             ['My time', 'timesheet, timer', 'time.index', 'timer'],

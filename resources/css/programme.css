@@ -824,6 +824,8 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-btn--icon { width: 30px; padding: 0; justify-content: center; }
 .pg-btn--icon .material-symbols-rounded { font-size: 20px; }
 .pg-select--sm { height: 30px; font-size: 13px; padding-top: 0; padding-bottom: 0; }
+.pg-cal-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.pg-cal-tools .pg-select { width: auto; max-width: 240px; }
 .pg-cal-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .pg-cal-nav { display: flex; align-items: center; gap: 6px; }
 .pg-cal-nav h2 { margin: 0 6px; font-size: 16px; font-weight: 600; min-width: 9.5em; text-align: center; font-variant-numeric: tabular-nums; }
