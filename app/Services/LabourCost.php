@@ -41,6 +41,7 @@ final class LabourCost
         } catch (\Throwable) {
             throw ValidationException::withMessages(['rate' => 'Give the date the rate applies from.']);
         }
+        ProjectFacts::bumpTeam((int) $team->id);
         DB::table('person_rates')->updateOrInsert(['team_id' => $team->id, 'user_id' => $userId, 'effective_from' => $date], ['hourly_cents' => $cents, 'set_by' => $by->id, 'updated_at' => Carbon::now(), 'created_at' => Carbon::now()]);
     }
 

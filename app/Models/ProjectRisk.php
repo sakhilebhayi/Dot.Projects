@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use App\Services\RiskMatrix;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectRisk extends Model
 {
+    use BumpsProjectFacts;
+
     /** Open, mitigating and accepted risks are live: they stay on the matrix and need reviews. */
     public const STATUSES = ['open' => 'Open', 'mitigating' => 'Being mitigated', 'accepted' => 'Accepted', 'occurred' => 'Occurred', 'closed' => 'Closed'];
 

@@ -173,3 +173,37 @@ recorded, not done.
 - Calendar view, command palette, methodology templates, statuses as data, external and client
   roles.
 - An off-host backup copy.
+
+## 8. Update, 2026-11-03: the Portfolio and Reports limit (P13e)
+
+Section 4's remaining limit is addressed. These pages work out each project's health, schedule and
+money facts, about 35 ms a project. They now **keep** those facts per project and recompute a
+project only when something they are read from has changed.
+
+**How a change is noticed.** Two signals, both cheap:
+- A **stamp** made of one grouped query per kind of record for all the projects on the page:
+  counts and latest changes, the other end of every dependency, the business's rates and timesheet
+  approvals, and today's date.
+- A **change counter** that every source record moves on when it is saved or deleted, so two
+  changes in the same second are still told apart.
+
+Kept entries also expire after 10 minutes. A project's own pages, and drafting a status report,
+always work their facts out fresh.
+
+**Measured** with the same method and machine as section 4 (30 projects, single-request median):
+
+| Page | Before | After, repeat view |
+|---|---|---|
+| Portfolio | 1,187 ms | 162 ms |
+| Reports (projects compared) | 920 ms | 65 ms |
+
+The first view after a change still recomputes the changed projects only. The first view of all
+30 is about a second, as before. What remains on the Portfolio page is mostly the over-capacity
+count shown to owners and admins.
+
+**Tests** (`ProjectFactsTest`) prove that:
+- kept facts equal fresh ones, and the pages read the same cold or warm;
+- an edit in the same second, an addition, a deletion, a task moved in another project this one
+  waits on, the next day, a cost, a rate change and an approved week all show at once;
+- money stays hidden from people who may not see it;
+- a warm page's queries do not grow with the number of projects.

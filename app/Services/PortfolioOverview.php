@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectReport;
 use App\Models\ProjectRisk;
@@ -32,10 +33,16 @@ final class PortfolioOverview
         $milestones = [];
         $money = ['budget' => 0, 'forecast' => 0, 'projects' => 0, 'hidden' => 0];
 
+        $facts = app(ProjectFacts::class);
+        $facts->prime($projects);
+        // Each project's latest published status report, in one query.
+        $latestIds = ProjectReport::query()->whereIn('project_id', $projects->pluck('id'))->where('status', 'published')
+            ->selectRaw('max(id) as id')->groupBy('project_id')->pluck('id');
+        $latestReports = ProjectReport::query()->whereIn('id', $latestIds)->get(['id', 'project_id', 'number', 'overall', 'period_to'])->keyBy('project_id');
         foreach ($projects as $p) {
-            $f = $reports->facts($p, $today->copy()->subDays(6), $today);
+            $f = $facts->facts($p, $today->copy()->subDays(6), $today);
             $health = $reports->suggest($f);
-            $latest = $p->reports()->where('status', 'published')->orderByDesc('number')->first(['id', 'number', 'overall', 'period_to']);
+            $latest = $latestReports->get($p->id);
             $w = $f['work'];
             $row = [
                 'project' => $p,
@@ -52,9 +59,8 @@ final class PortfolioOverview
                 'milestone' => $f['milestone'],
                 'money' => null,
             ];
-            if ($p->moneyVisibleTo($viewer) && $p->budgetLines()->exists()) {
-                $t = app(CostLedger::class)->ledger($p)['total'];
-                $ev = app(EarnedValue::class)->compute($p, null, $t);
+            if ($p->moneyVisibleTo($viewer) && ($m = $facts->money($p)) !== null) {
+                [$t, $ev] = [$m['total'], $m['ev']];
                 $row['money'] = ['budget' => $t['budget'], 'forecast' => $t['forecast'], 'variance' => $t['variance'], 'cpi' => $ev['cpi'], 'spi' => $ev['spi']];
                 $money['budget'] += $t['budget'];
                 $money['forecast'] += $t['forecast'];
@@ -154,9 +160,11 @@ final class PortfolioOverview
     public function majorRisks(Collection $projects, int $limit = 8): array
     {
         $items = [];
+        // One query for every project's live risks (R-34 P13e), not one per project.
+        $risks = ProjectRisk::query()->whereIn('project_id', $projects->pluck('id'))->whereIn('status', ProjectRisk::LIVE)->with('owner:id,name')->get()->groupBy('project_id');
         foreach ($projects as $p) {
             $matrix = RiskMatrix::forProject($p);
-            foreach ($p->risks()->whereIn('status', ProjectRisk::LIVE)->with('owner:id,name')->get() as $r) {
+            foreach ($risks->get($p->id, collect()) as $r) {
                 $band = $r->band($matrix);
                 if (in_array($band, ['high', 'critical'], true)) {
                     $items[] = ['project' => $p, 'risk' => $r, 'band' => $band, 'score' => $r->currentScore()];
@@ -182,9 +190,10 @@ final class PortfolioOverview
         $span = max(1, (int) $from->diffInDays($to));
         $lanes = [];
         $undated = 0;
+        $milestones = Milestone::query()->whereIn('project_id', $projects->pluck('id'))->orderBy('sort_order')->orderBy('id')->get(['id', 'project_id', 'title', 'status', 'due_date'])->groupBy('project_id');
         foreach ($projects as $p) {
             $marks = [];
-            foreach ($p->milestones()->get(['id', 'title', 'status', 'due_date']) as $m) {
+            foreach ($milestones->get($p->id, collect()) as $m) {
                 if ($m->due_date === null) {
                     $undated += $m->status === 'completed' ? 0 : 1;
 

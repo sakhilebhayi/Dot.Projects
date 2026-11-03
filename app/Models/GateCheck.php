@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One line of a gate's governance checklist, ticked by a person.
@@ -19,6 +21,8 @@ use Illuminate\Support\Carbon;
  */
 class GateCheck extends Model
 {
+    use BumpsProjectFacts;
+
     protected $fillable = ['body', 'sort_order'];
 
     protected $casts = ['done_at' => 'datetime'];
@@ -33,5 +37,13 @@ class GateCheck extends Model
     public function doer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'done_by');
+    }
+
+    /** @return list<int> the gate's project */
+    public function factsProjectIds(): array
+    {
+        $project = DB::table('project_gates')->where('id', $this->project_gate_id)->value('project_id');
+
+        return $project !== null ? [(int) $project] : [];
     }
 }

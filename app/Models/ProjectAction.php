@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectAction extends Model
 {
+    use BumpsProjectFacts;
+
     protected $fillable = ['title', 'owner_id', 'due_date'];
 
     protected $casts = ['due_date' => 'date', 'done_at' => 'datetime'];

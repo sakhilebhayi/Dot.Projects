@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,6 +29,8 @@ use Illuminate\Support\Carbon;
  */
 class Timesheet extends Model
 {
+    use BumpsProjectFacts;
+
     public const STATUSES = ['open' => 'Open', 'submitted' => 'Waiting for approval', 'approved' => 'Approved', 'returned' => 'Returned'];
 
     protected $fillable = ['team_id', 'user_id', 'week_start'];
@@ -71,5 +74,17 @@ class Timesheet extends Model
     public function locked(): bool
     {
         return in_array($this->status, ['submitted', 'approved'], true);
+    }
+
+    /** @return list<int> */
+    public function factsProjectIds(): array
+    {
+        return [];
+    }
+
+    /** An approval changes labour cost on every project the time went to. */
+    public function factsTeamId(): ?int
+    {
+        return (int) $this->team_id;
     }
 }

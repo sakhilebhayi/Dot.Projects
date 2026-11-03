@@ -798,3 +798,10 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   project, and the change check is worked out in bulk. A test holds the query count flat as
   projects are added. The critical path is worked out per project, so it shows on each project's
   own calendar, and the page says so.
+- **P13e faster Portfolio and Reports** (2026-11-03). Each project's facts and money are kept
+  (`ProjectFacts`) under a stamp and a change counter, and recomputed only when something they read
+  changed.
+
+  Measured at 30 projects: a repeat view of Portfolio went from 1,187 ms to 162 ms, and Reports from
+  920 ms to 65 ms. The major-risks, roadmap and latest-report lookups are batched into one query
+  each. Details are in R34_READINESS.md §8.

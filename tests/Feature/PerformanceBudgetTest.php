@@ -8,6 +8,7 @@ use App\Services\PortfolioOverview;
 use App\Services\Workload;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -46,8 +47,11 @@ class PerformanceBudgetTest extends TestCase
         return $p;
     }
 
+    /** Queries for one cold run: nothing kept from an earlier one (R-34 P13e keeps project facts between runs). */
     private function queries(callable $f): int
     {
+        Cache::flush();
+        app()->forgetScopedInstances();
         DB::flushQueryLog();
         DB::enableQueryLog();
         $f();

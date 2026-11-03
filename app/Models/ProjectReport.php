@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -30,6 +31,8 @@ use Illuminate\Support\Carbon;
  */
 class ProjectReport extends Model
 {
+    use BumpsProjectFacts;
+
     public const RATINGS = ['on_track' => 'On track', 'at_risk' => 'At risk', 'off_track' => 'Off track'];
 
     protected $fillable = ['period_from', 'period_to', 'overall', 'summary', 'achievements', 'next_steps', 'help_needed'];

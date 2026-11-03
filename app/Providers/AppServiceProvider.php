@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\Integrations\ForwardNoticesToNotify;
+use App\Services\ProjectFacts;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
@@ -21,7 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // One per request (or job): the stamps it works out for a page's projects are shared by every call on it.
+        $this->app->scoped(ProjectFacts::class);
     }
 
     /**

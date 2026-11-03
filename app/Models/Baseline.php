@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsProjectFacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,6 +21,8 @@ use Illuminate\Support\Carbon;
  */
 class Baseline extends Model
 {
+    use BumpsProjectFacts;
+
     protected $table = 'project_baselines';
 
     protected $fillable = ['project_id', 'number', 'note', 'created_by'];
