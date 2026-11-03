@@ -46,6 +46,14 @@ return [
 
     // Dot.Files platform file API (R-34 P11b): project documents are filed in the business's
     // Dot.Files workspace. The secret must equal DOT_SERVICE_SECRET_PROJECTS on Dot.Files.
+    // Dot.Analytics' signed snapshot ingest (R-34 P11c): the business's daily delivery numbers. Off until the
+    // secret is set here and the same value is ANALYTICS_INGEST_SECRET_PROJECTS on Analytics.
+    'analytics' => [
+        'url' => env('ANALYTICS_INGEST_URL', 'https://analytics.infodot.co.za/api/ingest/snapshots'),
+        'secret' => env('ANALYTICS_INGEST_SECRET'),
+        'timeout' => (int) env('ANALYTICS_TIMEOUT', 5),
+    ],
+
     'files' => [
         'url' => env('FILES_API_URL', 'https://files.infodot.co.za'),
         'secret' => env('FILES_PLATFORM_SECRET'),

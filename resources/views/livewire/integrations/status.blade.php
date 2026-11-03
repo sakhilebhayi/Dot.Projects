@@ -2,6 +2,10 @@
     @php
         $pill = fn (string $kind, string $text) => ['live' => 'pg-pill--positive', 'warn' => 'pg-pill--warning', 'off' => ''][$kind].'|'.$text;
         $notifyState = ! $notifyOn ? $pill('off', 'Not set up on this server') : (! $linked ? $pill('warn', 'Business not linked to InfoDot') : ($counts['given_up'] ? $pill('warn', 'Some notices not sent') : $pill('live', 'Set up')));
+        $analyticsState = ! $analyticsOn ? $pill('off', 'Not set up on this server') : (! $linked ? $pill('warn', 'Business not linked to InfoDot')
+            : ($analyticsLast?->status === 'given_up' ? $pill('warn', 'Last snapshot not sent') : $pill('live', 'Set up')));
+        $labels = ['active' => 'Active projects', 'off_track' => 'Off track', 'at_risk' => 'At risk', 'over_budget' => 'Forecast over budget',
+            'overdue_tasks' => 'Overdue tasks', 'tasks_completed_7d' => 'Tasks completed, 7 days', 'late_milestones' => 'Milestones past due', 'serious_risks' => 'Serious risks'];
     @endphp
     <div class="pg-titlerow"><div>
         <h1 class="pg-title">Integrations</h1>
@@ -65,12 +69,33 @@
                 @endif
             </div>
         </div>
+
+        <div class="pg-int-row">
+            <div class="pg-int-what"><b>Dot.Analytics</b><span>The business's delivery numbers in its analytics, every morning.</span></div>
+            @php [$c, $t] = explode('|', $analyticsState); @endphp
+            <span class="pg-pill {{ $c }}">{{ $t }}</span>
+            <div class="pg-int-detail">
+                @if (! $analyticsOn)
+                    <p>Nothing is sent. To switch it on, the server needs ANALYTICS_INGEST_SECRET, and Dot.Analytics needs the same secret as ANALYTICS_INGEST_SECRET_PROJECTS.</p>
+                @elseif (! $linked)
+                    <p>Nothing is sent until this business is linked to its InfoDot company, which is how Dot.Analytics recognises it.</p>
+                @else
+                    <p>Once a day at 04:30 UTC, numbers only: no project names, people or text leave Dot.Projects. Today they would be:</p>
+                    <dl class="pg-kv">
+                        @foreach ($analyticsNow as $key => $n)<dt>{{ $labels[$key] ?? $key }}</dt><dd>{{ $n }}</dd>@endforeach
+                        <dt>Last sent</dt><dd>{{ $analyticsSentAt ? Illuminate\Support\Carbon::parse($analyticsSentAt)->format('j M Y, H:i').' UTC' : 'Nothing yet' }}</dd>
+                    </dl>
+                    @if ($analyticsLast?->status === 'given_up')
+                        <p class="pg-int-problems">The last snapshot was not sent. {{ $analyticsLast->last_error }} @if ($analyticsLast->last_status)(answered {{ $analyticsLast->last_status }})@endif <button type="button" class="pg-btn pg-btn--ghost pg-btn--sm" wire:click="sendAgain({{ $analyticsLast->id }})">Send again</button></p>
+                    @endif
+                @endif
+            </div>
+        </div>
     </section>
 
     <section class="pg-card pg-int" aria-labelledby="int-next" style="margin-top:var(--pg-gap)">
         <div class="pg-card-head"><h2 id="int-next">Not connected yet</h2></div>
         @foreach ([
-            ['Dot.Analytics', 'Project and portfolio numbers in the business\'s analytics.', 'Waiting on Dot.Analytics', 'Dot.Analytics accepts daily numbers only from platforms in its catalogue, and Dot.Projects is not in it yet.'],
             ['Dot.Memory and Dot.Brain', 'Lessons learned and decisions as organisational knowledge.', 'Later', 'Both have APIs; what Dot.Projects should share with them is still to be agreed.'],
             ['Dot.HR, Dot.Finance, Dot.Tasks', 'Leave-aware capacity, finance workflows, shared tasks.', 'No API yet', 'These apps have no API Dot.Projects can call. Until they do, capacity, costs and tasks are kept here.'],
         ] as [$name, $what, $state, $why])

@@ -805,3 +805,34 @@ saved set of phases, statuses, task lists, risk categories and gates, not a sepa
   Measured at 30 projects: a repeat view of Portfolio went from 1,187 ms to 162 ms, and Reports from
   920 ms to 65 ms. The major-risks, roadmap and latest-report lookups are batched into one query
   each. Details are in R34_READINESS.md §8.
+- **P11c Dot.Analytics** (2026-11-03). Every morning (04:30 UTC) each business linked to InfoDot
+  queues one signed snapshot of its delivery numbers for Dot.Analytics, sent by the outbox. The
+  snapshot is numbers only, counted over active projects from the same kept facts as the
+  portfolio:
+  - active projects;
+  - off track and at risk;
+  - forecast over budget;
+  - overdue tasks;
+  - tasks completed in 7 days;
+  - milestones past due;
+  - serious risks.
+
+  **On Dot.Analytics** (its own PR), Dot.Projects is added to the metric catalogue and the contract,
+  and feeds its operational and risk engines.
+
+  **Shared signing.** The Notify and Analytics clients share one base class for the signed
+  `{timestamp}.{body}` post and the circuit breaker.
+
+  **Checked end to end locally**, with Analytics running on its own database and the real command
+  and outbox on the Projects side:
+  - a 201 stored the snapshot;
+  - the connected data source was created;
+  - all eight metrics were computed with the same values;
+  - re-sending the same snapshot answered 200 as a replay.
+
+  **The live connection waits on the owner:**
+  - deploy the Analytics PR;
+  - set `ANALYTICS_INGEST_SECRET_PROJECTS` on Analytics and the same value as
+    `ANALYTICS_INGEST_SECRET` on Projects.
+
+  The Integrations page shows the numbers a business would send today.
