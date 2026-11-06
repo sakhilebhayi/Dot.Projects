@@ -1,3 +1,8 @@
+@php
+    // Public sign-up here is closed: an account starts on InfoDot, and this app makes its side at the first sign-in.
+    $open = \Laravel\Fortify\Features::enabled(\Laravel\Fortify\Features::registration());
+    $join = $open ? route('register') : config('ecosystem.signup_url');
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
     <head>
@@ -93,11 +98,9 @@
                             <a href="{{ route('login') }}" class="hidden sm:block text-sm font-medium text-[var(--mist)] hover:text-[var(--paper)] transition-colors">
                                 Sign in
                             </a>
-                            @if (Route::has('register'))
-                                <a href="{{ route('register') }}" class="press px-5 py-2.5 bg-[var(--gold)] hover:bg-[var(--gold-soft)] text-[#13141d] text-sm font-display font-semibold rounded-lg transition-colors">
-                                    Get started
-                                </a>
-                            @endif
+                            <a href="{{ $join }}" class="press px-5 py-2.5 bg-[var(--gold)] hover:bg-[var(--gold-soft)] text-[#13141d] text-sm font-display font-semibold rounded-lg transition-colors">
+                                Get started
+                            </a>
                         @endauth
 
                         <button id="menu-toggle" class="md:hidden press p-2 -mr-2 text-[var(--paper)]" aria-label="Toggle menu" aria-expanded="false">
@@ -153,13 +156,14 @@
 
                     @guest
                         <div class="flex flex-wrap items-center gap-4">
-                            <a href="{{ route('register') }}" class="press px-7 py-3.5 bg-[var(--gold)] hover:bg-[var(--gold-soft)] text-[#13141d] font-display font-semibold rounded-lg transition-colors">
+                            <a href="{{ $join }}" class="press px-7 py-3.5 bg-[var(--gold)] hover:bg-[var(--gold-soft)] text-[#13141d] font-display font-semibold rounded-lg transition-colors">
                                 Get started
                             </a>
                             <a href="#capabilities" class="press flex items-center gap-2 px-7 py-3.5 text-[var(--paper)] font-medium rounded-lg border border-[var(--line)] hover:border-[var(--mist)] transition-colors">
                                 See how it works
                             </a>
                         </div>
+                        @unless($open)<p class="mt-4 text-sm text-[var(--mist)]">Accounts are made on InfoDot. Dot.Projects opens from there.</p>@endunless
                     @endguest
                 </div>
             </div>
@@ -272,7 +276,7 @@
 
                 @guest
                     <div class="flex flex-wrap justify-center gap-4">
-                        <a href="{{ route('register') }}" class="press px-8 py-3.5 bg-[var(--gold)] hover:bg-[var(--gold-soft)] text-[#13141d] font-display font-semibold rounded-lg transition-colors">
+                        <a href="{{ $join }}" class="press px-8 py-3.5 bg-[var(--gold)] hover:bg-[var(--gold-soft)] text-[#13141d] font-display font-semibold rounded-lg transition-colors">
                             Get started
                         </a>
                         <a href="{{ route('login') }}" class="press px-8 py-3.5 text-[var(--paper)] font-medium rounded-lg border border-[var(--line)] hover:border-[var(--mist)] transition-colors">
