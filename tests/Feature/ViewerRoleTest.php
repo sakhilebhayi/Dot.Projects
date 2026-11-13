@@ -130,7 +130,7 @@ class ViewerRoleTest extends TestCase
         $viewer = $this->member('viewer');
         $editor = $this->member('editor');
 
-        $this->actingAs($viewer)->get(route('dashboard'))->assertDontSee('New project');
+        $this->actingAs($viewer)->get(route('dashboard'))->assertDontSee('Start a project');
         $this->actingAs($viewer)->get(route('projects.board', $this->project))
             ->assertDontSee('Add a task')
             ->assertDontSee('draggable="true"', false)
@@ -139,7 +139,7 @@ class ViewerRoleTest extends TestCase
             ->assertDontSee('Post comment')
             ->assertSee('read-only access');
 
-        $this->actingAs($editor)->get(route('dashboard'))->assertSee('New project');
+        $this->actingAs($editor)->get(route('dashboard'))->assertSee('Start a project');
         $this->actingAs($editor)->get(route('projects.board', $this->project))
             ->assertSee('Add a task')
             ->assertSee('draggable="true"', false);

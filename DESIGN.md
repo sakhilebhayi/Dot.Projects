@@ -233,6 +233,15 @@ most a 3px radius. Avatars are circles with the person's initials on a pale tint
   Counts are ink; the band is always named in text (legend, pill, cell label). On phones the
   impact labels turn vertical. Band pills follow the same steps (`pill-negative` solid for critical).
 - Blocked work is hatched, never just coloured. Load bars show capacity as a 1px tick.
+- **Arrival** (R-50, `/dashboard`, classes `pg-arrive*`): where a person lands after signing in through
+  InfoDot. The original logo (`logo.png`, night `logo-light.png`) at 176px, a 34px headline, a 16px welcome
+  built from the person's first name and the business's name, the finding sentence for the whole business,
+  and the page's one lead action (`pg-btn--lead`, 48px, marked `data-primary-action`): "Start a project" for
+  people who may create, "Review the portfolio" for read-only viewers. Beside it, the When we land line of
+  the open project touched most recently and the work given to this person, from records only; with no
+  records the line keeps its frame, shows today and says what will appear. "InfoDot" and "Platforms" sit top
+  right. The projects list follows under its own heading. One entrance (the words and the lead action, 420ms,
+  transform and opacity), none under reduced motion. The lead button is used on this screen only.
 
 ## Do's and Don'ts
 

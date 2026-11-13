@@ -50,7 +50,7 @@ class ProgrammeWorkspaceTest extends TestCase
             ->assertSee('Kathu go-live')->assertSee('30 Nov 2026')
             ->assertSee('1 of 2 tasks done', false)
             ->assertSee('None dated')
-            ->assertSee('New project');
+            ->assertSee('Start a project');
     }
 
     public function test_the_finding_sentence_follows_the_most_pressing_fact(): void

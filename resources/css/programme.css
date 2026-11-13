@@ -928,3 +928,52 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
     .pg-wf-row { grid-template-columns: minmax(0, 1fr); }
     .pg-wf-add { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- Arrival (R-50): where a person lands after signing in through InfoDot ----------
+   The original logo, a welcome, one lead action, and a real project's date line. Two columns that
+   share the page grid; on narrow screens the words come first and the date line follows. */
+.pg-arrive { position: relative; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px 44px; align-items: start; margin: 0 0 36px; }
+.pg-arrive-say { min-width: 0; }
+.pg-arrive-brand { margin: -8px 0 6px; }
+/* The artwork carries its own clear space; the negative margin lines its wordmark up with the text below. */
+.pg-arrive-brand img { display: block; width: 176px; height: auto; margin-left: -14px; }
+.pg-arrive-brand .night { display: none; }
+html.dark .pg-arrive-brand .day { display: none; }
+html.dark .pg-arrive-brand .night { display: block; }
+.pg-arrive-back { position: absolute; top: -6px; right: -10px; z-index: 1; display: flex; gap: 4px; }
+.pg-arrive-back a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: var(--pg-muted); text-decoration: none; }
+.pg-arrive-back a:hover { color: var(--pg-ink); background: var(--pg-raised); }
+.pg-arrive-h { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; text-wrap: balance; overflow-wrap: break-word; }
+.pg-arrive-lede { font-size: 16px; line-height: 1.5; margin: 14px 0 0; max-width: 58ch; }
+.pg-arrive-lede b { font-weight: 600; }
+.pg-arrive .pg-finding { margin: 10px 0 0; max-width: 58ch; color: var(--pg-muted); }
+.pg-arrive .pg-finding b { color: var(--pg-ink); }
+.pg-arrive-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 24px 0 0; }
+.pg-btn--lead { height: 48px; padding: 0 22px 0 18px; font-size: 15px; font-weight: 600; gap: 8px; }
+.pg-btn--lead:active { transform: translateY(1px); }
+.pg-arrive-also { display: inline-flex; align-items: center; min-height: 44px; font-size: 13.5px; color: var(--pg-muted); text-decoration: underline; text-decoration-color: var(--pg-control); text-underline-offset: 4px; }
+.pg-arrive-also:hover { color: var(--pg-ink); text-decoration-color: var(--pg-ink); }
+.pg-arrive-show { display: grid; gap: var(--pg-gap); min-width: 0; padding-top: 40px; }
+.pg-arrive-note { font-size: 12.5px; color: var(--pg-muted); margin: 4px 0 0; }
+.pg-land-line--bare { height: 64px; margin-bottom: 8px; }
+.pg-arrive-list { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 10px; scroll-margin-top: calc(var(--pg-top) + 16px); }
+.pg-arrive-list-h { font-size: 16px; font-weight: 600; line-height: 1.3; margin: 0; }
+@media (max-width: 1100px) {
+    .pg-arrive { grid-template-columns: minmax(0, 1fr); }
+    .pg-arrive-show { padding-top: 0; }
+}
+@media (max-width: 760px) {
+    .pg-arrive { margin-bottom: 28px; }
+    .pg-arrive-brand img { width: 132px; margin-left: -10px; }
+    .pg-arrive-back { top: 0; }
+    .pg-arrive-back a { min-height: 44px; }
+    .pg-arrive-h { font-size: 28px; }
+    .pg-arrive-act .pg-btn--lead { width: 100%; }
+    /* On a phone the milestone dates name their own months, so the month labels under the axis step aside. */
+    .pg-arrive .pg-land-line .tick span { display: none; }
+}
+/* The one authored moment: the words and the lead action settle in. The page is complete without it. */
+@media (prefers-reduced-motion: no-preference) {
+    .pg-arrive-say { animation: pg-arrive-in .42s cubic-bezier(.16, 1, .3, 1) both; }
+    @keyframes pg-arrive-in { from { opacity: 0; transform: translateY(10px); } }
+}
