@@ -82,6 +82,11 @@ return [
         'secret' => env('INFODOT_SERVICE_SECRET'),
         'timeout' => (int) env('INFODOT_REDEEM_TIMEOUT', 5),
         'provision' => (bool) env('INFODOT_PROVISION_USERS', true),
+
+        // R-50: during a session, ask InfoDot (cached ten minutes per company) whether the current company
+        // still holds this platform; a company that does not sees a plain 403 page. Any failure to ask lets
+        // the person carry on. False switches the question off entirely.
+        'entitlement_check' => (bool) env('PROJECTS_ENTITLEMENT_CHECK', true),
     ],
 
 ];

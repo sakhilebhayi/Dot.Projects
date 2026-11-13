@@ -242,6 +242,11 @@ most a 3px radius. Avatars are circles with the person's initials on a pale tint
   records the line keeps its frame, shows today and says what will appear. "InfoDot" and "Platforms" sit top
   right. The projects list follows under its own heading. One entrance (the words and the lead action, 420ms,
   transform and opacity), none under reduced motion. The lead button is used on this screen only.
+- **Not switched on** (R-50, `entitlement/refused.blade.php`, HTTP 403): shown when the company does not hold
+  Dot.Projects in InfoDot, at sign-in and during a session. The sign-in card: the logo, a 22px title that says
+  the state in words ("Dot.Projects is suspended for Kathu Engineering Works"), one muted sentence on what
+  happens to the data, and the one primary button, "Open Platforms in InfoDot". A signed-in person with other
+  companies gets them as ruled rows with a ghost "Switch". No project data, no navigation, no colour.
 
 ## Do's and Don'ts
 

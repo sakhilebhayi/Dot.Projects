@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureCompanyEntitled;
 use App\Http\Middleware\SecurityHeaders;
 use App\Services\Guardian\ErrorCounter;
 use Illuminate\Foundation\Application;
@@ -17,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Baseline browser protections (enforced headers and a nonce-based CSP) on every response.
         $middleware->append(SecurityHeaders::class);
+
+        // R-50: the signed-in area works only while the current company holds this platform in InfoDot. In the web
+        // group so it also covers Livewire's endpoints; it leaves signed-out and exempt routes alone.
+        $middleware->web(append: [EnsureCompanyEntitled::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
