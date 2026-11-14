@@ -1099,7 +1099,7 @@ th[aria-sort="ascending"] .pgd-sort::after { transform: translateY(1px) rotate(-
 @media (max-width: 900px) {
     .pgd-arrive { grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-4) var(--sp-4); padding: var(--sp-4) var(--sp-4) var(--sp-4); }
     .pgd-logo, .pgd-logo img { width: 72px; }
-    .pgd-say h1 { font-size: 28px; }
+    .pgd-say h1 { font-size: 24px; }
     .pgd-act { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
     .pgd-col-done { display: none; }
 }
