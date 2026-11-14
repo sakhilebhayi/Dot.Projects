@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\Ecosystem\SyncTeamsFromInfoDot;
 use App\Models\Team;
 use App\Services\InfoDot\CompanyEntitlement;
 use App\Support\EntitlementRefusal;
@@ -19,8 +20,10 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Only routes behind sign-in are checked, plus Livewire's own endpoints for a signed-in person (they carry
  * every action of the signed-in screens). Sign-in, sign-out, the handoff receiver, health checks, public
- * pages, the API and the company switcher are left alone. A workspace with no InfoDot company (a personal
- * workspace) is not judged here: what InfoDot said at sign-in stands.
+ * pages, the API and the company switcher are left alone. For a personal team, or a team with no InfoDot
+ * company, InfoDot is not asked: what it said about the personal workspace at sign-in (kept in the session)
+ * stands, and only an exact "not entitled" refuses. Nothing remembered (an older InfoDot, or a session from
+ * before this release) carries on.
  */
 class EnsureCompanyEntitled
 {
@@ -38,8 +41,18 @@ class EnsureCompanyEntitled
         $user = $request->user();
         $team = $user?->currentTeam;
 
-        if (! $team instanceof Team || blank($team->infodot_team_uuid)) {
-            return $next($request);
+        // A personal team, or any team with no InfoDot company: InfoDot is never asked about it. What it said
+        // about the personal workspace at sign-in stands; only an exact "no" refuses.
+        if (! $team instanceof Team || $team->personal_team || blank($team->infodot_team_uuid)) {
+            if ($user === null || ! $request->hasSession() || $request->session()->get(SyncTeamsFromInfoDot::PERSONAL_ENTITLED) !== false) {
+                return $next($request);
+            }
+
+            return response()->view('entitlement.refused', [
+                ...EntitlementRefusal::words('company_required'),
+                'manageUrl' => $this->entitlement->manageUrl(),
+                'otherCompanies' => $user->allTeams()->filter(fn ($other) => ! $other->personal_team && filled($other->infodot_team_uuid))->values(),
+            ], 403);
         }
 
         $answer = $this->entitlement->for((string) $team->infodot_team_uuid);

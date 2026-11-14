@@ -34,8 +34,8 @@ class EntitlementRefusal
                 'message' => 'The request to switch it on is still waiting in InfoDot. This page opens as soon as it is approved.',
             ],
             'company_required', 'no_personal_access' => [
-                'title' => 'Dot.Projects is used through a company',
-                'message' => 'A personal workspace does not include Dot.Projects. Create or join a company in InfoDot and switch Dot.Projects on for it.',
+                'title' => 'Dot.Projects needs a company that has switched it on',
+                'message' => 'A personal workspace does not include Dot.Projects. Create or join a company in InfoDot and switch Dot.Projects on for it. Nothing kept here has been deleted.',
             ],
             'not_permitted_for_you' => [
                 'title' => 'Dot.Projects is not switched on for you',

@@ -106,7 +106,8 @@ class CompanyEntitlementTest extends TestCase
             'current_team_uuid' => $current,
         ])]);
 
-        auth()->logout();
+        auth()->shouldUse('web');
+        auth()->guard('web')->logout();
 
         return $this->post(route('ecosystem.auth'), ['token' => Str::random(40)], ['Origin' => 'https://infodot.test']);
     }
@@ -383,6 +384,95 @@ class CompanyEntitlementTest extends TestCase
         $this->actingAs($user)->get('/dashboard')->assertOk();
 
         Http::assertNothingSent();
+    }
+
+    // ---------------------------------------------------------------------------------------------------
+    // Personal workspaces: individuals hold the free core only
+    // ---------------------------------------------------------------------------------------------------
+
+    private function personal(array $marks): array
+    {
+        return $this->company((string) Str::uuid(), "Ann's Team", 'owner', $marks, personal: true);
+    }
+
+    /** Ann signs in holding Acme (entitled) and her personal workspace as marked, then moves to her personal team. */
+    private function annInHerPersonalTeam(array $personalMarks): User
+    {
+        $this->signIn('ann@acme.test', [
+            $this->personal($personalMarks),
+            $this->company(self::ACME, 'Acme Ltd', 'owner', ['entitled' => true, 'access' => null]),
+        ], self::ACME)->assertRedirect(route('dashboard'));
+
+        $ann = User::where('email', 'ann@acme.test')->firstOrFail();
+        $own = $ann->ownedTeams()->where('personal_team', true)->firstOrFail();
+        Project::create(['team_id' => $own->id, 'owner_id' => $ann->id, 'name' => 'Garden shed', 'status' => 'active']);
+        $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, true, 'active'))]);
+        $this->put(route('current-team.update'), ['team_id' => $own->id])->assertRedirect();
+
+        return $ann->fresh();
+    }
+
+    public function test_a_personal_workspace_infodot_refused_is_not_a_way_round_the_check(): void
+    {
+        $ann = $this->annInHerPersonalTeam(['entitled' => false, 'access' => 'no_personal_access']);
+        $this->assertTrue($ann->currentTeam->personal_team);
+
+        $this->get('/dashboard')
+            ->assertStatus(403)
+            ->assertSee('Dot.Projects needs a company that has switched it on')
+            ->assertSee('href="https://infodot.test/platforms/projects"', false)
+            ->assertSee('Switch to Acme Ltd')
+            ->assertDontSee('Garden shed');
+        $this->post('/livewire/update', ['components' => []])->assertStatus(403);
+
+        Http::assertNothingSent();
+        $this->assertSame('Garden shed', Project::where('name', 'Garden shed')->firstOrFail()->name, 'nothing in the personal workspace is altered');
+
+        // Public pages and the exemptions stay open, and the entitled company can be switched to.
+        $this->get('/')->assertOk();
+        $this->put(route('current-team.update'), ['team_id' => Team::where('infodot_team_uuid', self::ACME)->firstOrFail()->id])->assertRedirect();
+        $this->get('/dashboard')->assertOk()->assertDontSee('Garden shed');
+    }
+
+    public function test_a_team_with_no_infodot_company_follows_the_same_remembered_answer(): void
+    {
+        $ann = $this->annInHerPersonalTeam(['entitled' => false, 'access' => 'no_personal_access']);
+        $unlinked = Team::forceCreate(['user_id' => $ann->id, 'name' => 'Side venture', 'personal_team' => false]);
+        $this->put(route('current-team.update'), ['team_id' => $unlinked->id])->assertRedirect();
+
+        $this->get('/dashboard')->assertStatus(403)->assertSee('Dot.Projects needs a company that has switched it on')->assertDontSee('Switch to Side venture');
+        Http::assertNothingSent();
+    }
+
+    public function test_a_personal_workspace_infodot_allowed_carries_on(): void
+    {
+        $this->annInHerPersonalTeam(['entitled' => true, 'access' => null]);
+
+        $this->get('/dashboard')->assertOk()->assertSee('Garden shed');
+        Http::assertNothingSent();
+    }
+
+    public function test_a_personal_workspace_with_nothing_remembered_carries_on(): void
+    {
+        // An InfoDot from before R-50: no `entitled` key anywhere.
+        $this->signIn('ann@acme.test', [$this->company((string) Str::uuid(), "Ann's Team", 'owner', personal: true), $this->company(self::ACME, 'Acme Ltd', 'owner')], self::ACME);
+        $ann = User::where('email', 'ann@acme.test')->firstOrFail();
+        $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, true, 'active'))]);
+        $this->put(route('current-team.update'), ['team_id' => $ann->ownedTeams()->where('personal_team', true)->firstOrFail()->id])->assertRedirect();
+
+        $this->get('/dashboard')->assertOk();
+        $this->assertFalse(session()->has('infodot.personal_entitled'));
+        Http::assertNothingSent();
+    }
+
+    public function test_a_later_sign_in_replaces_what_was_remembered(): void
+    {
+        $this->annInHerPersonalTeam(['entitled' => false, 'access' => 'no_personal_access']);
+        $this->get('/dashboard')->assertStatus(403);
+
+        $this->signIn('ann@acme.test', [$this->personal(['entitled' => true, 'access' => null]), $this->company(self::ACME, 'Acme Ltd', 'owner', ['entitled' => true, 'access' => null])], null)
+            ->assertRedirect(route('dashboard'));
+        $this->assertTrue(session('infodot.personal_entitled'));
     }
 
     public function test_a_second_company_that_is_entitled_can_still_be_switched_to(): void

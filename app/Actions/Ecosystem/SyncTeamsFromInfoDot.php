@@ -75,6 +75,26 @@ class SyncTeamsFromInfoDot
         return ! array_key_exists('entitled', $team) || $team['entitled'] === true;
     }
 
+    /** Session key: what InfoDot said at sign-in about the person's personal workspace for this platform. */
+    public const PERSONAL_ENTITLED = 'infodot.personal_entitled';
+
+    /**
+     * What InfoDot said about the person's personal workspace: true, false, or null when it said nothing
+     * (no personal workspace listed, or an InfoDot from before R-50 that sends no `entitled` key).
+     *
+     * @param  array<string, mixed>  $identity
+     */
+    public static function personalEntitled(array $identity): ?bool
+    {
+        $personal = collect($identity['teams'] ?? [])->first(fn ($t) => is_array($t) && ($t['personal'] ?? false) === true);
+
+        if (! is_array($personal) || ! array_key_exists('entitled', $personal)) {
+            return null;
+        }
+
+        return $personal['entitled'] === true;
+    }
+
     /**
      * When InfoDot marked the person's workspaces and not one may use this platform: the reason to show
      * (the active workspace's, else the first one given) and the company's name. Null when anyone is
