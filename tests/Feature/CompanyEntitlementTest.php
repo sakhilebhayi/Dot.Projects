@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Projects\ProjectComments;
 use App\Models\Project;
+use App\Models\ProjectComment;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -333,6 +336,41 @@ class CompanyEntitlementTest extends TestCase
         $this->travel(31)->seconds();
         $this->get('/dashboard')->assertOk();
         Http::assertSentCount(2);
+    }
+
+    /** A real POST to Livewire's update endpoint, the way a browser sends a component action. */
+    private function postComponentAction(array $snapshot, string $body)
+    {
+        return $this->postJson('/livewire/update', ['components' => [[
+            'snapshot' => json_encode($snapshot),
+            'updates' => ['body' => $body],
+            'calls' => [['path' => '', 'method' => 'addComment', 'params' => []]],
+        ]]]);
+    }
+
+    public function test_a_livewire_action_that_worked_is_refused_once_the_answer_expires_and_infodot_says_no(): void
+    {
+        $user = $this->ownerOf(self::ACME);
+        $project = Project::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->firstOrFail();
+        $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, true, 'active'))]);
+
+        $snapshot = Livewire::actingAs($user)->test(ProjectComments::class, ['project' => $project])->snapshot;
+
+        // While the company holds the platform the action runs.
+        $this->postComponentAction($snapshot, 'Fence goes up Friday.')->assertOk()->assertJsonStructure(['components' => [['snapshot', 'effects']]]);
+        $this->assertSame(1, ProjectComment::count());
+
+        // Ten minutes later InfoDot says no: the update is refused, no component comes back, nothing is written.
+        $this->travel(11)->minutes();
+        $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, false, 'suspended'))]);
+
+        $response = $this->postComponentAction($snapshot, 'Written after the suspension.');
+
+        $response->assertStatus(403);
+        $this->assertStringNotContainsString('"components"', $response->getContent());
+        $this->assertStringNotContainsString('snapshot', $response->getContent());
+        $this->assertSame(1, ProjectComment::count(), 'the data is unchanged');
+        $this->assertSame(0, ProjectComment::where('body', 'Written after the suspension.')->count());
     }
 
     public function test_the_flag_off_makes_no_call(): void
