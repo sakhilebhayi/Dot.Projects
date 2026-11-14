@@ -8,8 +8,7 @@
     @endphp
 
     <form class="pg-filters" wire:submit.prevent role="search" aria-label="Filter the work">
-        <label for="w-search" class="pg-sr">Find a task</label>
-        <input id="w-search" type="search" wire:model.live.debounce.300ms="search" class="pg-input" placeholder="Find a task by name">
+        <x-dot.filter-search id="w-search" name="search" placeholder="Find a task by name" label="Find a task" wire:model.live.debounce.300ms="search" class="pg-filter-search" />
         <label for="w-status" class="pg-sr">Status</label>
         <select id="w-status" wire:model.live="status" class="pg-select">
             <option value="">Any status</option>

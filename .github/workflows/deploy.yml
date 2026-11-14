@@ -304,6 +304,17 @@ jobs:
             echo "== docroot build/ did not exist; linked to $APPDIR/public/build"
           fi
 
+          # ---- the shared Dot UI (public/dot-ui) is served from the docroot too
+          # Its CSS, fonts, logos and script live in public/ and are not part of public/build. While the docroot is the
+          # folder above the app (not <app>/public) Apache serves ITS copies, which git never refreshes. Mirror them.
+          # Skipped once the document root is <app>/public.
+          # (The guard above sets its variables inside a subshell, so the answer is asked again here.)
+          MIRROR_REAL="$(cd "$DEPLOY_PATH" 2>/dev/null && pwd -P)" || MIRROR_REAL=""
+          MIRROR_DOCROOT="$(uapi --output=json DomainInfo single_domain_data domain=projects.infodot.co.za 2>/dev/null | sed -n 's/.*"documentroot" *: *"\([^"]*\)".*/\1/p' | head -1)"
+          if [ -n "$MIRROR_REAL" ] && [ "$MIRROR_DOCROOT" != "$MIRROR_REAL/public" ] && [ ! -f "$DEPLOY_PATH/.docroot-is-public" ]; then
+            if [ -d public/dot-ui ] && [ ! -L "$DOCROOT/dot-ui" ]; then mkdir -p "$DOCROOT/dot-ui" && rsync -a --delete public/dot-ui/ "$DOCROOT/dot-ui/" && echo "== docroot dot-ui/ mirrored"; fi
+          fi
+
           # ---- database
           echo "== Pending migrations:"
           $PHP artisan migrate:status --pending 2>&1 | tail -25 || true

@@ -24,6 +24,13 @@
             } catch (e) {}
         })();
     </script>
+    {{-- Shared Dot UI (search pill, platform switcher), served from this site's own public/dot-ui. Loaded before the app CSS so the
+         token mapping at the end of programme.css wins. --}}
+    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-fonts.css') }}">
+    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-search.css') }}">
+    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-switcher-fonts.css') }}">
+    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-switcher.css') }}">
     {{-- workspace.css keeps the Tailwind utilities Jetstream's account and team pages use;
          programme.css is the design system (DESIGN.md) and wins after it. --}}
     @vite(['resources/css/workspace.css', 'resources/css/programme.css', 'resources/js/app.js'])
@@ -78,9 +85,12 @@
         <div class="pg-where">@isset($header){{ $header }}@else<b>Dot.Projects</b>@endisset</div>
         <span class="pg-fill"></span>
         @auth
-            <button type="button" class="pg-chip pg-cmd-open" data-cmd-open aria-keyshortcuts="Control+K Meta+K" aria-label="Search and commands">
-                <span class="material-symbols-rounded" aria-hidden="true" style="font-size:18px">search</span><span class="pg-cmd-open-t">Search</span><kbd class="pg-kbd" data-cmd-key>Ctrl K</kbd>
-            </button>
+            {{-- The header search is the shared pill. It is the way into the command palette below (same results, same
+                 Ctrl or Cmd and K): a click, Enter or the arrow opens the palette, and nothing is submitted. --}}
+            <div class="pg-top-search">
+                <x-dot.search name="q" placeholder="Find a project, task, document or report" label="Search and commands" hint="Ctrl K" readonly aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K" :form-attributes="['data-cmd-open' => '']" />
+            </div>
+            <x-dot.switcher platform="projects" :company="Auth::user()->currentTeam?->infodot_team_uuid" :company-name="Auth::user()->currentTeam?->name" logos="/dot-ui/img/platforms" />
             @if (Laravel\Jetstream\Jetstream::hasTeamFeatures() && Auth::user()->currentTeam)
                 <details class="pg-menu">
                     <summary class="pg-chip" aria-label="Switch business">{{ Auth::user()->currentTeam->name }}<span class="material-symbols-rounded" aria-hidden="true" style="font-size:18px">unfold_more</span></summary>
@@ -132,5 +142,6 @@
 
     @stack('modals')
     @livewireScripts
+    <script src="{{ asset('dot-ui/js/dot-switcher.js') }}" defer nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}"></script>
 </body>
 </html>
