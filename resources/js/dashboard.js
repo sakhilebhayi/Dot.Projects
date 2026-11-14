@@ -15,6 +15,7 @@ if (table) {
         const next = sel.querySelector(`.pgd-panel[data-for="${CSS.escape(String(id))}"]`);
         if (!next || String(id) === String(selected)) return;
         selected = String(id);
+        root.querySelectorAll('.pgd-horizon .dot').forEach((d) => d.classList.toggle('is-on', d.dataset.id === selected));
         body.querySelectorAll('tr').forEach((r) => r.classList.toggle('is-selected', r.dataset.id === selected));
         sel.querySelectorAll('.pgd-panel').forEach((p) => { p.hidden = p !== next; p.classList.remove('is-entering'); });
         if (!reduce.matches) {
@@ -26,6 +27,11 @@ if (table) {
     };
 
     const rowOf = (el) => el.closest('tr[data-panel]');
+    const dots = root.querySelector('.pgd-horizon');
+    if (dots) {
+        dots.addEventListener('mouseover', (e) => { const d = e.target.closest('.dot'); if (d && hover.matches) show(d.dataset.id); });
+        dots.addEventListener('focusin', (e) => { const d = e.target.closest('.dot'); if (d) show(d.dataset.id); });
+    }
     body.addEventListener('mouseover', (e) => { const r = rowOf(e.target); if (r && hover.matches) show(r.dataset.id); });
     body.addEventListener('focusin', (e) => { const r = rowOf(e.target); if (r) show(r.dataset.id); });
     body.addEventListener('keydown', (e) => {

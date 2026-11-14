@@ -11,7 +11,7 @@
         // The horizon: the next dated milestone of every open project on one line, today marked. Real dates only.
         $horizon = [];
         foreach ($openRows as $p) {
-            if ($n = $p->milestones->first(fn ($m) => $m->status !== 'completed')) { $horizon[] = ['name' => $p->name, 'on' => $n->due_date, 'late' => $n->due_date->lt($today)]; }
+            if ($n = $p->milestones->first(fn ($m) => $m->status !== 'completed')) { $horizon[] = ['id' => $p->id, 'name' => $p->name, 'ms' => $n->title, 'on' => $n->due_date, 'late' => $n->due_date->lt($today)]; }
         }
         $hFrom = collect([$today, ...array_column($horizon, 'on')])->min()->copy()->startOfMonth();
         $hTo = collect([$today, ...array_column($horizon, 'on')])->max()->copy()->endOfMonth();
@@ -54,15 +54,17 @@
                 @endif
             </div>
             @if ($horizon !== [] || ! $hasAnyProject)
-                <div class="pgd-horizon" @if ($horizon !== []) role="img" aria-label="The next milestone of each open project on a date line from {{ $hFrom->format('j M Y') }} to {{ $hTo->format('j M Y') }}" @else aria-hidden="true" @endif>
+                <div class="pgd-horizon" @if ($horizon !== []) role="group" aria-label="The next milestone of each open project, on a date line from {{ $hFrom->format('j M Y') }} to {{ $hTo->format('j M Y') }}" @else aria-hidden="true" @endif>
                     <span class="axis"></span>
                     @foreach ([$hFrom->copy(), $hFrom->copy()->addMonths(1), $hFrom->copy()->addMonths(2)] as $m)
-                        @if ($m->lte($hTo))<span class="tick" style="left:{{ $hAt($m) }}%"></span>@endif
+                        @if ($m->lte($hTo))<span class="tick" style="left:{{ $hAt($m) }}%"></span><span class="mon" style="left:{{ $hAt($m) }}%" aria-hidden="true">{{ $m->format('M') }}</span>@endif
                     @endforeach
                     <span class="today" style="left:{{ $horizon === [] ? 50 : $hAt($today) }}%"><span>Today, {{ $today->format('j M') }}</span></span>
                     @foreach ($horizon as $i => $h)
-                        <span class="dot {{ $h['late'] ? 'late' : '' }}" style="left:{{ $hAt($h['on']) }}%;--i:{{ $i }}" title="{{ $h['name'] }}, {{ $h['on']->format('j M Y') }}"></span>
+                        @php $at = $hAt($h['on']); @endphp
+                        <a class="dot {{ $h['late'] ? 'late' : '' }} {{ $at < 14 ? 'to-r' : ($at > 86 ? 'to-l' : '') }} {{ $h['id'] === $selectedId ? 'is-on' : '' }}" href="{{ route('projects.show', $h['id']) }}" data-id="{{ $h['id'] }}" style="left:{{ $at }}%;--i:{{ $i }}" aria-label="{{ $h['name'] }}: {{ $h['ms'] }}, {{ $h['late'] ? 'was due' : 'due' }} {{ $h['on']->format('j M Y') }}"><span class="hl" aria-hidden="true">{{ $h['name'] }}<small>{{ $h['on']->format('j M') }}</small></span></a>
                     @endforeach
+                    @if ($horizon !== [])<p class="key">Next milestone of each open project. <span class="k-late">Red</span> means its date has passed.</p>@endif
                 </div>
             @endif
         </section>

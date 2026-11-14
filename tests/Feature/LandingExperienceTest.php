@@ -196,7 +196,9 @@ class LandingExperienceTest extends TestCase
             ->assertSeeInOrder(['Clear steel through customs', 'Book the crane']);
 
         // Strip the words the records themselves supply, then every number left must be one we seeded or counted.
-        $text = html_entity_decode(strip_tags(preg_replace('/\s(style|title|aria-label|id|href|width|height)="[^"]*"/', '', $this->arrival($response))));
+        // The horizon's hover labels print each milestone's own date; they are checked against the records below.
+        $arrival = preg_replace('/<span class="hl".*?<\/span>/s', '', $this->arrival($response));
+        $text = html_entity_decode(strip_tags(preg_replace('/\s(style|title|aria-label|id|href|width|height)="[^"]*"/', '', $arrival)));
         preg_match_all('/\d+/', $text, $found);
         $allowed = ['1', '2', '14']; // 1 of 2 open projects is late; today is 14 Nov
         $this->assertSame([], array_values(array_diff(array_unique($found[0]), $allowed)), 'a number in the arrival does not come from the records');

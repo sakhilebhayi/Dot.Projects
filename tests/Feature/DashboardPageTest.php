@@ -91,7 +91,7 @@ class DashboardPageTest extends TestCase
         $html = (string) $this->actingAs($this->boss)->get(route('dashboard'))->assertOk()
             ->assertSee('1 of 3 open projects') // only Kathu go-live has overdue work; the completed one is not open
             ->getContent();
-        $row = substr($html, strpos($html, 'data-id="'.$this->late->id.'"'));
+        $row = substr($html, strpos($html, '<tr data-id="'.$this->late->id.'"'));
         $row = substr($row, 0, strpos($row, '</tr>'));
 
         $this->assertStringContainsString('2 of 4', $row);          // done / total
@@ -139,6 +139,26 @@ class DashboardPageTest extends TestCase
         $this->assertStringNotContainsString('data-for="'.$secret->id.'"', (string) $page->getContent());
         // The headline counts what this person may see: the private project's overdue state is not in their number.
         $page->assertSee('1 of 3 open projects');
+    }
+
+    public function test_the_horizon_dots_are_real_links_to_the_viewers_own_projects_and_never_to_anyone_elses(): void
+    {
+        $other = User::factory()->withPersonalTeam()->create();
+        $theirs = Project::create(['team_id' => $other->currentTeam->id, 'owner_id' => $other->id, 'name' => 'Rival shaft', 'status' => 'active']);
+        $theirs->milestones()->create(['title' => 'Rival go', 'due_date' => '2026-12-01', 'status' => 'pending', 'sort_order' => 1]);
+        $secret = Project::create(['team_id' => $this->boss->currentTeam->id, 'owner_id' => $this->boss->id, 'name' => 'Retrenchments', 'status' => 'active', 'visibility' => 'private']);
+        $secret->milestones()->create(['title' => 'Notices', 'due_date' => '2026-12-02', 'status' => 'pending', 'sort_order' => 1]);
+        $ed = $this->member('editor');
+
+        $html = (string) $this->actingAs($this->boss)->get(route('dashboard'))->assertOk()->getContent();
+        $this->assertStringContainsString('class="dot late', $html, 'the overdue milestone is drawn red');
+        $this->assertStringContainsString('href="'.route('projects.show', $this->late).'" data-id="'.$this->late->id.'"', $html);
+        $this->assertStringContainsString('Kathu go-live: Site acceptance, was due 4 Nov 2026', $html);
+        $this->assertStringNotContainsString('Rival go', $html);
+
+        $page = (string) $this->actingAs($ed)->get(route('dashboard'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('Notices', $page, 'a private project the viewer may not see has no dot');
+        $this->assertStringNotContainsString('Rival go', $page);
     }
 
     public function test_the_page_renders_for_every_role_with_the_right_lead_action(): void

@@ -1040,13 +1040,27 @@ th[aria-sort="ascending"] .pgd-sort::after { transform: translateY(1px) rotate(-
 
 
 /* the horizon: the next dated milestone of every open project on one line; today is the ink line */
-.pgd-horizon { grid-column: 1 / -1; position: relative; height: 44px; margin-top: 2px; }
+.pgd-horizon { grid-column: 1 / -1; position: relative; height: 100px; margin-top: 2px; }
 .pgd-horizon .axis { position: absolute; left: 0; right: 0; top: 26px; height: 1px; background: var(--pg-control); transform-origin: left; }
 .pgd-horizon .tick { position: absolute; top: 22px; width: 1px; height: 9px; background: var(--pg-control); }
-.pgd-horizon .today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--pg-ink); transform-origin: top; }
+.pgd-horizon .mon { position: absolute; top: 34px; margin-left: 4px; font-size: 12px; color: var(--pg-muted); }
+.pgd-horizon .today { position: absolute; top: 0; height: 56px; width: 1px; background: var(--pg-ink); transform-origin: top; }
 .pgd-horizon .today span { position: absolute; top: 0; left: 6px; font-size: 12px; white-space: nowrap; }
-.pgd-horizon .dot { position: absolute; top: 21px; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 50%; border: 1.5px solid var(--pg-ink); background: var(--pg-surface); }
-.pgd-horizon .dot.late { border-color: var(--pg-negative); background: var(--pg-negative); }
+/* A milestone dot is a real link to its project: 24px to hit, 11px to see. Its label shows on hover, focus and for the selected row. */
+.pgd-horizon .dot { position: absolute; top: 14px; width: 24px; height: 24px; margin-left: -12px; display: block; text-decoration: none; color: var(--pg-ink); border-radius: 50%; }
+.pgd-horizon .dot::before { content: ""; position: absolute; left: 6.5px; top: 6.5px; width: 11px; height: 11px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--pg-ink); background: var(--pg-surface); transition: transform .14s ease-out; }
+.pgd-horizon .dot.late::before { border-color: var(--pg-negative); background: var(--pg-negative); }
+.pgd-horizon .dot:hover::before, .pgd-horizon .dot:focus-visible::before, .pgd-horizon .dot.is-on::before { transform: scale(1.35); }
+.pgd-horizon .dot:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 0; }
+.pgd-horizon .hl { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12.5px; line-height: 1.25; text-align: center; opacity: 0; pointer-events: none; transition: opacity .12s ease-out; background: var(--pg-ground); padding: 1px 4px; border-radius: 4px; z-index: 2; }
+.pgd-horizon .hl small { display: block; font-size: 12px; color: var(--pg-muted); }
+.pgd-horizon .dot.late .hl small { color: var(--pg-negative); }
+.pgd-horizon .dot.to-r .hl { left: 0; transform: none; text-align: left; }
+.pgd-horizon .dot.to-l .hl { left: auto; right: 0; transform: none; text-align: right; }
+.pgd-horizon .dot:hover .hl, .pgd-horizon .dot:focus-visible .hl, .pgd-horizon .dot.is-on .hl { opacity: 1; }
+.pgd-horizon .dot:hover { z-index: 3; }
+.pgd-horizon .key { position: absolute; left: 0; bottom: 0; margin: 0; font-size: 12px; color: var(--pg-muted); }
+.pgd-horizon .key .k-late { color: var(--pg-negative); }
 
 /* work given to this person: rows, the whole row is the link */
 .pgd-mine-list { list-style: none; margin: 0; padding: 0; }
@@ -1064,7 +1078,8 @@ th[aria-sort="ascending"] .pgd-sort::after { transform: translateY(1px) rotate(-
     .pgd-act { animation-delay: 140ms; }
     .pgd-horizon .axis { animation: pgd-draw .6s var(--ease) 220ms backwards; }
     .pgd-horizon .today { animation: pgd-rise .4s var(--ease) 420ms backwards; }
-    .pgd-horizon .dot { animation: pgd-pop .3s var(--ease) calc(480ms + var(--i, 0) * 45ms) backwards; }
+    .pgd-horizon .dot::before { animation: pgd-pop .3s var(--ease) calc(480ms + var(--i, 0) * 45ms) backwards; }
+    .pgd-horizon .mon, .pgd-horizon .key { animation: pgd-fade .3s ease-out 520ms backwards; }
     .pgd-horizon .tick { animation: pgd-fade .3s ease-out 300ms backwards; }
     .pgd-table tbody tr { animation: pgd-row .3s var(--ease) calc(260ms + var(--i, 0) * 28ms) backwards; }
     .pgd-table .pg-progress i { transform-origin: left; animation: pgd-fill .5s var(--ease) calc(400ms + var(--i, 0) * 28ms) backwards; }
