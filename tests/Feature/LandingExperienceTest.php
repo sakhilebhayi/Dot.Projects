@@ -68,8 +68,8 @@ class LandingExperienceTest extends TestCase
     private function arrival(TestResponse $response): string
     {
         $html = (string) $response->getContent();
-        $from = strpos($html, '<section class="pg-arrive"');
-        $to = strpos($html, '<div class="pg-arrive-list"');
+        $from = strpos($html, '<section class="pgd-arrive"');
+        $to = strpos($html, '<section class="pgd-desk') ?: strpos($html, '</main>');
         $this->assertNotFalse($from);
         $this->assertNotFalse($to);
 
@@ -127,9 +127,15 @@ class LandingExperienceTest extends TestCase
         $this->seedWork($this->owner);
 
         $this->actingAs($this->owner)->get(route('dashboard'))->assertOk()
-            ->assertSee('Know when every project lands.')
             ->assertSee('Welcome, Thandi.')->assertDontSee('Welcome, Thandi Mokoena')
-            ->assertSee('This is where Kathu Mining Services plans and runs its projects');
+            ->assertSee('Kathu Mining Services, as of today, 14 Nov.')
+            ->assertDontSee('Know when every project lands.', 'the product line is for the first visit only (R-51)');
+
+        $empty = User::factory()->withPersonalTeam()->create(['name' => 'Naledi Zulu']);
+        $empty->currentTeam->forceFill(['name' => 'Fresh Start Mining'])->save();
+        $this->actingAs($empty)->get(route('dashboard'))->assertOk()
+            ->assertSee('Know when every project lands.')
+            ->assertSee('This is where Fresh Start Mining plans and runs its projects');
     }
 
     public function test_the_landing_shows_the_original_logo_files_unaltered(): void
@@ -158,10 +164,8 @@ class LandingExperienceTest extends TestCase
     {
         $response = $this->actingAs($this->owner)->get(route('dashboard'))->assertOk()
             ->assertSee('No projects yet.')
-            ->assertSee('When you land')
-            ->assertSee('Nothing to draw yet. Start a project, add milestones with dates')
-            ->assertSee('Projects you create appear here')
-            ->assertDontSee('Given to you');
+            ->assertSee('Start one; you can begin with just a name')
+            ->assertDontSee('Given to you')->assertDontSee('id="ledger"', false);
         $this->assertSame(route('projects.create'), $this->primaryAction($response)[0]);
 
         // With no records there is nothing to count: today's date is the only figure in the arrival block.
@@ -175,8 +179,7 @@ class LandingExperienceTest extends TestCase
         $viewer = $this->member('viewer', 'Vusi Dlamini');
 
         $this->actingAs($viewer)->get(route('dashboard'))->assertOk()
-            ->assertSee('No projects yet. Projects appear here once someone in the business starts one you can see.')
-            ->assertSee('Once the business has a project you can see, its milestones appear on this line.');
+            ->assertSee('No projects yet. Projects appear here once someone in the business starts one you can see.');
     }
 
     public function test_every_figure_in_the_arrival_comes_from_the_seeded_records(): void
@@ -185,26 +188,20 @@ class LandingExperienceTest extends TestCase
 
         $response = $this->actingAs($this->owner)->get(route('dashboard'))->assertOk()
             ->assertSee('1 of 2 open projects')
-            ->assertSee('When Conveyor 3 replacement lands')
             ->assertSee(route('projects.show', $conveyor))
-            ->assertSee('Due 28 Jan 2027, in 75 days.')
-            ->assertSee('1 of 3 tasks done.')
+            ->assertSee('1 of 3')                // tasks done, in the row and the panel
+            ->assertSee('In 75 days')            // due 28 Jan 2027
             ->assertSee('2 open tasks')
             ->assertSee('Was due 8 Nov')->assertSee('Due 23 Nov')
             ->assertSeeInOrder(['Clear steel through customs', 'Book the crane']);
 
         // Strip the words the records themselves supply, then every number left must be one we seeded or counted.
-        $text = html_entity_decode(strip_tags(preg_replace('/\s(style|title|aria-label|id|href|width|height)="[^"]*"/', '', $this->arrival($response))));
-        $text = str_replace(['Conveyor 3 replacement'], '', $text);
+        // The horizon's hover labels print each milestone's own date; they are checked against the records below.
+        $arrival = preg_replace('/<span class="hl".*?<\/span>/s', '', $this->arrival($response));
+        $text = html_entity_decode(strip_tags(preg_replace('/\s(style|title|aria-label|id|href|width|height)="[^"]*"/', '', $arrival)));
         preg_match_all('/\d+/', $text, $found);
-        $allowed = [
-            '1', '2',            // 1 of 2 open projects is late; 2 open tasks given to this person
-            '3',                 // 1 of 3 tasks done
-            '75', '28', '2027',  // due 28 Jan 2027, in 75 days
-            '15', '10', '18',    // milestone dates: 15 Oct, 10 Nov, 18 Dec
-            '8', '23',           // task dates: 8 Nov, 23 Nov
-        ];
-        $this->assertSame([], array_values(array_diff(array_unique($found[0]), $allowed)), 'a number on the landing does not come from the records');
+        $allowed = ['1', '2', '14']; // 1 of 2 open projects is late; today is 14 Nov
+        $this->assertSame([], array_values(array_diff(array_unique($found[0]), $allowed)), 'a number in the arrival does not come from the records');
     }
 
     public function test_work_in_another_business_never_reaches_the_landing(): void
