@@ -233,6 +233,20 @@ most a 3px radius. Avatars are circles with the person's initials on a pale tint
   Counts are ink; the band is always named in text (legend, pill, cell label). On phones the
   impact labels turn vertical. Band pills follow the same steps (`pill-negative` solid for critical).
 - Blocked work is hatched, never just coloured. Load bars show capacity as a 1px tick.
+- **Arrival** (R-50, `/dashboard`, classes `pg-arrive*`): where a person lands after signing in through
+  InfoDot. The original logo (`logo.png`, night `logo-light.png`) at 176px, a 34px headline, a 16px welcome
+  built from the person's first name and the business's name, the finding sentence for the whole business,
+  and the page's one lead action (`pg-btn--lead`, 48px, marked `data-primary-action`): "Start a project" for
+  people who may create, "Review the portfolio" for read-only viewers. Beside it, the When we land line of
+  the open project touched most recently and the work given to this person, from records only; with no
+  records the line keeps its frame, shows today and says what will appear. "InfoDot" and "Platforms" sit top
+  right. The projects list follows under its own heading. One entrance (the words and the lead action, 420ms,
+  transform and opacity), none under reduced motion. The lead button is used on this screen only.
+- **Not switched on** (R-50, `entitlement/refused.blade.php`, HTTP 403): shown when the company does not hold
+  Dot.Projects in InfoDot, at sign-in and during a session. The sign-in card: the logo, a 22px title that says
+  the state in words ("Dot.Projects is suspended for Kathu Engineering Works"), one muted sentence on what
+  happens to the data, and the one primary button, "Open Platforms in InfoDot". A signed-in person with other
+  companies gets them as ruled rows with a ghost "Switch". No project data, no navigation, no colour.
 
 ## Do's and Don'ts
 
