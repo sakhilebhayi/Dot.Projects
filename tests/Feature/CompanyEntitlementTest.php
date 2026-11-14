@@ -86,6 +86,12 @@ class CompanyEntitlementTest extends TestCase
         Project::create(['team_id' => $team->id, 'owner_id' => $user->id, 'name' => 'Kathu plant upgrade', 'status' => 'active']);
         $user->switchTeam($team);
 
+        // The header's platform switcher (shared Dot UI) reads the same InfoDot endpoint under its own cache key. These
+        // tests count and sequence the ENTITLEMENT check's requests, so the switcher's answer is parked as a recent
+        // failure: it then asks nothing and the counts below stay the entitlement check's own. The switcher has its own
+        // tests (DotUiHeaderTest).
+        Cache::put('infodot:platforms:projects:'.strtolower($uuid), ['ok' => false, 'personal' => false, 'rows' => []], 3600);
+
         return $user->fresh();
     }
 
@@ -328,6 +334,7 @@ class CompanyEntitlementTest extends TestCase
 
         // A failure is asked again after a minute.
         Cache::flush();
+        Cache::put('infodot:platforms:projects:'.self::ACME, ['ok' => false, 'personal' => false, 'rows' => []], 3600); // the switcher's own cache, parked again (see ownerOf)
         $this->fakePlatforms([self::ACME => Http::response('', 503)]);
         $this->get('/dashboard')->assertOk();
         $this->travel(30)->seconds();

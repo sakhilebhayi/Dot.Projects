@@ -73,7 +73,6 @@ class DashboardController extends Controller
             'primary' => $canCreate
                 ? ['route' => 'projects.create', 'label' => 'Start a project', 'icon' => 'add']
                 : ['route' => 'portfolio.index', 'label' => 'Review the portfolio', 'icon' => 'account_tree'],
-            'infodot' => rtrim((string) config('ecosystem.platforms.infodot.url', 'https://infodot.co.za'), '/'),
             'hasAnyProject' => $openCount > 0 || Project::query()->exists(),
             'openCount' => $openCount,
             'lateCount' => $lateCount,

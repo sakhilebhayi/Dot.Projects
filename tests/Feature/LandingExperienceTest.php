@@ -142,16 +142,16 @@ class LandingExperienceTest extends TestCase
         $this->assertSame('981812a241b4b97a36076dc906aa2c4e0c162b397328c219be5d0695611709e4', hash_file('sha256', public_path('images/logo-light.png')));
     }
 
-    public function test_the_way_back_goes_to_infodot_and_its_platforms_page(): void
+    public function test_the_way_back_to_infodot_is_the_switcher_not_a_two_link_nav(): void
     {
         $this->actingAs($this->owner)->get(route('dashboard'))->assertOk()
-            ->assertSee('<a href="https://infodot.co.za/home">InfoDot</a>', false)
-            ->assertSee('<a href="https://infodot.co.za/platforms">Platforms</a>', false);
+            ->assertDontSee('<a href="https://infodot.co.za/home">InfoDot</a>', false)
+            ->assertDontSee('aria-label="Dot ecosystem"', false)
+            ->assertSee('<a href="https://infodot.co.za/platforms" class="dsw-all">See all platforms</a>', false);
 
         config(['ecosystem.platforms.infodot.url' => 'https://infodot.example.test/']);
         $this->actingAs($this->owner)->get(route('dashboard'))
-            ->assertSee('<a href="https://infodot.example.test/home">InfoDot</a>', false)
-            ->assertSee('<a href="https://infodot.example.test/platforms">Platforms</a>', false);
+            ->assertSee('<a href="https://infodot.example.test/platforms" class="dsw-all">See all platforms</a>', false);
     }
 
     public function test_a_new_member_with_nothing_sees_an_honest_empty_state(): void

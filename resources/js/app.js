@@ -144,12 +144,18 @@ const openPalette = () => {
     markPaletteItem(0);
 };
 if (/Mac|iPhone|iPad/.test(navigator.platform)) {
-    document.querySelectorAll('[data-cmd-key]').forEach((k) => { k.textContent = '⌘ K'; });
+    document.querySelectorAll('[data-cmd-key], [data-cmd-open] .dsr-kbd').forEach((k) => { k.textContent = '⌘ K'; });
 }
 document.addEventListener('click', (event) => {
     if (event.target.closest('[data-cmd-open]')) openPalette();
     // A click on the backdrop (the dialog itself, outside its body) closes it.
     if (event.target === palette()) palette().close();
+});
+// The header pill is a form that only opens the palette: submitting it (Enter, or the arrow) opens it, nothing is sent.
+document.addEventListener('submit', (event) => {
+    if (!event.target.matches?.('form[data-cmd-open]')) return;
+    event.preventDefault();
+    openPalette();
 });
 document.addEventListener('keydown', (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {

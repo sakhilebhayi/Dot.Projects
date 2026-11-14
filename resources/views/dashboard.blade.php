@@ -21,11 +21,6 @@
     <div class="pg-page">
         {{-- R-50: the arrival. The original logo, a welcome from real data, one primary action, a real date line. --}}
         <section class="pg-arrive" aria-labelledby="arrive-h">
-            {{-- The way back, top right on every platform's landing: InfoDot home and its Platforms page. --}}
-            <nav class="pg-arrive-back" aria-label="Dot ecosystem">
-                <a href="{{ $infodot }}/home">InfoDot</a>
-                <a href="{{ $infodot }}/platforms">Platforms</a>
-            </nav>
             <div class="pg-arrive-say">
                 <div class="pg-arrive-brand">
                     <img class="day" src="{{ asset('images/logo.png') }}" alt="Dot.Projects" width="176" height="132">
@@ -125,8 +120,7 @@
         </div>
 
         <form method="GET" action="{{ route('dashboard') }}#projects" class="pg-filters" role="search">
-            <label for="dash-search" class="pg-sr">Search projects by name</label>
-            <input id="dash-search" type="search" name="search" value="{{ $search }}" placeholder="Search projects by name" class="pg-input">
+            <x-dot.filter-search id="dash-search" name="search" :value="$search" placeholder="Search projects by name" label="Search projects by name" class="pg-filter-search" />
             <label for="dash-status" class="pg-sr">Status</label>
             <select id="dash-status" name="status" class="pg-select">
                 <option value="">Any status</option>

@@ -276,10 +276,11 @@ html.dark .pg-rail .pg-mark .night { display: block; }
     .pg-table td.pg-name .pg-sub { display: block; white-space: normal; }
     .pg-table td[data-label="Next milestone"] .pg-sub::before { content: ", "; }
     .pg-table td[data-label="Tasks done"] > div { display: inline-grid !important; vertical-align: middle; }
-    .pg-filters .pg-input, .pg-filters .pg-select { width: 100%; }
+    .pg-filters .pg-input, .pg-filters .pg-select, .pg-filters .pg-filter-search { width: 100%; }
 }
 .pg-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
 .pg-filters .pg-input { width: 260px; }
+.pg-filters .pg-filter-search { width: 260px; }
 .pg-filters .pg-select { width: 170px; }
 
 /* ---------- Board ---------- */
@@ -874,8 +875,6 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
    The one floating surface besides menus, so it takes the system's one soft shadow. Results are ruled rows like
    every list; the marked one takes a tone step, never a colour. */
 .pg-kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 5px; border: 1px solid var(--pg-border); border-radius: 4px; background: var(--pg-surface); font: inherit; font-size: 11px; color: var(--pg-muted); font-variant-numeric: tabular-nums; }
-.pg-cmd-open { gap: 6px; color: var(--pg-muted); }
-.pg-cmd-open:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 2px; }
 .pg-cmd { width: min(640px, calc(100vw - 32px)); max-height: min(70vh, 640px); margin: 12vh auto auto; padding: 0; border: 1px solid var(--pg-border); border-radius: 8px; background: var(--pg-surface); color: var(--pg-ink); box-shadow: var(--pg-float); overflow: hidden; }
 .pg-cmd[open] { display: flex; flex-direction: column; }
 .pg-cmd::backdrop { background: rgba(13, 15, 18, .32); }
@@ -901,7 +900,6 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-cmd-none { margin: 16px 8px; font-size: 13.5px; color: var(--pg-muted); }
 .pg-cmd-help { margin: 0; padding: 8px 14px; border-top: 1px solid var(--pg-rule); font-size: 12px; color: var(--pg-muted); }
 @media (max-width: 640px) {
-    .pg-cmd-open-t, .pg-cmd-open .pg-kbd { display: none; }
     .pg-cmd { margin-top: 8vh; }
     .pg-cmd-help { display: none; }
 }
@@ -940,9 +938,6 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
 .pg-arrive-brand .night { display: none; }
 html.dark .pg-arrive-brand .day { display: none; }
 html.dark .pg-arrive-brand .night { display: block; }
-.pg-arrive-back { position: absolute; top: -6px; right: -10px; z-index: 1; display: flex; gap: 4px; }
-.pg-arrive-back a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: var(--pg-muted); text-decoration: none; }
-.pg-arrive-back a:hover { color: var(--pg-ink); background: var(--pg-raised); }
 .pg-arrive-h { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; text-wrap: balance; overflow-wrap: break-word; }
 .pg-arrive-lede { font-size: 16px; line-height: 1.5; margin: 14px 0 0; max-width: 58ch; }
 .pg-arrive-lede b { font-weight: 600; }
@@ -965,8 +960,6 @@ html.dark .pg-arrive-brand .night { display: block; }
 @media (max-width: 760px) {
     .pg-arrive { margin-bottom: 28px; }
     .pg-arrive-brand img { width: 132px; margin-left: -10px; }
-    .pg-arrive-back { top: 0; }
-    .pg-arrive-back a { min-height: 44px; }
     .pg-arrive-h { font-size: 28px; }
     .pg-arrive-act .pg-btn--lead { width: 100%; }
     /* On a phone the milestone dates name their own months, so the month labels under the axis step aside. */
@@ -976,4 +969,48 @@ html.dark .pg-arrive-brand .night { display: block; }
 @media (prefers-reduced-motion: no-preference) {
     .pg-arrive-say { animation: pg-arrive-in .42s cubic-bezier(.16, 1, .3, 1) both; }
     @keyframes pg-arrive-in { from { opacity: 0; transform: translateY(10px); } }
+}
+
+/* ---------- Shared Dot UI (R-51) ----------
+   The header search is the shared pill (<x-dot.search>, public/dot-ui), identical to InfoDot's by design: only its slot is
+   sized here. The pill opens the command palette. The switcher sits beside it. */
+.pg-top-search { width: clamp(240px, 30vw, 420px); flex: none; }
+.pg-top-search .dsr { margin: 0; }
+.pg-top-search .dsr-input { cursor: pointer; }
+.pg-top .dsw { flex: none; }
+@media (max-width: 860px) {
+    /* The pill drops to its own full-width row under the bar's buttons rather than disappearing. */
+    :root { --pg-top: 108px; }
+    .pg-top { flex-wrap: wrap; align-content: flex-start; row-gap: 8px; padding-top: 10px; }
+    .pg-top-search { order: 3; flex: 1 0 100%; width: 100%; }
+    .pg-top-search .dsr { max-width: none; }
+}
+
+/* Host mapping for the shared Dot UI. The pill itself is not mapped (it is the same cream pill in every platform); the
+   dropdown surfaces, the compact filter and the switcher button follow The Programme's tokens in light and dark. The
+   package defaults sit under :where() (zero specificity), so these win in either theme. */
+body.pg {
+    --dsr-panel: var(--pg-surface);
+    --dsr-hover: var(--pg-raised);
+    --dsr-rule: var(--pg-rule);
+    --dsr-rule-strong: var(--pg-border);
+    --dsr-text: var(--pg-ink);
+    --dsr-text-2: var(--pg-muted);
+    --dsr-text-3: var(--pg-muted);
+    --dsr-radius-panel: 8px;
+    /* the package derives the filter tokens from the ones above on :root, so they are restated here to follow the body values */
+    --dsr-filter-radius: 6px;
+    --dsr-filter-bg: var(--pg-surface);
+    --dsr-filter-ink: var(--pg-ink);
+    --dsr-filter-placeholder: var(--pg-muted);
+    --dsr-filter-border: var(--pg-control);
+    --dsr-filter-border-hover: var(--pg-muted);
+    --dsr-filter-border-focus: var(--pg-ink);
+}
+.pg-top .dsw {
+    --dsw-btn-ink: var(--pg-ink);
+    --dsw-btn-border: var(--pg-control);
+    --dsw-btn-bg-hover: var(--pg-raised);
+    --dsw-focus: var(--pg-ink);
+    --dsw-radius: 6px;
 }
