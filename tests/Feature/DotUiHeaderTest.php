@@ -142,7 +142,7 @@ class DotUiHeaderTest extends TestCase
 
         $html = $this->actingAs($owner)->get(route('dashboard', ['search' => 'Kiln']))->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('/<form method="GET" action="[^"]*dashboard#projects" class="pg-filters" role="search">/', $html);
+        $this->assertMatchesRegularExpression('/<form method="GET" action="[^"]*dashboard#projects" class="pgd-tools" role="search">/', $html);
         $this->assertMatchesRegularExpression('/<input[^>]*\bclass="dsr-filter pg-filter-search"[^>]*>/', $html);
         $this->assertMatchesRegularExpression('/<input[^>]*\bname="search"[^>]*\bvalue="Kiln"/', $html, 'same parameter, current value kept');
         $this->assertStringContainsString('id="dash-search"', $html);

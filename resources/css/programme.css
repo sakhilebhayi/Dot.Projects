@@ -927,48 +927,213 @@ button.pg-rm-cell:focus-visible, .pg-rm-cell.is-on { outline: 2px solid var(--pg
     .pg-wf-add { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ---------- Arrival (R-50): where a person lands after signing in through InfoDot ----------
-   The original logo, a welcome, one lead action, and a real project's date line. Two columns that
-   share the page grid; on narrow screens the words come first and the date line follows. */
-.pg-arrive { position: relative; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px 44px; align-items: start; margin: 0 0 36px; }
-.pg-arrive-say { min-width: 0; }
-.pg-arrive-brand { margin: -8px 0 6px; }
-/* The artwork carries its own clear space; the negative margin lines its wordmark up with the text below. */
-.pg-arrive-brand img { display: block; width: 176px; height: auto; margin-left: -14px; }
-.pg-arrive-brand .night { display: none; }
-html.dark .pg-arrive-brand .day { display: none; }
-html.dark .pg-arrive-brand .night { display: block; }
-.pg-arrive-h { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; text-wrap: balance; overflow-wrap: break-word; }
-.pg-arrive-lede { font-size: 16px; line-height: 1.5; margin: 14px 0 0; max-width: 58ch; }
-.pg-arrive-lede b { font-weight: 600; }
-.pg-arrive .pg-finding { margin: 10px 0 0; max-width: 58ch; color: var(--pg-muted); }
-.pg-arrive .pg-finding b { color: var(--pg-ink); }
-.pg-arrive-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 24px 0 0; }
+/* ---------- Dashboard (R-51): the arrival band and the desk ----------
+   The original logo, a sentence counted from records, one lead action and the horizon; then one flat ruled desk with the
+   projects ledger beside the selected project. Rows and hairlines only. Content moves (arrival, rows, panel, line);
+   the rail, bar and filter row never do, and every animation is wrapped in no-preference. */
 .pg-btn--lead { height: 48px; padding: 0 22px 0 18px; font-size: 15px; font-weight: 600; gap: 8px; }
 .pg-btn--lead:active { transform: translateY(1px); }
-.pg-arrive-also { display: inline-flex; align-items: center; min-height: 44px; font-size: 13.5px; color: var(--pg-muted); text-decoration: underline; text-decoration-color: var(--pg-control); text-underline-offset: 4px; }
-.pg-arrive-also:hover { color: var(--pg-ink); text-decoration-color: var(--pg-ink); }
-.pg-arrive-show { display: grid; gap: var(--pg-gap); min-width: 0; padding-top: 40px; }
-.pg-arrive-note { font-size: 12.5px; color: var(--pg-muted); margin: 4px 0 0; }
-.pg-land-line--bare { height: 64px; margin-bottom: 8px; }
-.pg-arrive-list { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 10px; scroll-margin-top: calc(var(--pg-top) + 16px); }
-.pg-arrive-list-h { font-size: 16px; font-weight: 600; line-height: 1.3; margin: 0; }
-@media (max-width: 1100px) {
-    .pg-arrive { grid-template-columns: minmax(0, 1fr); }
-    .pg-arrive-show { padding-top: 0; }
+.pg-btn--outline { background: none; color: var(--pg-ink); box-shadow: inset 0 0 0 1px var(--pg-control); }
+.pg-btn--outline:hover { background: var(--pg-raised); }
+.pgd { --row: 52px; --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 18px; --sp-5: 28px; --panel: 400px; }
+.pgd-skip:focus { position: static; width: auto; height: auto; clip: auto; padding: 8px 12px; display: inline-block; }
+/* ---------- the arrival band: logo, a true sentence, one lead action ---------- */
+.pgd-arrive { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-5); align-items: center; padding: var(--sp-5) var(--sp-5) 24px; }
+.pgd-logo { display: block; width: 96px; }
+.pgd-logo img { display: block; width: 96px; height: auto; }
+.pgd-logo .night { display: none; }
+html.dark .pgd-logo .day { display: none; }
+html.dark .pgd-logo .night { display: block; }
+.pgd-say { min-width: 0; }
+.pgd-say h1 { margin: 0 0 6px; font: 600 34px/1.1 var(--pg-face); letter-spacing: -.015em; text-wrap: balance; max-width: 26ch; }
+.pgd-say h1 b { font-weight: 600; }
+.pgd-say p { margin: 0; color: var(--pg-muted); font-size: 14px; max-width: 62ch; }
+.pgd-say p b { color: var(--pg-ink); font-weight: 600; }
+.pgd-act { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.pgd-act .pg-btn--lead { height: 48px; padding: 0 22px; font-size: 16px; }
+.pgd-act a.pgd-also { font-size: 13px; color: var(--pg-muted); text-underline-offset: 3px; min-height: 24px; display: inline-flex; align-items: center; }
+.pgd-act a.pgd-also:hover { color: var(--pg-ink); }
+
+/* ---------- the desk: the ledger beside the selected project; one flat surface, hairlines only ---------- */
+.pgd-desk { display: grid; grid-template-columns: minmax(0, 1fr) var(--panel); background: var(--pg-surface); border-top: 1px solid var(--pg-border); border-bottom: 1px solid var(--pg-border); }
+.pgd-ledger { min-width: 0; padding: 0 0 0; }
+.pgd-tools { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-5); border-bottom: 1px solid var(--pg-border); flex-wrap: wrap; }
+.pgd-tools .pg-filter-search { width: 280px; }
+.pgd-tools .pg-select { width: 160px; height: 36px; }
+.pgd-tools .pg-btn { height: 36px; }
+.pgd-tools .pgd-count { margin-left: auto; font-size: 13px; color: var(--pg-muted); }
+
+.pgd-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.pgd-table thead th { height: 30px; padding: 0 12px; text-align: left; font-weight: 400; font-size: 12px; color: var(--pg-muted); white-space: nowrap; border-bottom: 1px solid var(--pg-border); }
+.pgd-table thead th:first-child, .pgd-table tbody td:first-child { padding-left: var(--sp-5); }
+.pgd-table thead th:last-child, .pgd-table tbody td:last-child { padding-right: var(--sp-5); }
+.pgd-table .r { text-align: right; }
+.pgd-sort { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 2px; min-height: 30px; color: inherit; font: inherit; border-radius: 4px; }
+.pgd-sort:hover { color: var(--pg-ink); }
+.pgd-sort:focus-visible { outline: 2px solid var(--pg-ink); outline-offset: 1px; }
+th[aria-sort] .pgd-sort { color: var(--pg-ink); font-weight: 600; }
+th[aria-sort] .pgd-sort::after { content: ""; width: 7px; height: 7px; margin-left: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+th[aria-sort="ascending"] .pgd-sort::after { transform: translateY(1px) rotate(-135deg); }
+.pgd-table tbody tr { position: relative; height: var(--row); cursor: pointer; transition: background-color .12s ease-out; }
+.pgd-table tbody td { padding: 0 12px; border-bottom: 1px solid var(--pg-rule); vertical-align: middle; white-space: nowrap; }
+.pgd-table tbody tr:hover { background: var(--pg-ground); }
+.pgd-table tbody tr.is-selected { background: var(--pg-raised); }
+.pgd-table tbody tr.is-selected .pgd-name a { font-weight: 600; }
+.pgd-name { white-space: normal !important; min-width: 220px; }
+.pgd-name a { font-weight: 500; text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
+.pgd-name a::after { content: ""; position: absolute; inset: 0; }
+.pgd-name a:focus-visible { outline: none; }
+.pgd-table tbody tr:has(a:focus-visible) { outline: 2px solid var(--pg-ink); outline-offset: -2px; }
+.pgd-sub { display: block; color: var(--pg-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40ch; }
+.pgd-name .pg-pill { margin-left: 6px; vertical-align: 1px; }
+.pgd-plain { color: var(--pg-muted); }
+.pgd-late { color: var(--pg-negative); }
+.pgd-done { display: inline-grid; grid-template-columns: 56px auto; gap: 10px; align-items: center; }
+.pgd-done .pg-progress { height: 4px; min-width: 56px; }
+.pgd-dim { color: var(--pg-muted); }
+/* "On track" is the expected state, so it takes no colour; only the two states that need a person do. */
+.pg-pill.pgd-h-on { background: none; color: var(--pg-muted); padding-left: 0; }
+.pgd-foot { display: flex; gap: var(--sp-4); flex-wrap: wrap; padding: var(--sp-3) var(--sp-5); font-size: 13px; color: var(--pg-muted); border-top: 0; }
+.pgd-foot b { color: var(--pg-ink); font-weight: 600; }
+.pgd-foot a { color: var(--pg-ink); text-underline-offset: 3px; }
+.pgd-none { padding: var(--sp-5); color: var(--pg-muted); max-width: 60ch; margin: 0; }
+
+/* ---------- the side column: the selected project, then work given to this person ---------- */
+.pgd-side { border-left: 1px solid var(--pg-border); min-width: 0; }
+.pgd-sel { position: sticky; top: var(--pg-top); padding: var(--sp-5) var(--sp-5) var(--sp-4); }
+.pgd-sel h2 { margin: 0 0 4px; font: 600 24px/1.2 var(--pg-face); letter-spacing: -.01em; }
+.pgd-sel h2 a { text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 0 1.5px no-repeat; transition: background-size .3s cubic-bezier(.2,.7,.1,1); }
+.pgd-sel h2 a:hover { background-size: 100% 1.5px; }
+.pgd-sel .pgd-finding { margin: 0 0 var(--sp-4); font-size: 14px; max-width: 46ch; }
+.pgd-sel .pgd-finding b { font-weight: 600; }
+.pgd-facts { margin: 0 0 var(--sp-3); }
+.pgd-facts div { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: var(--sp-3); min-height: 30px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--pg-rule); font-size: 13.5px; }
+.pgd-facts dt { color: var(--pg-muted); }
+.pgd-facts dd { margin: 0; }
+.pgd-facts dd small { display: block; color: var(--pg-muted); font-size: 12.5px; }
+.pgd-line { margin: var(--sp-3) 0 4px; }
+.pgd-line .pg-land-line { height: 136px; }
+.pgd-line .pg-land-line .lbl { top: 66px; width: 96px; margin-left: -48px; }
+.pgd-line .pg-land-line .lbl.low { top: 102px; }
+.pgd-line .pg-land-line .lbl.end { margin-left: -90px; width: 96px; text-align: right; }
+.pgd-line .pg-land-line .lbl.first { margin-left: -6px; text-align: left; }
+.pgd-line figcaption, .pgd-lnote { font-size: 12.5px; color: var(--pg-muted); margin: 0; }
+.pgd-btns { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: var(--sp-4); }
+.pgd-btns .pg-btn--ghost { padding: 0 10px; }
+.pgd-btns .pg-btn--outline { background: none; color: var(--pg-ink); box-shadow: inset 0 0 0 1px var(--pg-control); }
+.pgd-btns .pg-btn--outline:hover { background: var(--pg-raised); }
+
+.pgd-mine { padding: var(--sp-4) var(--sp-5) var(--sp-5); border-top: 1px solid var(--pg-border); }
+.pgd-mine h2 { margin: 0 0 var(--sp-2); font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pgd-mine h2 small { font-size: 12.5px; font-weight: 400; color: var(--pg-muted); }
+.pgd-mine .pgd-mine-list { list-style: none; margin: 0; padding: 0; }
+.pgd-mine li { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; min-height: 52px; border-top: 1px solid var(--pg-rule); font-size: 13.5px; }
+.pgd-mine li a { text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pgd-mine li a::after { content: ""; position: absolute; inset: 0; }
+.pgd-mine li:hover { background: var(--pg-ground); }
+.pgd-mine li a:focus-visible { outline: none; }
+.pgd-mine li:has(a:focus-visible) { outline: 2px solid var(--pg-ink); outline-offset: -2px; }
+.pgd-mine .pgd-in { display: block; color: var(--pg-muted); font-size: 12.5px; }
+.pgd-mine li > span { white-space: nowrap; font-size: 13px; color: var(--pg-muted); }
+.pgd-mine li > span.pgd-late { color: var(--pg-negative); }
+.pgd-mine .pgd-empty { margin: 0; padding: 12px 0 0; color: var(--pg-muted); font-size: 13.5px; border-top: 1px solid var(--pg-rule); }
+
+
+/* the horizon: the next dated milestone of every open project on one line; today is the ink line */
+.pgd-horizon { grid-column: 1 / -1; position: relative; height: 44px; margin-top: 2px; }
+.pgd-horizon .axis { position: absolute; left: 0; right: 0; top: 26px; height: 1px; background: var(--pg-control); transform-origin: left; }
+.pgd-horizon .tick { position: absolute; top: 22px; width: 1px; height: 9px; background: var(--pg-control); }
+.pgd-horizon .today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--pg-ink); transform-origin: top; }
+.pgd-horizon .today span { position: absolute; top: 0; left: 6px; font-size: 12px; white-space: nowrap; }
+.pgd-horizon .dot { position: absolute; top: 21px; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 50%; border: 1.5px solid var(--pg-ink); background: var(--pg-surface); }
+.pgd-horizon .dot.late { border-color: var(--pg-negative); background: var(--pg-negative); }
+
+/* work given to this person: rows, the whole row is the link */
+.pgd-mine-list { list-style: none; margin: 0; padding: 0; }
+.pgd-mine-t { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pgd-panel[hidden] { display: none; }
+.pgd-lnote { font-size: 12.5px; color: var(--pg-muted); margin: 0; }
+.pgd-table tbody tr:active { background: var(--pg-raised); }
+.pgd-btns .pg-btn:active { transform: translateY(1px); }
+
+/* ---------- Motion: content only, transform and opacity, 120 to 420 ms, ease-out ---------- */
+@media (prefers-reduced-motion: no-preference) {
+    .pgd { --ease: cubic-bezier(.16, 1, .3, 1); }
+    .pgd-logo, .pgd-say, .pgd-act { animation: pgd-in .42s var(--ease) backwards; }
+    .pgd-say { animation-delay: 70ms; }
+    .pgd-act { animation-delay: 140ms; }
+    .pgd-horizon .axis { animation: pgd-draw .6s var(--ease) 220ms backwards; }
+    .pgd-horizon .today { animation: pgd-rise .4s var(--ease) 420ms backwards; }
+    .pgd-horizon .dot { animation: pgd-pop .3s var(--ease) calc(480ms + var(--i, 0) * 45ms) backwards; }
+    .pgd-horizon .tick { animation: pgd-fade .3s ease-out 300ms backwards; }
+    .pgd-table tbody tr { animation: pgd-row .3s var(--ease) calc(260ms + var(--i, 0) * 28ms) backwards; }
+    .pgd-table .pg-progress i { transform-origin: left; animation: pgd-fill .5s var(--ease) calc(400ms + var(--i, 0) * 28ms) backwards; }
+    .pgd-mine li { animation: pgd-row .3s var(--ease) 420ms backwards; }
+    .pgd-panel.is-entering > h2, .pgd-panel.is-entering > .pgd-finding { animation: pgd-settle .16s ease-out backwards; }
+    .pgd-panel.is-entering .pgd-facts > div { animation: pgd-settle .18s ease-out backwards; animation-delay: calc(var(--k, 0) * 18ms); }
+    .pgd-panel.is-entering .pg-land-line .axis { transform-origin: left; animation: pgd-draw .35s var(--ease) backwards; }
+    .pgd-panel.is-entering .pg-land-line .ms { animation: pgd-pop .25s var(--ease) calc(120ms + var(--k, 0) * 40ms) backwards; }
+    .pgd-panel.is-entering .pg-land-line .today { transform-origin: top; animation: pgd-rise .3s var(--ease) 100ms backwards; }
+    .pg-btn:active { transition: transform .08s ease-out; }
+}
+@keyframes pgd-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes pgd-row { from { opacity: 0; transform: translateY(6px); } }
+@keyframes pgd-draw { from { transform: scaleX(0); } }
+@keyframes pgd-fill { from { transform: scaleX(0); } }
+@keyframes pgd-rise { from { transform: scaleY(0); opacity: 0; } }
+@keyframes pgd-pop { from { transform: scale(0); opacity: 0; } }
+@keyframes pgd-fade { from { opacity: 0; } }
+@keyframes pgd-settle { from { opacity: 0; transform: translateY(4px); } }
+
+/* ---------- tablet and phone ---------- */
+@media (max-width: 1180px) {
+    .pgd-desk { grid-template-columns: minmax(0, 1fr); }
+    .pgd-side { border-left: 0; border-top: 1px solid var(--pg-border); display: contents; }
+    .pgd-sel { display: none; }
+    .pgd-mine { order: 2; border-top: 1px solid var(--pg-border); }
+    .pgd-desk--member .pgd-mine { order: -1; border-top: 0; border-bottom: 1px solid var(--pg-border); }
+    .pgd-desk { display: flex; flex-direction: column; }
+    .pgd-ledger { order: 1; }
+    .pgd-table .pgd-col-status { display: none !important; }
+}
+@media (max-width: 900px) {
+    .pgd-arrive { grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-4) var(--sp-4); padding: var(--sp-4) var(--sp-4) var(--sp-4); }
+    .pgd-logo, .pgd-logo img { width: 72px; }
+    .pgd-say h1 { font-size: 28px; }
+    .pgd-act { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
+    .pgd-col-done { display: none; }
 }
 @media (max-width: 760px) {
-    .pg-arrive { margin-bottom: 28px; }
-    .pg-arrive-brand img { width: 132px; margin-left: -10px; }
-    .pg-arrive-h { font-size: 28px; }
-    .pg-arrive-act .pg-btn--lead { width: 100%; }
-    /* On a phone the milestone dates name their own months, so the month labels under the axis step aside. */
-    .pg-arrive .pg-land-line .tick span { display: none; }
-}
-/* The one authored moment: the words and the lead action settle in. The page is complete without it. */
-@media (prefers-reduced-motion: no-preference) {
-    .pg-arrive-say { animation: pg-arrive-in .42s cubic-bezier(.16, 1, .3, 1) both; }
-    @keyframes pg-arrive-in { from { opacity: 0; transform: translateY(10px); } }
+    .pgd-arrive { grid-template-columns: minmax(0, 1fr); }
+    .pgd-say h1 { font-size: 24px; margin-top: 4px; }
+    .pgd-act { flex-direction: column; align-items: stretch; }
+    .pgd-act .pg-btn--lead { width: 100%; justify-content: center; height: 48px; }
+    .pgd-act a.pgd-also { min-height: 44px; }
+    .pgd-tools { padding: var(--sp-3) var(--sp-4); }
+    .pgd-tools .pg-filter-search { width: 100%; }
+    .pgd-tools .pg-select { flex: 1; width: auto; height: 44px; }
+    .pgd-tools .pg-btn { height: 44px; }
+    .pgd-tools .pgd-count { display: none; }
+    .pgd-mine { padding: var(--sp-4); }
+    .pgd-mine li { min-height: 44px; }
+    .pgd-table thead { display: none; }
+    .pgd-table, .pgd-table tbody { display: block; }
+    .pgd-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; height: auto; min-height: 44px; padding: 12px var(--sp-4); border-bottom: 1px solid var(--pg-rule); }
+    .pgd-table tbody td { display: block; padding: 0 !important; border: 0; white-space: normal; text-align: left !important; }
+    .pgd-table td.pgd-name { grid-column: 1; grid-row: 1; }
+    .pgd-table td[data-label] { grid-column: 1 / -1; font-size: 13px; }
+    .pgd-table td.pgd-col-health { grid-column: 2; grid-row: 1; font-size: 12px; }
+    .pgd-table .pgd-col-status { display: block !important; grid-column: 1 / -1; font-size: 13px; }
+    .pgd-table .pgd-col-status::before { content: "Status: "; }
+    .pgd-table td.pgd-col-over { grid-column: 1; }
+    .pgd-table td.pgd-col-due { grid-column: 2; grid-row: auto; }
+    .pgd-table td.pgd-col-ms::before { content: "Next milestone: "; color: var(--pg-muted); }
+    .pgd-table td.pgd-col-over::before { content: "Overdue: "; color: var(--pg-muted); }
+    .pgd-table td.pgd-col-due::before { content: "Due: "; color: var(--pg-muted); }
+    .pgd-table td.pgd-col-ms .pgd-sub { display: inline; }
+    .pgd-table td.pgd-col-ms .pgd-sub::before { content: ", "; }
+    .pgd-name a { max-width: none; }
+    .pgd-foot { padding-left: var(--sp-4); padding-right: var(--sp-4); margin-left: 0; margin-right: 0; }
 }
 
 /* ---------- Shared Dot UI (R-51) ----------
@@ -1014,3 +1179,5 @@ body.pg {
     --dsw-focus: var(--pg-ink);
     --dsw-radius: 6px;
 }
+.pgd-table .pg-progress i { width: 100%; transform: scaleX(var(--p, 0)); transform-origin: left; }
+.pgd-line .pg-land-line .today.end span { left: auto; right: 6px; }

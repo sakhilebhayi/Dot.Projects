@@ -4,182 +4,175 @@
     @php
         $filtered = $search !== '' || $statusFilter !== '';
         $company = auth()->user()->currentTeam?->name;
-        $pill = fn ($s) => match ($s) { 'active' => '', 'pending_closure_approval' => 'pg-pill--warning', 'completed' => 'pg-pill--positive', default => '' };
-        // The featured project's date line: from its start (or first milestone) to its due date (or last milestone).
-        if ($featured) {
-            $dated = $featured->milestones;
-            $from = collect([$featured->start_date, $dated->min('due_date'), $today])->filter()->min()->copy()->startOfMonth();
-            $to = collect([$featured->due_date, $dated->max('due_date'), $today])->filter()->max()->copy()->endOfMonth();
-            $span = max(1, $from->diffInDays($to));
-            $at = fn ($d) => round($from->diffInDays($d) / $span * 100, 3).'%';
-            $months = []; for ($m = $from->copy(); $m->lte($to); $m->addMonth()) { $months[] = $m->copy(); }
-            $step = (int) ceil(count($months) / 8); // at most eight month labels, so a long project stays readable
-            $days = $featured->due_date ? (int) $today->diffInDays($featured->due_date, false) : null;
-            $prev = null;
+        $hl = ['off_track' => ['Off track', 'pg-pill--negative'], 'at_risk' => ['At risk', 'pg-pill--warning'], 'on_track' => ['On track', 'pgd-h-on']];
+        $openRows = $projects->filter(fn ($p) => $p->archived_at === null && $p->status !== 'completed');
+        $doneRows = $projects->filter(fn ($p) => $p->archived_at === null && $p->status === 'completed');
+
+        // The horizon: the next dated milestone of every open project on one line, today marked. Real dates only.
+        $horizon = [];
+        foreach ($openRows as $p) {
+            if ($n = $p->milestones->first(fn ($m) => $m->status !== 'completed')) { $horizon[] = ['name' => $p->name, 'on' => $n->due_date, 'late' => $n->due_date->lt($today)]; }
         }
+        $hFrom = collect([$today, ...array_column($horizon, 'on')])->min()->copy()->startOfMonth();
+        $hTo = collect([$today, ...array_column($horizon, 'on')])->max()->copy()->endOfMonth();
+        if ($hFrom->diffInDays($hTo) < 60) { $hTo = $hFrom->copy()->addMonths(2)->endOfMonth(); }
+        $hSpan = max(1, $hFrom->diffInDays($hTo));
+        $hAt = fn ($d) => round($hFrom->diffInDays($d) / $hSpan * 100, 3);
     @endphp
-    <div class="pg-page">
-        {{-- R-50: the arrival. The original logo, a welcome from real data, one primary action, a real date line. --}}
-        <section class="pg-arrive" aria-labelledby="arrive-h">
-            <div class="pg-arrive-say">
-                <div class="pg-arrive-brand">
-                    <img class="day" src="{{ asset('images/logo.png') }}" alt="Dot.Projects" width="176" height="132">
-                    <img class="night" src="{{ asset('images/logo-light.png') }}" alt="Dot.Projects" width="176" height="132">
-                </div>
-                <h1 id="arrive-h" class="pg-arrive-h">Know when every project lands.</h1>
-                <p class="pg-arrive-lede"><b>Welcome{{ $firstName !== '' ? ', '.$firstName : '' }}.</b>
-                    @if ($company)
-                        This is where {{ $company }} plans and runs its projects: work, dates, people, money and risks in one programme, so you always know what moves the finish date.
-                    @else
-                        This is where projects are planned and run: work, dates, people, money and risks in one programme, so you always know what moves the finish date.
-                    @endif
-                </p>
-                <p class="pg-finding">
-                    @if (! $hasAnyProject)
-                        No projects yet.@if ($canCreate) Start one; you can begin with just a name and add detail as you go.@else Projects appear here once someone in the business starts one you can see.@endif
-                    @elseif ($openCount === 0)
-                        No open projects. Everything here is completed or archived.
-                    @elseif ($lateCount === 0)
-                        <b>{{ $openCount }} open {{ Str::plural('project', $openCount) }}</b>, none with overdue work.
-                    @else
-                        <b>{{ $lateCount }} of {{ $openCount }} open {{ Str::plural('project', $openCount) }}</b> {{ $lateCount === 1 ? 'has' : 'have' }} overdue work or {{ $lateCount === 1 ? 'is' : 'are' }} past {{ $lateCount === 1 ? 'its' : 'their' }} due date.
-                    @endif
-                </p>
-                <div class="pg-arrive-act">
-                    <a href="{{ route($primary['route']) }}" class="pg-btn pg-btn--primary pg-btn--lead" data-primary-action><span class="material-symbols-rounded" aria-hidden="true">{{ $primary['icon'] }}</span>{{ $primary['label'] }}</a>
-                    @if ($canCreate)
-                        <a href="{{ route('templates.index') }}" class="pg-arrive-also">Start from a template</a>
-                    @endif
-                </div>
-            </div>
+    <div class="pg-page pgd" data-pgd style="padding:0;max-width:none">
+        <a class="pg-sr pgd-skip" href="#projects">Skip to the projects list</a>
 
-            <div class="pg-arrive-show">
-                <section class="pg-card" aria-labelledby="arrive-land-h">
-                    @if ($featured)
-                        <div class="pg-card-head"><h2 id="arrive-land-h">When {{ $featured->name }} lands</h2><a href="{{ route('projects.show', $featured) }}">Open the project</a></div>
-                        <div class="pg-land-line" role="img" aria-label="Milestones of {{ $featured->name }} on a date line from {{ $from->format('j M Y') }} to {{ $to->format('j M Y') }}">
-                            @foreach ($months as $i => $m)<span class="tick" style="left:{{ $at($m) }}">@if ($i % $step === 0)<span>{{ $m->format($m->month === 1 ? 'M Y' : 'M') }}</span>@endif</span>@endforeach
-                            <span class="axis"></span>
-                            <span class="today" style="left:{{ $at($today) }}"><span>Today</span></span>
-                            @foreach ($dated as $i => $m)
-                                @php
-                                    $late = $m->status !== 'completed' && $m->due_date->lt($today);
-                                    $low = $prev && $prev->diffInDays($m->due_date) < 21;
-                                    $prev = $low ? null : $m->due_date;
-                                @endphp
-                                <span class="ms {{ $m->status === 'completed' ? 'done' : ($late ? 'late' : '') }}" style="left:{{ $at($m->due_date) }}" title="{{ $m->title }}, {{ $m->due_date->format('j M Y') }}"></span>
-                                <span class="lbl {{ $low ? 'low' : '' }} {{ $i % 2 ? 'odd' : '' }}" style="left:{{ $at($m->due_date) }}"><span class="t">{{ Str::limit($m->title, 28) }}</span><small class="{{ $late ? 'late' : '' }}">{{ $m->due_date->format('j M') }}</small></span>
-                            @endforeach
-                        </div>
-                        <p class="pg-arrive-note">
-                            Milestones on their planned dates; filled dots are done, red ones are past due.
-                            @if ($featured->due_date)
-                                Due {{ $featured->due_date->format('j M Y') }}, @if ($days < 0)<span class="pg-neg">{{ abs($days) }} {{ Str::plural('day', abs($days)) }} past due</span>.@elseif ($days === 0){{ 'today.' }}@else{{ 'in '.$days.' '.Str::plural('day', $days).'.' }}@endif
-                            @else
-                                No due date set.
-                            @endif
-                            @if ($featured->tasks_count) {{ $featured->done_tasks_count }} of {{ $featured->tasks_count }} {{ Str::plural('task', $featured->tasks_count) }} done.@endif
-                        </p>
-                    @else
-                        <div class="pg-card-head"><h2 id="arrive-land-h">When you land</h2></div>
-                        <div class="pg-land-line pg-land-line--bare" aria-hidden="true"><span class="axis"></span><span class="today" style="left:50%"><span>Today, {{ $today->format('j M') }}</span></span></div>
-                        <p class="pg-empty">
-                            @if ($hasAnyProject)
-                                No open project has a dated milestone yet. Give a milestone a due date on a project's board and its date line is drawn here.
-                            @elseif ($canCreate)
-                                Nothing to draw yet. Start a project, add milestones with dates, and this line shows when it lands and what is late.
-                            @else
-                                Nothing to draw yet. Once the business has a project you can see, its milestones appear on this line.
-                            @endif
-                        </p>
-                    @endif
-                </section>
-
-                @if ($hasAnyProject)
-                    <section class="pg-card" aria-labelledby="arrive-mine-h">
-                        <div class="pg-card-head"><h2 id="arrive-mine-h">Given to you</h2>@if ($mineCount)<small>{{ $mineCount }} open {{ Str::plural('task', $mineCount) }}{{ $mineCount > $mine->count() ? ', the '.$mine->count().' soonest shown' : '' }}</small>@endif</div>
-                        @forelse ($mine as $task)
-                            <div class="pg-row">
-                                <span><a href="{{ route('projects.tasks.show', [$task->project, $task]) }}">{{ $task->title }}</a> <span class="pg-sub">in {{ $task->project->name }}</span></span>
-                                @if ($task->due_date)
-                                    <span class="{{ $task->due_date->lt($today) ? 'pg-neg' : 'pg-muted' }}">{{ $task->due_date->lt($today) ? 'Was due '.$task->due_date->format('j M') : 'Due '.$task->due_date->format('j M') }}</span>
-                                @else
-                                    <span class="pg-muted">No date</span>
-                                @endif
-                            </div>
-                        @empty
-                            <p class="pg-empty">No open task is assigned to you. Work given to you on any project shows here, soonest first.</p>
-                        @endforelse
-                    </section>
+        {{-- The arrival: the original logo, a sentence counted from records, the one lead action, and the horizon. --}}
+        <section class="pgd-arrive" aria-labelledby="arrive-h">
+            <a class="pgd-logo" href="{{ route('dashboard') }}" aria-label="Dot.Projects">
+                <img class="day" src="{{ asset('images/logo.png') }}" alt="Dot.Projects" width="96" height="72">
+                <img class="night" src="{{ asset('images/logo-light.png') }}" alt="Dot.Projects" width="96" height="72">
+            </a>
+            <div class="pgd-say">
+                @if (! $hasAnyProject)
+                    <h1 id="arrive-h">Know when every project lands.</h1>
+                    <p><b>Welcome{{ $firstName !== '' ? ', '.$firstName : '' }}.</b>
+                        {{ $company ? 'This is where '.$company.' plans and runs its projects' : 'This is where projects are planned and run' }}: work, dates, people, money and risks in one programme. No projects yet.@if ($canCreate) Start one; you can begin with just a name and add detail as you go.@else Projects appear here once someone in the business starts one you can see.@endif
+                    </p>
+                @else
+                    <h1 id="arrive-h">
+                        @if ($openCount === 0)
+                            No open projects. Everything here is completed or archived.
+                        @elseif ($lateCount === 0)
+                            <b>{{ $openCount }} open {{ Str::plural('project', $openCount) }}</b>, none with overdue work.
+                        @else
+                            <b>{{ $lateCount }} of {{ $openCount }} open {{ Str::plural('project', $openCount) }}</b> {{ $lateCount === 1 ? 'has' : 'have' }} overdue work or {{ $lateCount === 1 ? 'is' : 'are' }} past {{ $lateCount === 1 ? 'its' : 'their' }} due date.
+                        @endif
+                    </h1>
+                    <p><b>Welcome{{ $firstName !== '' ? ', '.$firstName : '' }}.</b> {{ $company ? $company.', as of today, ' : 'As of today, ' }}{{ $today->format('j M') }}.</p>
                 @endif
             </div>
+            <div class="pgd-act">
+                <a href="{{ route($primary['route']) }}" class="pg-btn pg-btn--primary pg-btn--lead" data-primary-action><span class="material-symbols-rounded" aria-hidden="true">{{ $primary['icon'] }}</span>{{ $primary['label'] }}</a>
+                @if ($canCreate)
+                    <a href="{{ route('templates.index') }}" class="pgd-also">Start from a template</a>
+                @endif
+            </div>
+            @if ($horizon !== [] || ! $hasAnyProject)
+                <div class="pgd-horizon" @if ($horizon !== []) role="img" aria-label="The next milestone of each open project on a date line from {{ $hFrom->format('j M Y') }} to {{ $hTo->format('j M Y') }}" @else aria-hidden="true" @endif>
+                    <span class="axis"></span>
+                    @foreach ([$hFrom->copy(), $hFrom->copy()->addMonths(1), $hFrom->copy()->addMonths(2)] as $m)
+                        @if ($m->lte($hTo))<span class="tick" style="left:{{ $hAt($m) }}%"></span>@endif
+                    @endforeach
+                    <span class="today" style="left:{{ $horizon === [] ? 50 : $hAt($today) }}%"><span>Today, {{ $today->format('j M') }}</span></span>
+                    @foreach ($horizon as $i => $h)
+                        <span class="dot {{ $h['late'] ? 'late' : '' }}" style="left:{{ $hAt($h['on']) }}%;--i:{{ $i }}" title="{{ $h['name'] }}, {{ $h['on']->format('j M Y') }}"></span>
+                    @endforeach
+                </div>
+            @endif
         </section>
 
-        <div class="pg-arrive-list" id="projects">
-            <h2 class="pg-arrive-list-h">Projects</h2>
-        </div>
+        @if ($hasAnyProject)
+            <section class="pgd-desk {{ $memberFirst ? 'pgd-desk--member' : '' }}" id="projects" aria-label="Projects">
+                <div class="pgd-ledger">
+                    <form method="GET" action="{{ route('dashboard') }}#projects" class="pgd-tools" role="search">
+                        <x-dot.filter-search id="dash-search" name="search" :value="$search" placeholder="Search projects by name" label="Search projects by name" class="pg-filter-search" />
+                        <label for="dash-status" class="pg-sr">Status</label>
+                        <select id="dash-status" name="status" class="pg-select">
+                            <option value="">Any status</option>
+                            @foreach ($statuses as $value => $label)
+                                <option value="{{ $value }}" @selected($statusFilter === $value)>{{ $label }}</option>
+                            @endforeach
+                            <option value="archived" @selected($statusFilter === 'archived')>Archived</option>
+                        </select>
+                        <button type="submit" class="pg-btn pg-btn--secondary">Filter</button>
+                        @if ($filtered)
+                            <a href="{{ route('dashboard') }}#projects" class="pg-btn pg-btn--ghost">Clear</a>
+                        @endif
+                        <span class="pgd-count" role="status">{{ $projects->count() }} {{ Str::plural('project', $projects->count()) }}</span>
+                    </form>
 
-        <form method="GET" action="{{ route('dashboard') }}#projects" class="pg-filters" role="search">
-            <x-dot.filter-search id="dash-search" name="search" :value="$search" placeholder="Search projects by name" label="Search projects by name" class="pg-filter-search" />
-            <label for="dash-status" class="pg-sr">Status</label>
-            <select id="dash-status" name="status" class="pg-select">
-                <option value="">Any status</option>
-                @foreach ($statuses as $value => $label)
-                    <option value="{{ $value }}" @selected($statusFilter === $value)>{{ $label }}</option>
-                @endforeach
-                <option value="archived" @selected($statusFilter === 'archived')>Archived</option>
-            </select>
-            <button type="submit" class="pg-btn pg-btn--secondary">Filter</button>
-            @if ($filtered)
-                <a href="{{ route('dashboard') }}#projects" class="pg-btn pg-btn--ghost">Clear</a>
-            @elseif ($archivedCount)
-                <a href="{{ route('dashboard', ['status' => 'archived']) }}#projects" class="pg-btn pg-btn--ghost">{{ $archivedCount }} archived</a>
-            @endif
-        </form>
+                    @if ($projects->isEmpty())
+                        <p class="pgd-none">{{ $filtered ? 'No project matches. Try another name or status.' : 'Projects you create appear here with their next milestone, progress and anything overdue.' }}</p>
+                    @else
+                        <table class="pgd-table" id="ledger">
+                            <thead><tr>
+                                <th scope="col" aria-sort="descending" data-key="attention"><button class="pgd-sort" type="button">Project</button></th>
+                                <th scope="col" class="pgd-col-status" data-key="status"><button class="pgd-sort" type="button">Status</button></th>
+                                <th scope="col" class="pgd-col-health" data-key="health"><button class="pgd-sort" type="button">Health</button></th>
+                                <th scope="col" class="pgd-col-ms" data-key="ms"><button class="pgd-sort" type="button">Next milestone</button></th>
+                                <th scope="col" class="pgd-col-done" data-key="done"><button class="pgd-sort" type="button">Tasks done</button></th>
+                                <th scope="col" class="r pgd-col-over" data-key="over"><button class="pgd-sort" type="button">Overdue</button></th>
+                                <th scope="col" class="r pgd-col-due" data-key="due"><button class="pgd-sort" type="button">Due</button></th>
+                            </tr></thead>
+                            <tbody>
+                                @foreach ($projects as $i => $project)
+                                    @php
+                                        $f = $ratings[$project->id] ?? null;
+                                        $rated = $f && $f['health'] !== null;
+                                        $next = $project->milestones->first(fn ($m) => $m->status !== 'completed');
+                                        $pct = $project->tasks_count ? round($project->done_tasks_count / $project->tasks_count * 100) : 0;
+                                        $pastDue = $project->status !== 'completed' && $project->due_date && $project->due_date->lt($today);
+                                        $hasPanel = in_array($project->id, $panelIds, true);
+                                    @endphp
+                                    <tr data-id="{{ $project->id }}" @if ($hasPanel) data-panel @endif class="{{ $project->id === $selectedId ? 'is-selected' : '' }}" style="--i:{{ min($i, 12) }}"
+                                        data-attention="{{ $i }}" data-health="{{ $rated ? ['off_track' => 0, 'at_risk' => 1, 'on_track' => 2][$f['health']] : 3 }}"
+                                        data-status="{{ $project->archived_at ? 'Archived' : ($statuses[$project->status] ?? Str::headline($project->status)) }}"
+                                        data-ms="{{ $next ? $next->due_date->timestamp : '' }}" data-done="{{ $project->tasks_count ? $project->done_tasks_count / $project->tasks_count : -1 }}"
+                                        data-over="{{ $project->overdue_tasks_count }}" data-due="{{ $project->due_date?->timestamp ?? '' }}">
+                                        <td class="pgd-name"><a href="{{ route('projects.show', $project) }}">{{ $project->name }}</a>@if ($project->isPrivate()) <span class="pg-pill">Private</span>@endif @if ($project->description)<span class="pgd-sub">{{ $project->description }}</span>@endif</td>
+                                        <td class="pgd-col-status pgd-plain">{{ $project->archived_at ? 'Archived' : ($statuses[$project->status] ?? Str::headline($project->status)) }}</td>
+                                        <td class="pgd-col-health" data-label="Health">
+                                            @if ($rated)<span class="pg-pill {{ $hl[$f['health']][1] }}">{{ $hl[$f['health']][0] }}</span>
+                                            @elseif ($project->archived_at)<span class="pgd-plain">Archived</span>
+                                            @elseif ($project->status === 'completed')<span class="pgd-plain">Done</span>
+                                            @else<span class="pgd-plain">{{ $f && $f['failed'] ? 'Not worked out' : '–' }}</span>@endif
+                                        </td>
+                                        <td class="pgd-col-ms" data-label="Next milestone">@if ($next){{ $next->title }}<span class="pgd-sub {{ $next->due_date->lt($today) ? 'pgd-late' : '' }}">{{ $next->due_date->lt($today) ? 'Was due '.$next->due_date->format('j M') : $next->due_date->format('j M Y') }}</span>@else<span class="pgd-plain">None dated</span>@endif</td>
+                                        <td class="pgd-col-done" data-label="Tasks done">
+                                            @if ($project->tasks_count)
+                                                <span class="pgd-done"><span class="pg-progress" role="img" aria-label="{{ $project->done_tasks_count }} of {{ $project->tasks_count }} tasks done"><i style="--p:{{ $pct / 100 }}"></i></span><span>{{ $project->done_tasks_count }} of {{ $project->tasks_count }}</span></span>
+                                            @else<span class="pgd-plain">No tasks</span>@endif
+                                        </td>
+                                        <td class="r pgd-col-over {{ $project->overdue_tasks_count ? 'pgd-late' : 'pgd-plain' }}" data-label="Overdue">{{ $project->overdue_tasks_count }}</td>
+                                        <td class="r pgd-col-due {{ $pastDue ? 'pgd-late' : '' }}" data-label="Due">{{ $project->due_date?->format('j M Y') ?? '–' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                    <p class="pgd-foot">
+                            @if ($projects->isNotEmpty())<span><b>{{ $openRows->count() }}</b> open</span>
+                            <span><b>{{ $doneRows->count() }}</b> completed</span>@endif
+                            @if ($statusFilter === 'archived')@if ($projects->isNotEmpty())<span><b>{{ $projects->count() }}</b> archived</span>@endif
+                            @elseif ($archivedCount)<a href="{{ route('dashboard', ['status' => 'archived']) }}#projects">{{ $archivedCount }} archived</a>@endif
+                        </p>
+                </div>
 
-        @if ($projects->isEmpty())
-            <div class="pg-card"><p class="pg-empty">{{ $filtered ? 'No project matches. Try another name or status.' : 'Projects you create appear here with their next milestone, progress and anything overdue.' }}</p></div>
-        @else
-            <div class="pg-table-wrap">
-                <table class="pg-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Project</th>
-                            <th scope="col">Status</th>
-                            <th scope="col">Next milestone</th>
-                            <th scope="col">Tasks done</th>
-                            <th scope="col" class="r">Overdue</th>
-                            <th scope="col" class="r">Due</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($projects as $project)
-                            @php
-                                $next = $project->milestones->first();
-                                $pct = $project->tasks_count ? round($project->done_tasks_count / $project->tasks_count * 100) : 0;
-                                $pastDue = $project->status !== 'completed' && $project->due_date && $project->due_date->lt($today);
-                            @endphp
-                            <tr>
-                                <td class="pg-name"><a href="{{ route('projects.show', $project) }}">{{ $project->name }}</a>@if ($project->isPrivate()) <span class="pg-pill" style="margin-left:4px">Private</span>@endif @if ($project->description)<span class="pg-sub">{{ $project->description }}</span>@endif</td>
-                                <td data-label="Status"><span class="pg-pill {{ $pill($project->status) }}">{{ $project->archived_at ? 'Archived' : ($statuses[$project->status] ?? Str::headline($project->status)) }}</span></td>
-                                <td data-label="Next milestone">@if ($next){{ $next->title }}<span class="pg-sub {{ $next->due_date->lt($today) ? 'pg-neg' : '' }}">{{ $next->due_date->lt($today) ? 'Was due '.$next->due_date->format('j M') : $next->due_date->format('j M Y') }}</span>@else<span class="pg-muted">None dated</span>@endif</td>
-                                <td data-label="Tasks done">
-                                    @if ($project->tasks_count)
-                                        <div style="display:grid;grid-template-columns:minmax(60px,120px) auto;gap:10px;align-items:center">
-                                            <span class="pg-progress" role="img" aria-label="{{ $project->done_tasks_count }} of {{ $project->tasks_count }} tasks done"><i style="width:{{ $pct }}%"></i></span>
-                                            <span>{{ $project->done_tasks_count }} of {{ $project->tasks_count }}</span>
-                                        </div>
-                                    @else
-                                        <span class="pg-muted">No tasks</span>
-                                    @endif
-                                </td>
-                                <td data-label="Overdue" class="r {{ $project->overdue_tasks_count ? 'pg-neg' : 'pg-muted' }}">{{ $project->overdue_tasks_count }}</td>
-                                <td data-label="Due" class="r {{ $pastDue ? 'pg-neg' : '' }}">{{ $project->due_date?->format('j M Y') ?? '–' }}</td>
-                            </tr>
+                <aside class="pgd-side" aria-label="Selected project and your work">
+                    <div class="pgd-sel" id="sel" aria-live="polite">
+                        @foreach ($projects->filter(fn ($p) => in_array($p->id, $panelIds, true)) as $project)
+                            <div class="pgd-panel" data-for="{{ $project->id }}" @if ($project->id !== $selectedId) hidden @endif>
+                                @include('dashboard._panel', ['project' => $project, 'today' => $today])
+                            </div>
                         @endforeach
-                    </tbody>
-                </table>
-            </div>
+                    </div>
+                    <section class="pgd-mine" aria-labelledby="mine-h">
+                        <h2 id="mine-h">Given to you @if ($mineCount)<small>{{ $mineCount }} open {{ Str::plural('task', $mineCount) }}{{ $mineCount > $mine->count() ? ', the '.$mine->count().' soonest shown' : '' }}</small>@endif</h2>
+                        @if ($mine->isNotEmpty())
+                            <ul class="pgd-mine-list">
+                                @foreach ($mine as $task)
+                                <li>
+                                    <span class="pgd-mine-t"><a href="{{ route('projects.tasks.show', [$task->project, $task]) }}">{{ $task->title }}</a><span class="pgd-in">in {{ $task->project->name }}</span></span>
+                                    @if ($task->due_date)
+                                        <span class="{{ $task->due_date->lt($today) ? 'pgd-late' : '' }}">{{ $task->due_date->lt($today) ? 'Was due '.$task->due_date->format('j M') : 'Due '.$task->due_date->format('j M') }}</span>
+                                    @else
+                                        <span>No date</span>
+                                    @endif
+                                </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <p class="pgd-empty">No open task is assigned to you. Work given to you on any project shows here, soonest first.</p>
+                        @endif
+                    </section>
+                </aside>
+            </section>
         @endif
     </div>
 </x-app-layout>

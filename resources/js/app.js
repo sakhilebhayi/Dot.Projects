@@ -179,3 +179,6 @@ const hookPalette = () => window.Livewire.hook('commit', ({ component, succeed }
     succeed(() => requestAnimationFrame(() => markPaletteItem(0)));
 });
 if (window.Livewire) hookPalette(); else document.addEventListener('livewire:init', hookPalette);
+
+// The projects dashboard loads its own small chunk, and only on that page.
+if (document.querySelector('[data-pgd]')) import('./dashboard.js');
