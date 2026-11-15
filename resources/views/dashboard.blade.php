@@ -64,8 +64,9 @@
                         @php $at = $hAt($h['on']); @endphp
                         <a class="dot {{ $h['late'] ? 'late' : '' }} {{ $at < 14 ? 'to-r' : ($at > 86 ? 'to-l' : '') }} {{ $h['id'] === $selectedId ? 'is-on' : '' }}" href="{{ route('projects.show', $h['id']) }}" data-id="{{ $h['id'] }}" style="left:{{ $at }}%;--i:{{ $i }}" aria-label="{{ $h['name'] }}: {{ $h['ms'] }}, {{ $h['late'] ? 'was due' : 'due' }} {{ $h['on']->format('j M Y') }}"><span class="hl" aria-hidden="true">{{ $h['name'] }}<small>{{ $h['on']->format('j M') }}</small></span></a>
                     @endforeach
-                    @if ($horizon !== [])<p class="key">Next milestone of each open project. <span class="k-late">Red</span> means its date has passed.</p>@endif
                 </div>
+                {{-- Outside the date line's box, in the flow: a hovered milestone's label can no longer print over it, whatever the width. --}}
+                @if ($horizon !== [])<p class="pgd-key">Next milestone of each open project. <span class="k-late">Red</span> means its date has passed.</p>@endif
             @endif
         </section>
 

@@ -1,14 +1,16 @@
 // Behaviour lives here, wired by data attributes, so the views carry no inline handlers.
 // Alpine is not imported: Livewire 3 bundles and starts its own copy.
 
-document.addEventListener('click', (event) => {
-    // Light or dark: remembered per browser; without a stored choice the system preference applies.
-    if (event.target.closest('[data-theme-toggle]')) {
-        const dark = document.documentElement.classList.toggle('dark');
-        try { localStorage.setItem('dot-theme', dark ? 'dark' : 'light'); } catch (e) {}
-    }
+// Icons: the self-hosted subset font normally loads at once. If it never does (blocked, offline), hide the ligature names
+// rather than print them as words (html.pg-noicons, see programme.css).
+if (document.fonts?.load) {
+    document.fonts.load('20px "Material Symbols Rounded"', 'search').then((faces) => {
+        if (!faces.length) document.documentElement.classList.add('pg-noicons');
+    }).catch(() => document.documentElement.classList.add('pg-noicons'));
+}
 
-    // Close any other open menu when one is opened or when clicking elsewhere.
+// Menus inside pages (report filters and the like): <details class="pg-menu"> close on an outside click or Escape.
+document.addEventListener('click', (event) => {
     document.querySelectorAll('details.pg-menu[open]').forEach((menu) => {
         if (!menu.contains(event.target)) menu.removeAttribute('open');
     });
@@ -19,6 +21,21 @@ document.addEventListener('keydown', (event) => {
         document.querySelectorAll('details.pg-menu[open]').forEach((menu) => menu.removeAttribute('open'));
     }
 });
+
+// The notification bell (a Livewire component around dot-ui's panel bell): a re-render (mark as read) rewrites the panel's
+// attributes, which would close it under the person's finger. Remember that it is open and put the open attributes back.
+let bellOpen = false;
+document.addEventListener('dot:menu-open', (event) => { if (event.target.closest?.('[data-dh-bell]')) bellOpen = true; });
+document.addEventListener('dot:menu-close', (event) => { if (event.target.closest?.('[data-dh-bell]')) bellOpen = false; });
+const hookBell = () => window.Livewire.hook('morphed', ({ el, component }) => {
+    if (component.name !== 'notification-bell' || !bellOpen) return;
+    const root = el.querySelector('[data-dh-bell]');
+    if (!root) return;
+    root.setAttribute('data-open', '');
+    root.querySelector('[data-dh-menu-panel]')?.removeAttribute('hidden');
+    root.querySelector('[data-dh-menu-trigger]')?.setAttribute('aria-expanded', 'true');
+});
+if (window.Livewire) hookBell(); else document.addEventListener('livewire:init', hookBell);
 
 // Timeline bars (projects/schedule): drag the bar to move a task, drag its end to change the due
 // date; arrow keys move by a day, Shift and arrow changes the due date. The server checks and saves.
@@ -144,18 +161,11 @@ const openPalette = () => {
     markPaletteItem(0);
 };
 if (/Mac|iPhone|iPad/.test(navigator.platform)) {
-    document.querySelectorAll('[data-cmd-key], [data-cmd-open] .dsr-kbd').forEach((k) => { k.textContent = '⌘ K'; });
+    document.querySelectorAll('[data-cmd-key], [data-pg-search] .dsr-kbd').forEach((k) => { k.textContent = '⌘ K'; });
 }
 document.addEventListener('click', (event) => {
-    if (event.target.closest('[data-cmd-open]')) openPalette();
     // A click on the backdrop (the dialog itself, outside its body) closes it.
     if (event.target === palette()) palette().close();
-});
-// The header pill is a form that only opens the palette: submitting it (Enter, or the arrow) opens it, nothing is sent.
-document.addEventListener('submit', (event) => {
-    if (!event.target.matches?.('form[data-cmd-open]')) return;
-    event.preventDefault();
-    openPalette();
 });
 document.addEventListener('keydown', (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {

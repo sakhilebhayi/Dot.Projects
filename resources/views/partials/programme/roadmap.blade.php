@@ -5,6 +5,7 @@
 @if ($rm['lanes'] === [])
     <p class="pg-empty">No milestone falls in the next six months{{ $rm['undated'] ? ', and '.$rm['undated'].' open '.Str::plural('milestone', $rm['undated']).' '.($rm['undated'] === 1 ? 'has' : 'have').' no date' : '' }}.</p>
 @else
+    <p class="pg-scrollnote">Swipe sideways to move along the dates.</p>
     <div class="pg-road-scroll">
         <div class="pg-road" role="list" aria-label="Milestones by project, {{ $rm['from']->format('F Y') }} to {{ $rm['to']->format('F Y') }}">
             <div class="pg-road-head" aria-hidden="true">

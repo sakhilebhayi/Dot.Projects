@@ -24,8 +24,8 @@ use Symfony\Component\HttpFoundation\Response;
  * (schedule bars, roadmap marks); script injection is the risk this closes. Every origin below is one the views
  * or the framework actually load:
  *
- * - https://fonts.googleapis.com (style-src) and https://fonts.gstatic.com (font-src): Google Fonts and
- *   Material Symbols, linked from every layout and the error pages.
+ * - No font host (R-52): Roboto (public/dot-ui) and the Material Symbols subset (the Vite build) are served from this
+ *   origin, so style-src and font-src name only 'self' (font-src also data:).
  * - https://images.unsplash.com (img-src): the welcome page's photographs.
  * - https://ui-avatars.com (img-src): Jetstream's default avatar on the team pages.
  *
@@ -72,8 +72,8 @@ class SecurityHeaders
             "default-src 'self'",
             "script-src 'self' 'nonce-{$nonce}' 'unsafe-eval'{$dev}",
             "script-src-attr 'none'",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com{$dev}",
-            "font-src 'self' data: https://fonts.gstatic.com",
+            "style-src 'self' 'unsafe-inline'{$dev}",
+            "font-src 'self' data:",
             "img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com",
             // Reverb websockets are wss: in production; local development talks plaintext ws:.
             "connect-src 'self' wss: https:".(app()->isLocal() ? ' ws: http:' : ''),

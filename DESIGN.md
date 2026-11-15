@@ -25,57 +25,57 @@ colors:
   positive-soft: "#e6f2e9"
 typography:
   title:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 24px
     fontWeight: 600
     lineHeight: 1.2
   section:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 14px
     fontWeight: 600
     lineHeight: 1.4
   body:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 14px
     fontWeight: 400
     lineHeight: 1.5
   small:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 12px
     fontWeight: 400
     lineHeight: 1.45
   figure:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 34px
     fontWeight: 600
     lineHeight: 1.1
   heading:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 16px
     fontWeight: 600
     lineHeight: 1.3
   auth-title:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 22px
     fontWeight: 600
     lineHeight: 1.2
   control:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 13.5px
     fontWeight: 500
     lineHeight: 1.4
   label:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 13px
     fontWeight: 500
     lineHeight: 1.4
   meta:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 12.5px
     fontWeight: 400
     lineHeight: 1.45
   badge:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 10.5px
     fontWeight: 600
     lineHeight: 1
@@ -85,7 +85,7 @@ typography:
     fontWeight: 400
     lineHeight: 1
   id:
-    fontFamily: DM Mono
+    fontFamily: ui-monospace
     fontSize: 12px
     fontWeight: 400
     lineHeight: 1.4
@@ -185,11 +185,11 @@ blocked."), then the one action that finding drives as the near-black primary bu
 
 ## Typography
 
-- **Schibsted Grotesk** 400/500/600/700 for everything. Body 14px/1.5. Title 24px/600. Section 14px/600.
+- **Roboto** (R-52, self-hosted from `public/dot-ui`, the ecosystem's face) 400/500/600/700 for everything. Body 14px/1.5. Title 24px/600. Section 14px/600.
 - Steps in use: title 24, auth title 22, figure 34, heading 16, body 14, control 13.5, label 13,
-  meta 12.5, small 12, badge 10.5. Icons are Material Symbols Rounded at 20px (the ecosystem's set).
-- **DM Mono** 12px only for identifiers (`DP-0142`, `CR-04`, `R-01`). Never for prose or figures.
-- Figures: tabular numerals everywhere they count or line up. 700 only for money totals; the one
+  meta 12.5, small 12, badge 10.5. Icons are Material Symbols Rounded at 20px (the ecosystem's set), a self-hosted subset of the glyphs in use (`resources/fonts`, under 5 kB), never the full family.
+- **The system monospace** 12px only for identifiers (`DP-0142`, `CR-04`, `R-01`). Never for prose or figures.
+- Figures: tabular numerals (`.dot-nums`, or the figure's own rule) where they count or line up; not on the body, so punctuation keeps its natural width. 700 only for money totals; the one
   headline figure per screen (the forecast date) at 34px/600.
 - Sentence case. No tracked capitals, no eyebrows, no middle-dot meta strings: write sentences
   ("Due 30 Nov, 3 days late") instead.

@@ -83,25 +83,21 @@ class DotUiHeaderTest extends TestCase
 
     // ── The search pill ──────────────────────────────────────────────────────
 
-    public function test_the_header_search_is_the_shared_pill_and_only_opens_the_command_palette(): void
+    public function test_the_header_search_is_the_shared_pill_typed_into_and_the_palette_is_kept_on_ctrl_k(): void
     {
         $this->fakeInfoDot([self::url(self::ACME) => Http::response(self::body(self::ACME))]);
         $owner = $this->memberOf(self::ACME, 'Acme Ltd');
 
         $html = $this->actingAs($owner)->get(route('dashboard'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('class="pg-top-search"', $html);
         $this->assertStringContainsString('class="dsr-input"', $html, 'the shared pill');
-        $this->assertSame(1, preg_match('/<form [^>]*data-cmd-open[^>]*>/', $html, $form), 'the pill form carries the palette trigger');
-        $this->assertStringNotContainsString('action=', $form[0], 'it submits nowhere: app.js opens the palette instead');
-        $this->assertMatchesRegularExpression('/<input[^>]*\breadonly\b[^>]*>/', $html, 'the pill is a trigger, not a second search box');
-        $this->assertStringContainsString('aria-keyshortcuts="Control+K Meta+K"', $html);
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*\breadonly\b[^>]*class="dsr-input"|class="dsr-input"[^>]*\breadonly\b/', $html, 'the pill is typed into now');
+        $this->assertSame(1, preg_match('/<form [^>]*data-pg-search[^>]*>/', $html, $form), 'the pill form is the header search');
+        $this->assertStringNotContainsString('action=', $form[0], 'it submits nowhere: the rows are links');
         $this->assertStringContainsString('Ctrl K', $html, 'the hint is true: Ctrl or Cmd and K opens the palette');
-        $this->assertStringNotContainsString('data-dsr-shortcut-script', $html);
-        $this->assertStringNotContainsString('dot-ui/js/dot-search.js', $html, 'the pill does not load the shared shortcut: the palette owns Ctrl K');
-        $this->assertStringNotContainsString('pg-cmd-open', $html, 'the old Search chip is gone');
-        $this->assertSame(1, substr_count($html, 'data-cmd-open'), 'one trigger');
+        $this->assertStringContainsString('dot-ui/js/dot-search.js', $html);
         $this->assertSame(1, substr_count($html, '<dialog class="pg-cmd" data-cmd'), 'the palette itself is unchanged');
+        $this->assertStringNotContainsString('data-cmd-open', $html, 'the pill no longer opens the palette');
     }
 
     public function test_the_palette_behind_the_pill_still_finds_only_the_current_businesss_work(): void
@@ -297,7 +293,7 @@ class DotUiHeaderTest extends TestCase
         $response = $this->actingAs($this->memberOf(self::ACME, 'Acme Ltd'))->get(route('dashboard'))->assertOk();
         $html = $response->getContent();
 
-        foreach (['css/dot-fonts.css', 'css/dot-tokens.css', 'css/dot-search.css', 'css/dot-switcher-fonts.css', 'css/dot-switcher.css', 'js/dot-switcher.js'] as $asset) {
+        foreach (['css/dot-roboto.css', 'css/dot-type.css', 'css/dot-tokens.css', 'css/dot-search.css', 'css/dot-switcher.css', 'css/dot-header.css', 'js/dot-theme-boot.js', 'js/dot-switcher.js', 'js/dot-search.js', 'js/dot-nav.js'] as $asset) {
             $this->assertStringContainsString(asset('dot-ui/'.$asset), $html, $asset.' is linked from this site');
             $this->assertFileExists(public_path('dot-ui/'.$asset));
         }
@@ -322,7 +318,7 @@ class DotUiHeaderTest extends TestCase
         $this->assertSame(1, preg_match("/'nonce-([^']+)'/", $policy, $nonce));
         $this->assertStringContainsString('<script src="'.asset('dot-ui/js/dot-switcher.js').'" defer nonce="'.$nonce[1].'"></script>', $html);
         preg_match_all('#https?://[^\s;]+#', $policy, $origins);
-        $this->assertEqualsCanonicalizing(['https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://images.unsplash.com', 'https://ui-avatars.com'], $origins[0]);
+        $this->assertEqualsCanonicalizing(['https://images.unsplash.com', 'https://ui-avatars.com'], $origins[0], 'no font host: Roboto is self-hosted');
     }
 
     public function test_the_shared_markup_has_no_inline_style_or_script(): void
@@ -330,7 +326,7 @@ class DotUiHeaderTest extends TestCase
         $this->fakeInfoDot([self::url(self::ACME) => Http::response(self::body(self::ACME))]);
         $html = $this->actingAs($this->memberOf(self::ACME, 'Acme Ltd'))->get(route('dashboard'))->getContent();
 
-        $this->assertSame(1, preg_match('/<div class="pg-top-search">.*?<\/form>\s*<\/div>\s*<\/div>/s', $html, $pill));
+        $this->assertSame(1, preg_match('/<div class="dh-search".*?data-dh-search-close/s', $html, $pill), 'the header search, pill and results');
         foreach ([$pill[0], $this->switcherHtml($html)] as $fragment) {
             $this->assertStringNotContainsString(' style=', $fragment);
             $this->assertStringNotContainsString('<style', $fragment);

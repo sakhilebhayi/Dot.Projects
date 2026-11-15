@@ -109,7 +109,7 @@
                                 <td data-label="Status">
                                     @if ($canEdit)
                                         <label for="st-{{ $task->id }}" class="pg-sr">Status of {{ $task->title }}</label>
-                                        <select id="st-{{ $task->id }}" class="pg-select" style="min-height:30px;padding:3px 8px;width:auto;position:relative;z-index:1" wire:change="setStatus({{ $task->id }}, $event.target.value)">
+                                        <select id="st-{{ $task->id }}" class="pg-select pg-select--inline" style="position:relative;z-index:1" wire:change="setStatus({{ $task->id }}, $event.target.value)">
                                             @foreach ($statuses as $st)<option value="{{ $st['key'] }}" @selected($taskKey === $st['key'])>{{ $st['name'] }}</option>@endforeach
                                         </select>
                                     @else
@@ -119,7 +119,7 @@
                                 <td data-label="Who">
                                     @if ($canEdit)
                                         <label for="who-{{ $task->id }}" class="pg-sr">Who does {{ $task->title }}</label>
-                                        <select id="who-{{ $task->id }}" class="pg-select" style="min-height:30px;padding:3px 8px;width:auto;max-width:180px;position:relative;z-index:1" wire:change="setAssignee({{ $task->id }}, $event.target.value || null)">
+                                        <select id="who-{{ $task->id }}" class="pg-select pg-select--inline" style="max-width:180px;position:relative;z-index:1" wire:change="setAssignee({{ $task->id }}, $event.target.value || null)">
                                             <option value="" @selected(! $task->assignee_id)>Unassigned</option>
                                             @foreach ($this->people as $person)<option value="{{ $person->id }}" @selected($task->assignee_id === $person->id)>{{ $person->name }}</option>@endforeach
                                         </select>
