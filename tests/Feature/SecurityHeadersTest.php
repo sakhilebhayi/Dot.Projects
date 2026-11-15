@@ -41,9 +41,11 @@ class SecurityHeadersTest extends TestCase
         preg_match('/script-src ([^;]+)/', $policy, $script);
         $this->assertMatchesRegularExpression("/'nonce-[A-Za-z0-9+\/=]{16,}'/", $script[1]);
         $this->assertStringNotContainsString("'unsafe-inline'", $script[1], 'no inline script runs without the nonce');
-        foreach (["script-src-attr 'none'", "default-src 'self'", "frame-ancestors 'self'", "object-src 'none'", "base-uri 'self'", 'report-uri /csp-report', 'report-to csp', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'] as $part) {
+        foreach (["script-src-attr 'none'", "default-src 'self'", "frame-ancestors 'self'", "object-src 'none'", "base-uri 'self'", 'report-uri /csp-report', 'report-to csp', "font-src 'self' data:"] as $part) {
             $this->assertStringContainsString($part, $policy);
         }
+        $this->assertStringNotContainsString('fonts.googleapis.com', $policy, 'Roboto and the icon font are self-hosted (R-52): no font host is allowed');
+        $this->assertStringNotContainsString('fonts.gstatic.com', $policy);
         $this->assertStringNotContainsString('cdn.tailwindcss.com', $policy, 'the workspace stylesheet is built, not compiled from a CDN');
         $this->assertStringContainsString('csp="', (string) $r->headers->get('Reporting-Endpoints'));
         $this->assertNotSame($policy, (string) $this->get('/')->headers->get('Content-Security-Policy'), 'a fresh nonce for every response');

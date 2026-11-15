@@ -69,6 +69,7 @@
     </section>
 
     @if ($forecast !== null)
+        <p class="pg-scrollnote">Names stay in place; swipe sideways to move along the dates.</p>
         <div class="pg-gantt" x-data x-init="$el.scrollLeft = Math.max(0, {{ $x($today) }} - 7 * {{ $ppd }})" role="region" aria-label="Timeline from {{ $from->format('j M Y') }} to {{ $to->format('j M Y') }}" tabindex="0">
             <div class="pg-gantt-inner" style="width:calc(var(--g-names) + {{ $days * $ppd }}px);--ppd:{{ $ppd }}px;--week:{{ $ppd * 7 }}px">
                 <div class="pg-g-row pg-g-head">

@@ -49,7 +49,7 @@
             </form>
             <details id="add-milestone" style="margin-top:12px" @if ($this->milestones->isEmpty()) open @endif>
                 <summary class="pg-btn pg-btn--ghost pg-btn--sm" style="list-style:none;display:inline-flex">Add a milestone</summary>
-                <form wire:submit="addMilestone" class="pg-quick" style="grid-template-columns:minmax(0,2fr) 160px auto;margin-top:10px">
+                <form wire:submit="addMilestone" class="pg-quick pg-quick--ms" style="margin-top:10px">
                     <div class="pg-field">
                         <label for="ms-title" class="pg-label">Milestone</label>
                         <input id="ms-title" type="text" wire:model="newMilestoneTitle" class="pg-input" maxlength="255" placeholder="Kathu go-live" required>
@@ -69,7 +69,8 @@
     @endif
 
     @error('status')<div class="pg-notice" role="alert" style="margin-bottom:12px"><span>{{ $message }}</span></div>@enderror
-    <div class="pg-board">
+    <p class="pg-scrollnote">Swipe sideways for the other columns.</p>
+    <div class="pg-board" style="--pg-cols: {{ max(1, count($this->columns)) }}">
         @foreach ($this->columns as $col)
             @php($status = $col['key'])
             @php($label = $col['name'])

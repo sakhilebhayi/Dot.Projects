@@ -47,9 +47,10 @@ class NotificationBellTest extends TestCase
 
         Livewire::actingAs($owner)
             ->test(NotificationBell::class)
-            ->assertSet('open', false)
-            ->call('toggle')
-            ->assertSet('open', true)
+            ->assertSet('loaded', false)
+            ->assertDontSee('Milestone due soon')
+            ->call('load')
+            ->assertSet('loaded', true)
             ->assertSee('Milestone due soon');
 
         $this->assertEquals(1, $owner->fresh()->unreadNotifications()->count());

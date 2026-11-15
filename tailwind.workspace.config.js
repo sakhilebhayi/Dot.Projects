@@ -1,3 +1,5 @@
+import dotPreset from './dot-ui/tailwind/tailwind-preset.cjs';
+
 /**
  * The signed-in workspace's Tailwind build (layouts/app.blade.php). It reproduces exactly what the
  * runtime CDN script used to compile in the browser (class-based dark mode, no preflight reset,
@@ -7,6 +9,8 @@
  * @type {import('tailwindcss').Config}
  */
 export default {
+    // Roboto and the shared type scale (R-52). The preset adds no plugins.
+    presets: [dotPreset],
     darkMode: 'class',
     corePlugins: { preflight: false },
     content: [
