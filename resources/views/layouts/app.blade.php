@@ -10,16 +10,11 @@
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     {{-- Roboto, self-hosted from this site's own public/dot-ui (R-52). No third-party font request, no CDN. --}}
     <link rel="preload" href="{{ asset('dot-ui/fonts/roboto/roboto-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-roboto.css') }}">
-    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-type.css') }}">
-    {{-- Theme before first paint: a stored choice wins, otherwise the system preference (dot-ui's own boot script, an external file). --}}
-    <script src="{{ asset('dot-ui/js/dot-theme-boot.js') }}"></script>
-    {{-- Shared Dot UI (header, search pill, platform switcher), served from this site's own public/dot-ui. Loaded before the app CSS so the
+    {{-- dot-ui 0.6.1: Roboto, type scale, tokens, search, switcher and header in ONE minified stylesheet, first in the head, before the app CSS so the
          token mapping at the end of programme.css wins. --}}
-    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-tokens.css') }}">
-    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-search.css') }}">
-    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-switcher.css') }}">
-    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-header.css') }}">
+    <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-ui.min.css') }}">
+    {{-- Theme before first paint: a stored choice wins, otherwise the system preference (dot-ui's own boot script, an external file). --}}
+    <script src="{{ asset('dot-ui/js/dot-theme-boot.min.js') }}"></script>
     {{-- workspace.css keeps the Tailwind utilities Jetstream's account and team pages use;
          programme.css is the design system (DESIGN.md) and wins after it. --}}
     @vite(['resources/css/workspace.css', 'resources/css/programme.css', 'resources/js/app.js'])
@@ -121,9 +116,6 @@
 
     @stack('modals')
     @livewireScripts
-    <script src="{{ asset('dot-ui/js/dot-search.js') }}" defer nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}"></script>
-    <script src="{{ asset('dot-ui/js/dot-search-results.js') }}" defer nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}"></script>
-    <script src="{{ asset('dot-ui/js/dot-switcher.js') }}" defer nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}"></script>
-    <script src="{{ asset('dot-ui/js/dot-nav.js') }}" defer nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}"></script>
+    <script src="{{ asset('dot-ui/js/dot-ui-core.min.js') }}" defer nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}"></script>
 </body>
 </html>

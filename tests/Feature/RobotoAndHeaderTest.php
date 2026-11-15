@@ -56,7 +56,7 @@ class RobotoAndHeaderTest extends TestCase
 
         $html = $this->actingAs($this->owner())->get(route('dashboard'))->assertOk()->getContent();
         $this->assertStringContainsString('class="dot-roboto"', $html);
-        $this->assertStringContainsString(asset('dot-ui/css/dot-roboto.css'), $html);
+        $this->assertStringContainsString(asset('dot-ui/css/dot-ui.min.css'), $html);
         $this->assertStringContainsString(asset('dot-ui/fonts/roboto/roboto-latin-wght-normal.woff2'), $html, 'preloaded from this origin');
     }
 
@@ -73,7 +73,7 @@ class RobotoAndHeaderTest extends TestCase
             $this->assertStringNotContainsString('fonts.googleapis.com', $html, $name);
             $this->assertStringNotContainsString('fonts.gstatic.com', $html, $name);
             $this->assertStringNotContainsString('cdn.tailwindcss.com', $html, $name);
-            $this->assertStringContainsString('dot-ui/css/dot-roboto.css', $html, $name.' loads Roboto from this site');
+            $this->assertMatchesRegularExpression('#dot-ui/css/(dot-ui|dot-roboto)\.min\.css#', $html, $name.' loads Roboto from this site');
         }
 
         $sources = [

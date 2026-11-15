@@ -95,7 +95,7 @@ class DotUiHeaderTest extends TestCase
         $this->assertSame(1, preg_match('/<form [^>]*data-pg-search[^>]*>/', $html, $form), 'the pill form is the header search');
         $this->assertStringNotContainsString('action=', $form[0], 'it submits nowhere: the rows are links');
         $this->assertStringContainsString('Ctrl K', $html, 'the hint is true: Ctrl or Cmd and K opens the palette');
-        $this->assertStringContainsString('dot-ui/js/dot-search.js', $html);
+        $this->assertStringContainsString('dot-ui/js/dot-ui-core.min.js', $html);
         $this->assertSame(1, substr_count($html, '<dialog class="pg-cmd" data-cmd'), 'the palette itself is unchanged');
         $this->assertStringNotContainsString('data-cmd-open', $html, 'the pill no longer opens the palette');
     }
@@ -293,7 +293,7 @@ class DotUiHeaderTest extends TestCase
         $response = $this->actingAs($this->memberOf(self::ACME, 'Acme Ltd'))->get(route('dashboard'))->assertOk();
         $html = $response->getContent();
 
-        foreach (['css/dot-roboto.css', 'css/dot-type.css', 'css/dot-tokens.css', 'css/dot-search.css', 'css/dot-switcher.css', 'css/dot-header.css', 'js/dot-theme-boot.js', 'js/dot-switcher.js', 'js/dot-search.js', 'js/dot-nav.js'] as $asset) {
+        foreach (['css/dot-ui.min.css', 'js/dot-theme-boot.min.js', 'js/dot-ui-core.min.js'] as $asset) {
             $this->assertStringContainsString(asset('dot-ui/'.$asset), $html, $asset.' is linked from this site');
             $this->assertFileExists(public_path('dot-ui/'.$asset));
         }
@@ -316,7 +316,7 @@ class DotUiHeaderTest extends TestCase
         // The script is an external file from this origin and carries the page's CSP nonce; the policy gained no origin.
         $policy = (string) $response->headers->get('Content-Security-Policy');
         $this->assertSame(1, preg_match("/'nonce-([^']+)'/", $policy, $nonce));
-        $this->assertStringContainsString('<script src="'.asset('dot-ui/js/dot-switcher.js').'" defer nonce="'.$nonce[1].'"></script>', $html);
+        $this->assertStringContainsString('<script src="'.asset('dot-ui/js/dot-ui-core.min.js').'" defer nonce="'.$nonce[1].'"></script>', $html);
         preg_match_all('#https?://[^\s;]+#', $policy, $origins);
         $this->assertEqualsCanonicalizing(['https://images.unsplash.com', 'https://ui-avatars.com'], $origins[0], 'no font host: Roboto is self-hosted');
     }

@@ -70,7 +70,7 @@
 
     @error('status')<div class="pg-notice" role="alert" style="margin-bottom:12px"><span>{{ $message }}</span></div>@enderror
     <p class="pg-scrollnote">Swipe sideways for the other columns.</p>
-    <div class="pg-board">
+    <div class="pg-board" style="--pg-cols: {{ max(1, count($this->columns)) }}">
         @foreach ($this->columns as $col)
             @php($status = $col['key'])
             @php($label = $col['name'])

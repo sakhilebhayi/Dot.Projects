@@ -268,7 +268,10 @@ body.pg {
 .pg-filters .pg-select { width: 170px; }
 
 /* ---------- Board ---------- */
-.pg-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: var(--pg-gap); overflow-x: auto; padding-bottom: 8px; }
+.pg-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr);
+    /* The column count is known on the server (--pg-cols): the tracks exist before the columns are parsed, so a slow, streamed document does
+       not re-divide the width as each column arrives (a 0.17-0.30 layout shift on /projects/1/board over a slow link). */
+    grid-template-columns: repeat(var(--pg-cols, 0), minmax(220px, 1fr)); gap: var(--pg-gap); overflow-x: auto; padding-bottom: 8px; }
 /* A column's category, under its name, once a project has its own statuses (R-34 P13c). */
 .pg-col-cat { display: block; font-size: 12px; font-weight: 400; color: var(--pg-muted); margin-top: 1px; }
 .pg-col { background: var(--pg-raised); border-radius: 8px; padding: 10px; min-width: 0; min-height: 120px; }
@@ -366,6 +369,14 @@ html.dark .pg-logo-night { display: block !important; }
 .pg-subnav { display: flex; gap: 6px; margin: -4px 0 16px; flex-wrap: wrap; }
 .pg-subnav a { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; color: var(--pg-muted); text-decoration: none; border: 1px solid var(--pg-border); background: var(--pg-surface); }
 .pg-subnav a:hover { color: var(--pg-ink); }
+.pg-subnav span { font-variant-numeric: tabular-nums; opacity: .75; }
+/* Up to a tablet the pills are one scrolling row like the tab strip above them: wrapping made the row count depend on which face (fallback or Roboto)
+   was painting, a 50px shift when the font arrived. */
+@media (max-width: 1024px) {
+    .pg-subnav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+    .pg-subnav::-webkit-scrollbar { display: none; }
+    .pg-subnav a { flex: 0 0 auto; white-space: nowrap; }
+}
 .pg-subnav a[aria-current="page"] { color: var(--pg-on-primary); background: var(--pg-primary); border-color: var(--pg-primary); }
 .pg-subnav span { font-variant-numeric: tabular-nums; opacity: .75; }
 .pg-pill--solid { background: var(--pg-negative); color: var(--pg-surface); }
@@ -1217,7 +1228,7 @@ html.dark .pg-views, html.dark .pg-table-wrap, html.dark .pg-gantt, html.dark .p
 @media (max-width: 760px) {
     .pg-scrollnote { display: block; }
     /* The board: one column and a peek of the next, columns snap into place. */
-    .pg-board { grid-auto-columns: min(84vw, 320px); scroll-snap-type: x proximity; scroll-padding-left: 0; }
+    .pg-board { grid-auto-columns: min(84vw, 320px); grid-template-columns: repeat(var(--pg-cols, 0), min(84vw, 320px)); scroll-snap-type: x proximity; scroll-padding-left: 0; }
     .pg-col { scroll-snap-align: start; }
 }
 

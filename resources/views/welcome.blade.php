@@ -18,8 +18,8 @@
 
         {{-- Roboto, self-hosted (R-52): no third-party font request. --}}
         <link rel="preload" href="{{ asset('dot-ui/fonts/roboto/roboto-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
-        <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-roboto.css') }}">
-        <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-type.css') }}">
+        <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-roboto.min.css') }}">
+        <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-type.min.css') }}">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
         <style>
@@ -68,6 +68,11 @@
                 background-position: 0 100%;
                 background-repeat: no-repeat;
                 transition: background-size 220ms var(--ease-out);
+            }
+            /* R-52: every link and button is at least 44 x 44 on a touch-sized screen. */
+            @media (max-width: 1024px) {
+                a, button { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
+                footer a, main p a { padding-block: 12px; }
             }
         </style>
     </head>
