@@ -1312,3 +1312,18 @@ html.dark .pg-views, html.dark .pg-table-wrap, html.dark .pg-gantt, html.dark .p
 .pg-land-big .v, .pgd-foot b, .pg-act time, .pg-comment header time, .pgd-count { font-variant-numeric: tabular-nums; }
 /* A card's meta row (due, blocked, priority pills) wraps to a second line once the font settles; room for both lines is kept from the first paint, so the board does not jump. */
 .pg-task .pg-task-meta { min-height: 40px; align-items: flex-start; }
+
+/* ---------- Claiming an existing account (R-54): the code page and the sign-in error page. 44px targets, one column. ---------- */
+.sso-lede { margin: 8px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
+.sso-status { margin: 12px 0 0; padding: 10px 12px; border-radius: 6px; background: var(--pg-positive-soft); color: var(--pg-ink); }
+.sso-form { margin-top: 16px; }
+.sso-form .pg-label { display: block; font-weight: 500; margin-bottom: 6px; }
+.sso-code { width: 100%; min-height: 44px; font-size: 22px; font-weight: 600; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; text-align: center; }
+.sso-code[aria-invalid='true'] { border-color: var(--pg-negative); }
+.sso-error { margin: 6px 0 0; color: var(--pg-negative); }
+.sso-error:empty { display: none; }
+.sso-submit { width: 100%; height: auto; min-height: 44px; margin-top: 12px; }
+.sso-actions { display: flex; flex-direction: column; margin-top: 8px; }
+.sso-aside { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; margin-top: 12px; }
+.sso-link { height: auto; min-height: 44px; background: none; color: var(--pg-ink); text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .sso-claim .pg-btn { transition: none; } }
