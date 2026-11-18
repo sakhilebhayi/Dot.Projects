@@ -62,3 +62,13 @@ Production runs on PostgreSQL (`DB_CONNECTION=pgsql`), so the SQLite file copy t
 - Check the host has the tools before relying on it: `which pg_dump pg_restore && pg_dump --version`.
 - Restore into a fresh, empty database: `pg_restore --no-owner --dbname=<database> storage/backups/projects-YYYY-MM-DD.dump` (add `--clean --if-exists` to overwrite an existing schema). Try a restore into a scratch database once, so the first time is not during an incident.
 - The copy sits on the same host as the database server. It covers a bad migration or deletion, not a lost host; copying it off the host is still a separate step. The release rollback tarballs include `storage/backups`.
+
+
+### Central sign-in through InfoDot (R-54), off until the owner turns it on
+
+The shared client package (`packages/dot-sso-client`, copied from InfoDot by `sync.sh`) is in the app but does nothing while `DOTSSO_ENABLED` is false. The old `/auth/ecosystem` receiver keeps working as the fallback.
+
+1. Deploy (migrations add `users.infodot_user_uuid`, `dotsso_revocations`, `dotsso_claims`).
+2. On the InfoDot host: `php artisan sso:platform register projects --name="Dot.Projects" --domain=https://projects.infodot.co.za --redirect=https://projects.infodot.co.za/sso/callback --post-logout=https://projects.infodot.co.za/ --backchannel=https://projects.infodot.co.za/sso/backchannel-logout` (the secret is printed once).
+3. In this app's `.env`: `DOTSSO_ISSUER=https://infodot.co.za`, `DOTSSO_CLIENT_ID`, `DOTSSO_CLIENT_SECRET`, `SESSION_SECURE_COOKIE=true`, then `DOTSSO_ENABLED=true`.
+4. Check: sign in from the landing page, create an account, a second visit, sign out at InfoDot, one API call. Rollback: `DOTSSO_ENABLED=false`. Emergency local sign-in while enabled: `DOTSSO_ALLOW_LOCAL_LOGIN=true`.
