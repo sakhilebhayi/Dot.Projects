@@ -12,14 +12,19 @@ use Throwable;
  * Asks InfoDot whether a company still holds this platform (R-50).
  *
  * InfoDot decides; this class only reads its answer for one company, by the company's InfoDot uuid, and keeps
- * it for ten minutes. Three answers are possible: true, false, or null for "could not find out". Null covers
- * every failure (no secret, timeout, refusal, a body that does not carry this platform's own row) and is
- * never treated as a refusal or shown as "active": an outage or a wrong setting at InfoDot must not lock a
- * paying company out. A failure is kept for a minute and logged once in that minute.
+ * it for one minute, so a switch made at InfoDot (a platform put in maintenance, R-61) takes effect within about a
+ * minute. Every clear answer is also remembered for six hours. Anything other than a clear answer (no secret,
+ * timeout, refusal, a body that does not carry this platform's own row) is "unknown": the last clear answer under
+ * six hours old is used, so a platform last told "unavailable" stays unavailable; with none, the answer is null and
+ * the caller carries on. An outage never locks a company out that was last told it could work. A failure is kept for
+ * a minute and logged once in that minute.
  */
 class CompanyEntitlement
 {
-    private const HELD_FOR = 600;
+    private const HELD_FOR = 60;
+
+    /** How long the last clear answer is used when InfoDot cannot be reached. */
+    private const LAST_KNOWN_FOR = 21600;
 
     private const FAILURE_HELD_FOR = 60;
 
@@ -41,7 +46,7 @@ class CompanyEntitlement
     }
 
     /**
-     * @return array{entitled: bool, status: ?string}|null null when InfoDot's answer is not known
+     * @return array{entitled: bool, status: ?string, available: bool, message: ?string}|null null when InfoDot's answer is not known and none is remembered
      */
     public function for(string $teamUuid): ?array
     {
@@ -50,25 +55,34 @@ class CompanyEntitlement
         try {
             $held = Cache::get($key);
 
-            if (! is_array($held)) {
-                $answer = $this->ask($teamUuid);
-                $held = $answer ?? ['unknown' => true];
-                Cache::put($key, $held, $answer === null ? self::FAILURE_HELD_FOR : self::HELD_FOR);
+            if (is_array($held) && array_key_exists('answer', $held)) {
+                return $held['answer'];
             }
+
+            $answer = $this->ask($teamUuid);
+
+            if ($answer !== null) {
+                Cache::put($key.':last', ['answer' => $answer, 'at' => time()], self::LAST_KNOWN_FOR);
+            } else {
+                $last = Cache::get($key.':last');
+                $answer = is_array($last) && is_array($last['answer'] ?? null) && time() - (int) ($last['at'] ?? 0) < self::LAST_KNOWN_FOR ? $last['answer'] : null;
+            }
+
+            Cache::put($key, ['answer' => $answer], $answer === null ? self::FAILURE_HELD_FOR : self::HELD_FOR);
+
+            return $answer;
         } catch (Throwable $e) {
             Log::warning('Platform entitlement could not be read; carrying on.', ['reason' => class_basename($e)]);
 
             return null;
         }
-
-        return isset($held['entitled']) && is_bool($held['entitled']) ? ['entitled' => $held['entitled'], 'status' => $held['status'] ?? null] : null;
     }
 
     /**
      * One request to InfoDot. Every way it can fail is logged here (once per failure window, because the
      * caller keeps the failure) and comes back as null.
      *
-     * @return array{entitled: bool, status: ?string}|null
+     * @return array{entitled: bool, status: ?string, available: bool, message: ?string}|null
      */
     private function ask(string $teamUuid): ?array
     {
@@ -102,7 +116,13 @@ class CompanyEntitlement
             return $this->unknown('answer did not carry this platform');
         }
 
-        return ['entitled' => $own['entitled'], 'status' => is_string($own['status'] ?? null) ? $own['status'] : null];
+        return [
+            'entitled' => $own['entitled'],
+            'status' => is_string($own['status'] ?? null) ? $own['status'] : null,
+            // R-61: an InfoDot from before contract 2 gives no `available`, which is not a switch-off.
+            'available' => ($own['available'] ?? true) !== false,
+            'message' => is_string($own['message'] ?? null) && $own['message'] !== '' ? mb_substr($own['message'], 0, 400) : null,
+        ];
     }
 
     /** The read endpoint sits beside the redeem endpoint this app already calls. */

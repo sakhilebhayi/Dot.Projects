@@ -22,8 +22,8 @@ use Tests\TestCase;
  * R-50: Dot.Projects honours the company's entitlement, which InfoDot decides.
  *
  * At sign-in only companies InfoDot marks `entitled: true` are admitted and synced. During a session the
- * signed-in area asks InfoDot whether the current company still holds the platform (ten minutes per
- * company) and shows a plain 403 page when it does not; any failure to ask lets the person carry on.
+ * signed-in area asks InfoDot whether the current company still holds the platform (one minute per
+ * company, the last clear answer for six hours) and shows a plain 403 page when it does not; any failure to ask lets the person carry on.
  * The response bodies are the shapes InfoDot's own tests assert (EcosystemRedeemController and
  * CompanyPlatformsController on InfoDot main).
  */
@@ -315,7 +315,7 @@ class CompanyEntitlementTest extends TestCase
         Log::shouldHaveReceived('warning')->withArgs(fn ($message) => str_contains($message, 'entitlement'))->once();
     }
 
-    public function test_the_answer_is_kept_for_ten_minutes_and_a_failure_for_one(): void
+    public function test_the_answer_is_kept_for_one_minute_and_a_failure_for_one(): void
     {
         $user = $this->ownerOf(self::ACME);
         $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, true, 'active'))]);
@@ -324,11 +324,11 @@ class CompanyEntitlementTest extends TestCase
         $this->get('/portfolio')->assertOk();
         Http::assertSentCount(1);
 
-        $this->travel(9)->minutes();
+        $this->travel(50)->seconds();
         $this->get('/dashboard')->assertOk();
         Http::assertSentCount(1);
 
-        $this->travel(2)->minutes();
+        $this->travel(20)->seconds();
         $this->get('/dashboard')->assertOk();
         Http::assertSentCount(2);
 
@@ -367,8 +367,8 @@ class CompanyEntitlementTest extends TestCase
         $this->postComponentAction($snapshot, 'Fence goes up Friday.')->assertOk()->assertJsonStructure(['components' => [['snapshot', 'effects']]]);
         $this->assertSame(1, ProjectComment::count());
 
-        // Ten minutes later InfoDot says no: the update is refused, no component comes back, nothing is written.
-        $this->travel(11)->minutes();
+        // Two minutes later InfoDot says no: the update is refused, no component comes back, nothing is written.
+        $this->travel(2)->minutes();
         $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, false, 'suspended'))]);
 
         $response = $this->postComponentAction($snapshot, 'Written after the suspension.');
@@ -541,5 +541,75 @@ class CompanyEntitlementTest extends TestCase
 
         $this->assertSame($globex->id, $user->fresh()->current_team_id);
         $this->get('/dashboard')->assertOk()->assertSee('Globex warehouse fit-out')->assertDontSee('Kathu plant upgrade');
+    }
+
+    // ---------------------------------------------------------------------------------------------------
+    // R-61 availability contract
+    // ---------------------------------------------------------------------------------------------------
+
+    private function maintenanceBody(string $uuid, bool $entitled = true): array
+    {
+        $body = $this->platformsBody($uuid, $entitled, 'temporarily_unavailable');
+        $body['platforms'][2] += ['available' => false, 'state' => 'maintenance', 'message' => 'Dot.Projects is under maintenance. Your data is safe and nothing about your account has changed. Please try again later.'];
+
+        return $body;
+    }
+
+    public function test_a_platform_switched_off_at_infodot_is_unavailable_even_to_a_company_that_holds_it(): void
+    {
+        $user = $this->ownerOf(self::ACME);
+        $this->fakePlatforms([self::ACME => Http::response($this->maintenanceBody(self::ACME))]);
+
+        $this->actingAs($user)->get('/dashboard')->assertStatus(503)->assertSee('under maintenance')->assertSee('kept as they are')->assertHeader('Retry-After', '60');
+        $this->getJson('/dashboard')->assertStatus(503)->assertJsonPath('reason', 'platform_unavailable');
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+        $this->assertSame(1, Project::withoutGlobalScopes()->count());
+    }
+
+    public function test_switching_it_back_on_takes_effect_within_a_minute_and_nothing_was_lost(): void
+    {
+        $user = $this->ownerOf(self::ACME);
+        $this->fakePlatforms([self::ACME => Http::response($this->maintenanceBody(self::ACME))]);
+        $this->actingAs($user)->get('/dashboard')->assertStatus(503);
+
+        $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, true, 'active'))]);
+        $this->get('/dashboard')->assertStatus(503); // still inside the one-minute window
+        $this->travel(70)->seconds();
+        $this->get('/dashboard')->assertOk()->assertSee('Kathu plant upgrade');
+    }
+
+    public function test_an_infodot_from_before_the_contract_is_not_a_switch_off(): void
+    {
+        $user = $this->ownerOf(self::ACME);
+        $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, true, 'active'))]);
+
+        $this->actingAs($user)->get('/dashboard')->assertOk();
+    }
+
+    public function test_an_outage_keeps_the_last_answer_for_six_hours_and_then_carries_on(): void
+    {
+        $user = $this->ownerOf(self::ACME);
+        $this->fakePlatforms([self::ACME => Http::response($this->maintenanceBody(self::ACME))]);
+        $this->actingAs($user)->get('/dashboard')->assertStatus(503);
+
+        $this->fakePlatforms([self::ACME => Http::response('', 503)]);
+        $this->travel(90)->seconds();
+        $this->get('/dashboard')->assertStatus(503);
+        $this->travel(5)->hours();
+        $this->get('/dashboard')->assertStatus(503);
+
+        $this->travel(2)->hours();
+        $this->get('/dashboard')->assertOk();
+    }
+
+    public function test_a_platform_that_was_available_stays_available_through_an_outage(): void
+    {
+        $user = $this->ownerOf(self::ACME);
+        $this->fakePlatforms([self::ACME => Http::response($this->platformsBody(self::ACME, true, 'active'))]);
+        $this->actingAs($user)->get('/dashboard')->assertOk();
+
+        $this->fakePlatforms([self::ACME => Http::response('', 500)]);
+        $this->travel(2)->minutes();
+        $this->get('/dashboard')->assertOk();
     }
 }

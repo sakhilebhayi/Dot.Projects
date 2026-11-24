@@ -12,9 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * During a session: the signed-in area works only while the person's CURRENT company holds Dot.Projects in
- * InfoDot (R-50). InfoDot's answer is read for that one company and kept for ten minutes.
+ * InfoDot (R-50). InfoDot's answer is read for that one company and kept for one minute (the last clear answer for six hours).
  *
  * - Held: carry on.
+ * - Switched off at InfoDot (R-61: maintenance or unavailable): a plain 503 with InfoDot's message, whatever the company
+ *   holds; checked first. Nothing is deleted, signed out or changed.
  * - Not held: a plain 403 page with InfoDot's reason; nothing of the company is shown or changed.
  * - Not known (any failure): carry on as before; CompanyEntitlement logs it.
  *
@@ -57,6 +59,10 @@ class EnsureCompanyEntitled
 
         $answer = $this->entitlement->for((string) $team->infodot_team_uuid);
 
+        if ($answer !== null && ! $answer['available']) {
+            return $this->unavailable($request, $answer['message']);
+        }
+
         if ($answer === null || $answer['entitled']) {
             return $next($request);
         }
@@ -66,6 +72,17 @@ class EnsureCompanyEntitled
             'manageUrl' => $this->entitlement->manageUrl(),
             'otherCompanies' => $user->allTeams()->reject(fn ($other) => $other->getKey() === $team->getKey())->values(),
         ], 403);
+    }
+
+    private function unavailable(Request $request, ?string $message): Response
+    {
+        if ($request->expectsJson() || $request->is('livewire/*')) {
+            return response()->json(['message' => $message ?? 'Dot.Projects is temporarily unavailable.', 'reason' => 'platform_unavailable'], 503)
+                ->header('Retry-After', '60')->header('Cache-Control', 'no-store, private');
+        }
+
+        return response()->view('errors.platform-unavailable', ['message' => $message], 503)
+            ->header('Cache-Control', 'no-store, private')->header('Retry-After', '60');
     }
 
     private function guards(Request $request): bool
