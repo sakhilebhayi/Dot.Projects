@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\Integrations\ForwardNoticesToNotify;
 use App\Services\ProjectFacts;
+use App\Support\EssentialCron;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
@@ -31,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        EssentialCron::listen();
+
         // /up answered 200 whenever PHP booted, even with the database down. The framework dispatches DiagnosingHealth
         // before it renders the page: a failing query turns the answer into a 500 (the exception text is never shown).
         Event::listen(DiagnosingHealth::class, fn () => DB::select('select 1'));
